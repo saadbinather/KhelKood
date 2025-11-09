@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import authRoutes from "./auth.js";
 import teamRoutes from "./team.js";
+import bookingRoutes from "./booking.js"
 import { verifyToken } from "./middleware/verifyToken.js";
 import { db } from "./config/firebase.js";
 
@@ -12,6 +13,9 @@ app.use(cors());
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/team", teamRoutes);
+app.use("/api/booking", bookingRoutes);
+
+
 
 // Example protected route
 app.get("/api/profile", verifyToken, async (req, res) => {

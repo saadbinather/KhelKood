@@ -3,13 +3,17 @@ import cors from "cors";
 import authRoutes from "./auth.js";
 import { verifyToken } from "./middleware/verifyToken.js";
 import { db } from "./config/firebase.js";
+import challengeRoutes from "./challenges.js";
 
 const app = express();
 app.use(express.json());
 app.use(cors());
+import adminRoutes from "./admin.js";
+app.use("/api/admin", adminRoutes);
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/challenges", challengeRoutes);
 
 // Example protected route
 app.get("/api/profile", verifyToken, async (req, res) => {

@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import authRoutes from "./authRoutes.js";
+import authRoutes from "./auth.js";
 import { verifyToken } from "./middleware/verifyToken.js";
 import { db } from "./config/firebase.js";
 
@@ -18,6 +18,45 @@ app.get("/api/profile", verifyToken, async (req, res) => {
     if (!userDoc.exists)
       return res.status(404).json({ error: "User not found" });
     res.json({ uid: req.user.uid, ...userDoc.data() });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// -------------------- COURTOWNER TEST ROUTE --------------------
+app.get(
+  "/courtowner/dashboard",
+  verifyToken(["courtowner"]),
+  async (req, res) => {
+    try {
+      res.json({
+        message: `Welcome, Court Owner 👋`,
+        note: "You can manage your courts here!",
+        user: req.user,
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+// -------------------- TEAM TEST ROUTE --------------------
+app.get("/team/players", verifyToken(["team"]), async (req, res) => {
+  try {
+    const teamID = req.user.uid;
+
+    // Fetch all players belonging to this team
+    const snapshot = await db
+      .collection("players")
+      .where("teamID", "==", teamID)
+      .get();
+    const players = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+    res.json({
+      message: `Team player list fetched successfully ✅`,
+      count: players.length,
+      players,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

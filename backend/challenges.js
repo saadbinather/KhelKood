@@ -8,27 +8,36 @@ const router = express.Router();
 router.post("/create", verifyToken(["team"]), async (req, res) => {
   try {
     const { courtFirebaseUID, stime, etime } = req.body;
-    const hostTeamID = req.user.uid; // logged-in team UID
+    const hostTeamUID = req.user.uid; // logged-in team's Firebase UID
 
-    // Get team info
-    const teamDoc = await db.collection("teams").doc(hostTeamID).get();
-    if (!teamDoc.exists)
+    // 🔹 Get team info by userId
+    const teamQuery = await db
+      .collection("teams")
+      .where("userId", "==", hostTeamUID)
+      .limit(1)
+      .get();
+
+    if (teamQuery.empty) {
       return res.status(404).json({ error: "Team not found" });
+    }
 
-    const sport = teamDoc.data().sports || "Futsal";
+    const teamDoc = teamQuery.docs[0];
+    const teamData = teamDoc.data();
+    const sport = teamData.sports;
 
-    // Build challenge data
+    // ✅ Build challenge data
     const challengeData = {
-      Court_ID: courtFirebaseUID, // long Firebase UID string
-      Host_Team_ID: hostTeamID,
-      Sport: sport,
-      Status: "Pending",
-      StartTime: stime || new Date().toISOString(),
-      EndTime: etime,
+      hostTeamID: hostTeamUID,
+      teamName: teamData.teamName,
+      sport,
+      courtFirebaseUID,
+      stime,
+      etime,
+      status: "pending",
       createdAt: new Date(),
     };
 
-    // Save to Firestore
+    // ✅ Save to Firestore
     const docRef = await db.collection("challenges").add(challengeData);
 
     res.status(201).json({
@@ -37,6 +46,7 @@ router.post("/create", verifyToken(["team"]), async (req, res) => {
       challenge: challengeData,
     });
   } catch (error) {
+    console.error("Error creating challenge:", error);
     res.status(500).json({ error: error.message });
   }
 });

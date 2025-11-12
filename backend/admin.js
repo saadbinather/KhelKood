@@ -4,42 +4,38 @@ import { verifyToken } from "./middleware/verifyToken.js";
 
 const router = express.Router();
 
-// 🟢 Verify a user by Firebase UID and log in verification table
+// ✅ Verify user by Firestore doc ID (foreign key style)
 router.post("/verify-user", verifyToken(["admin"]), async (req, res) => {
   try {
-    const userId = req.body.userId?.trim();
-    if (!userId) return res.status(400).json({ error: "Missing userId" });
+    const userDocId = req.body.userDocId?.trim();
+    if (!userDocId) return res.status(400).json({ error: "Missing userDocId" });
 
-    // 1️⃣ Try to find the user by `uid` field (not document ID)
-    const userQuery = await db
-      .collection("users")
-      .where("uid", "==", userId)
-      .limit(1)
-      .get();
+    // 1️⃣ Fetch user doc from 'users' collection by document ID
+    const userRef = db.collection("users").doc(userDocId);
+    const userDoc = await userRef.get();
 
-    if (userQuery.empty)
+    if (!userDoc.exists)
       return res.status(404).json({ error: "User not found in Firestore" });
 
-    const userDoc = userQuery.docs[0];
-    const userRef = userDoc.ref;
     const userData = userDoc.data();
 
-    // 2️⃣ Update verification status
+    // 2️⃣ Update verification status in 'users'
     await userRef.update({ verificationStatus: "verified" });
 
     // 3️⃣ Log verification in 'verifications' collection
     await db.collection("verifications").add({
-      User_ID: userId,
+      User_ID: userDocId, // foreign key reference to users doc
       Name: userData.name || "Unknown",
       Email: userData.email || "Unknown",
       Status: "Verified",
       Created_At: new Date().toISOString(),
     });
 
+    // 4️⃣ Respond success
     res.json({
       message: "✅ User verified successfully",
       user: {
-        userId,
+        id: userDocId,
         name: userData.name,
         email: userData.email,
       },

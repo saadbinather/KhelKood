@@ -24,21 +24,37 @@ export const verifyToken = (allowedRoles = []) => {
       const decoded = await admin.auth().verifyIdToken(token);
       const uid = decoded.uid;
 
-      // 🔹 Fetch user role from Firestore
-      const userDoc = await db.collection("users").doc(uid).get();
-      if (!userDoc.exists) {
-        return res.status(404).json({ error: "User not found" });
-      }
+      // 🔹 Try fetching from 'users'
+      let userDoc = await db.collection("users").doc(uid).get();
+      let userData = null;
 
-      const userData = userDoc.data();
+      // 🔹 If not found in 'users', check 'admins'
+      if (!userDoc.exists) {
+        const adminDoc = await db.collection("admins").doc(uid).get();
+        if (adminDoc.exists) {
+          userDoc = adminDoc;
+          userData = adminDoc.data();
+          userData.role = "admin"; // enforce role
+        } else {
+          return res
+            .status(404)
+            .json({ error: "User not found in users or admins" });
+        }
+      } else {
+        userData = userDoc.data();
+      }
 
       // 🔹 Role-based restriction (if any)
       if (allowedRoles.length > 0 && !allowedRoles.includes(userData.role)) {
         return res.status(403).json({ error: "Access denied for this role" });
       }
 
-      // 🔹 Attach user info to request for downstream handlers
-      req.user = { uid, email: decoded.email, role: userData.role };
+      // 🔹 Attach user info to request
+      req.user = {
+        uid,
+        email: userData.email || decoded.email || "Unknown",
+        role: userData.role || "user",
+      };
 
       next();
     } catch (error) {

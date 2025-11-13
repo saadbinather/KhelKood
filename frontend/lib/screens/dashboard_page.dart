@@ -10,9 +10,7 @@ class DashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Player Dashboard'),
-      ),
+      appBar: AppBar(title: const Text('Player Dashboard')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: GridView.count(
@@ -33,7 +31,9 @@ class DashboardPage extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const LeaderboardPage()),
+                  MaterialPageRoute(
+                    builder: (context) => const LeaderboardPage(),
+                  ),
                 );
               },
               child: const Text('Leaderboard / Rankings'),
@@ -42,7 +42,9 @@ class DashboardPage extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ChallengesPage()),
+                  MaterialPageRoute(
+                    builder: (context) => const ChallengesPage(),
+                  ),
                 );
               },
               child: const Text('Challenges'),
@@ -51,7 +53,9 @@ class DashboardPage extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const CreateBookingPage()),
+                  MaterialPageRoute(
+                    builder: (context) => const CreateBookingPage(),
+                  ),
                 );
               },
               child: const Text('Create Bookings'),

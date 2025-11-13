@@ -51,4 +51,26 @@ router.post("/create", verifyToken(["team"]), async (req, res) => {
   }
 });
 
+
+// 🏆 Get Challenge Details by Firestore Document ID
+router.get("/challenge-details/:challengeID", verifyToken(["team"]), async (req, res) => {
+  try {
+    const { challengeID } = req.params;
+
+    // Use the document ID directly
+    const challengeDoc = await db.collection("challenges").doc(challengeID).get();
+
+    if (!challengeDoc.exists) {
+      return res.status(404).json({ error: "Challenge not found" });
+    }
+
+    res.json({
+      message: "Challenge fetched successfully ✅",
+      challenge: { id: challengeDoc.id, ...challengeDoc.data() }, // doc ID included manually
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

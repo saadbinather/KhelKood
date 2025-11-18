@@ -24,7 +24,7 @@ router.post("/signup", async (req, res) => {
     courtTitle,
     numOfCricketFields,
     numOfPadelCourts,
-    numOfPadelFields,
+    numOfFutsalFields,
     rating,
     padelRate,
     cricketRate,
@@ -75,7 +75,7 @@ router.post("/signup", async (req, res) => {
 
         numOfCricketFields: Number(numOfCricketFields) || 0,
         numOfPadelCourts: Number(numOfPadelCourts) || 0,
-        numOfPadelFields: Number(numOfPadelFields) || 0,
+        numOfPadelFields: Number(numOfFutsalFields) || 0,
 
         cricketRate: Number(cricketRate) || 0,
         futsalRate: Number(futsalRate) || 0,

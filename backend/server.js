@@ -8,6 +8,7 @@ import paymentRoutes from "./payments.js";
 import { verifyToken } from "./middleware/verifyToken.js";
 import { db } from "./config/firebase.js";
 import challengeRoutes from "./challenges.js";
+import courtownerRoutes from "./courtOwner.js";
 
 const app = express();
 app.use(express.json());
@@ -17,9 +18,10 @@ app.use("/api/admin", adminRoutes);
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/courtowner", courtownerRoutes);
 app.use("/api/team", teamRoutes);
 app.use("/api/booking", bookingRoutes);
-app.use("/api/match",matchRoutes)
+app.use("/api/match", matchRoutes);
 app.use("/api/challenges", challengeRoutes);
 app.use("/api/payments", paymentRoutes);
 

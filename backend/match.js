@@ -89,7 +89,7 @@ router.post("/create", verifyToken(["team"]), async (req, res) => {
     }
 
     // 🔹 2. Ensure the logged-in team is the host
-    if (challengeData.hostTeamID !== teamID) {
+    if (challengeData.hostTeamID === teamID) {
       return res
         .status(403)
         .json({ error: "Unauthorized to create match for this challenge" });
@@ -163,11 +163,12 @@ router.post("/create", verifyToken(["team"]), async (req, res) => {
     // 🔹 8. Create Match (with Winner = null)
     const matchData = {
       Court_ID: courtID,
-      Host_Team_ID: teamID,
+      Host_Team_ID: challengeData.hostTeamID, // host from challenge
+      Guest_Team_ID: teamID,
       Sport: sportType,
       StartTime: startTime,
       EndTime: endTime,
-       matchType: "competitive", 
+      matchType: "competitive",
       TeamName: challengeData.teamName,
       Challenge_ID: challengeID,
       Booking_ID: bookingID,
@@ -202,24 +203,17 @@ router.post("/create", verifyToken(["team"]), async (req, res) => {
   }
 });
 
-
 // 🏆 Create Friendly Match + Booking + Payment
 router.post("/create-friendly", verifyToken(["team"]), async (req, res) => {
   try {
-    const { 
-      courtID, 
-      sport, 
-      startTime, 
-      endTime, 
-      teamName 
-    } = req.body;
-    
+    const { courtID, sport, startTime, endTime, teamName } = req.body;
+
     const teamID = req.user.uid; // logged-in team UID
 
     // 🔹 Validation
     if (!courtID || !sport || !startTime || !endTime || !teamName) {
-      return res.status(400).json({ 
-        error: "courtID, sport, startTime, endTime and teamName are required" 
+      return res.status(400).json({
+        error: "courtID, sport, startTime, endTime and teamName are required",
       });
     }
 
@@ -324,12 +318,14 @@ router.post("/create-friendly", verifyToken(["team"]), async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("❌ Error creating friendly match, booking and payment:", error);
+    console.error(
+      "❌ Error creating friendly match, booking and payment:",
+      error
+    );
     res.status(500).json({
       error: error.response?.data || error.message,
     });
   }
 });
-
 
 export default router;

@@ -24,9 +24,13 @@ router.post("/signup", async (req, res) => {
     courtTitle,
     numOfCricketFields,
     numOfPadelCourts,
-    numOfPadelFields,
+    numOfFutsalFields,
     rating,
-    perHourPrice,
+    padelRate,
+    cricketRate,
+    futsalRate,
+    openingTime, // ⬅️ NEW
+    closingTime, // ⬅️ NEW
   } = req.body;
 
   try {
@@ -65,15 +69,24 @@ router.post("/signup", async (req, res) => {
 
       // Step 2: Add to "courts" table
       const courtData = {
-        name: courtTitle || "Sports Arena DHA",
-        address: courtAddress || "Johar Town Lahore",
+        name: courtTitle || "Default Sports Arena",
+        address: courtAddress || "Unknown Location",
         courtownerID: firebase_uid,
-        numOfCricketFields: Number(numOfCricketFields) || 1,
-        numOfPadelCourts: Number(numOfPadelCourts) || 2,
-        numOfPadelFields: Number(numOfPadelFields) || 1,
-        rating: Number(rating) || 9.0,
+
+        numOfCricketFields: Number(numOfCricketFields) || 0,
+        numOfPadelCourts: Number(numOfPadelCourts) || 0,
+        numOfPadelFields: Number(numOfFutsalFields) || 0,
+
+        cricketRate: Number(cricketRate) || 0,
+        futsalRate: Number(futsalRate) || 0,
+        padelRate: Number(padelRate) || 0,
+
+        rating: Number(rating) || 0,
+
+        openingTime: Number(openingTime) || 8,
+        closingTime: Number(closingTime) || 23,
+
         createdAt: new Date(),
-        Price: Number(perHourPrice),
       };
 
       await db.collection("courts").add(courtData);

@@ -3,9 +3,12 @@ import cors from "cors";
 import authRoutes from "./auth.js";
 import teamRoutes from "./team.js";
 import bookingRoutes from "./booking.js";
+import matchRoutes from "./match.js";
+import paymentRoutes from "./payments.js";
 import { verifyToken } from "./middleware/verifyToken.js";
 import { db } from "./config/firebase.js";
 import challengeRoutes from "./challenges.js";
+import courtownerRoutes from "./courtOwner.js";
 
 const app = express();
 app.use(express.json());
@@ -15,10 +18,12 @@ app.use("/api/admin", adminRoutes);
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/courtowner", courtownerRoutes);
 app.use("/api/team", teamRoutes);
 app.use("/api/booking", bookingRoutes);
-
+app.use("/api/match", matchRoutes);
 app.use("/api/challenges", challengeRoutes);
+app.use("/api/payments", paymentRoutes);
 
 // Example protected route
 app.get("/api/profile", verifyToken, async (req, res) => {

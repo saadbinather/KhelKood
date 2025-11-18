@@ -162,9 +162,13 @@ class _AvailableCourtsPageState extends State<AvailableCourtsPage> {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const ViewCourtDetails()),
+          MaterialPageRoute(
+            builder: (context) =>
+                ViewCourtDetailsPage(courtId: court['courtId'].toString()),
+          ),
         );
       },
+
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'court_management_page.dart'; // Import the Court Management Page
 
 class CourtOwnerDashboard extends StatelessWidget {
   const CourtOwnerDashboard({super.key});
@@ -40,7 +41,15 @@ class CourtOwnerDashboard extends StatelessWidget {
             dashboardButton(
               title: "Manage Courts",
               icon: Icons.sports_tennis,
-              onTap: () {},
+              onTap: () {
+                // Navigate to Court Management Page
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CourtManagementPage(),
+                  ),
+                );
+              },
             ),
 
             dashboardButton(

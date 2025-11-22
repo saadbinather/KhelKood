@@ -8,7 +8,7 @@ class CourtManagementPage extends StatefulWidget {
 }
 
 class _CourtManagementPageState extends State<CourtManagementPage> {
-  // Dummy JSON data for now
+  // Dummy JSON data
   List<Map<String, dynamic>> courts = [
     {"id": 1, "name": "Court 1", "sport": "Cricket", "status": "Available"},
     {"id": 2, "name": "Court 2", "sport": "Football", "status": "Maintenance"},
@@ -88,12 +88,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Court Management"),
-        actions: [
-          IconButton(
-            onPressed: showAddCourtDialog,
-            icon: const Icon(Icons.add),
-          )
-        ],
+        backgroundColor: Colors.redAccent,
       ),
       body: ListView.builder(
         itemCount: courts.length,
@@ -123,6 +118,11 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
             ),
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: showAddCourtDialog,
+        child: const Icon(Icons.add),
+        backgroundColor: Colors.redAccent,
       ),
     );
   }

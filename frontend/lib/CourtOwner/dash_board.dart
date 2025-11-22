@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'court_management_page.dart';
-import 'booking_management_page.dart'; // Import the Booking Management Page
+import 'booking_management_page.dart';
+import 'feedback.dart'; // Court Feedback Page
+import 'payments.dart'; // Payments Page
 
 class CourtOwnerDashboard extends StatelessWidget {
   const CourtOwnerDashboard({super.key});
@@ -66,9 +68,29 @@ class CourtOwnerDashboard extends StatelessWidget {
             ),
 
             dashboardButton(
+              title: "View Feedback",
+              icon: Icons.feedback,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CourtFeedbackPage(),
+                  ),
+                );
+              },
+            ),
+
+            dashboardButton(
               title: "Payments",
               icon: Icons.payments,
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PaymentsPage(),
+                  ),
+                );
+              },
             ),
 
             dashboardButton(

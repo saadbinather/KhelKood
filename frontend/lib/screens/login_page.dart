@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dashboard_page.dart';
-import '../courtOwner/dashboard.dart'; // <-- Import court owner dashboard
+import '../CourtOwner/dash_board.dart'; // <-- Import court owner dashboard
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -167,4 +167,3 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
-

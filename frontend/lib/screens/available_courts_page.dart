@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'view_court_details_page.dart'; // (to be created later)
 
 class AvailableCourtsPage extends StatefulWidget {
-  const AvailableCourtsPage({super.key});
+  final String actionType; // <-- ADD THIS
+
+  const AvailableCourtsPage({
+    super.key,
+    required this.actionType, // <-- ADD THIS
+  });
 
   @override
   State<AvailableCourtsPage> createState() => _AvailableCourtsPageState();
@@ -163,8 +168,10 @@ class _AvailableCourtsPageState extends State<AvailableCourtsPage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                ViewCourtDetailsPage(courtId: court['courtId'].toString()),
+            builder: (context) => ViewCourtDetailsPage(
+              courtId: court['courtId'].toString(),
+              actionType: widget.actionType, // <-- PASS IT FORWARD
+            ),
           ),
         );
       },

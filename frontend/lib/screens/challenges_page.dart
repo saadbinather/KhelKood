@@ -99,8 +99,9 @@ class _ChallengesPageState extends State<ChallengesPage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          const AvailableCourtsPage(), // 👈 navigate here
+                      builder: (context) => const AvailableCourtsPage(
+                        actionType: "challenge",
+                      ), // 👈 navigate here
                     ),
                   );
                 },

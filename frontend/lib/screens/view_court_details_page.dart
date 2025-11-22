@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+import 'payment_page.dart';
 
 class ViewCourtDetailsPage extends StatefulWidget {
-  final String courtId; // now a String
+  final String courtId;
+  final String actionType;
 
-  const ViewCourtDetailsPage({super.key, required this.courtId});
+  const ViewCourtDetailsPage({
+    super.key,
+    required this.courtId,
+    required this.actionType,
+  });
 
   @override
   State<ViewCourtDetailsPage> createState() => _ViewCourtDetailsPageState();
@@ -11,49 +17,62 @@ class ViewCourtDetailsPage extends StatefulWidget {
 
 class _ViewCourtDetailsPageState extends State<ViewCourtDetailsPage> {
   Map<String, dynamic>? courtData;
+  List<String> allTimes = [];
+
   DateTime selectedDate = DateTime.now();
   List<String> selectedSlots = [];
+  String? selectedFieldName;
 
-  // -------------------- Simulated API Call --------------------
+  // -------------------- SIMULATED API --------------------
   Future<Map<String, dynamic>> _fetchCourtDetails() async {
-    await Future.delayed(const Duration(milliseconds: 500)); // fake delay
+    await Future.delayed(const Duration(milliseconds: 400));
 
-    // Dummy response (always same) — you can later use widget.courtId to call real API
     return {
       "courtId": widget.courtId,
-      "courtName": "Mega Futsal Arena",
-      "location": "F-11 Markaz, Islamabad",
-      "peakRate": 1700,
-      "offPeakRate": 1300,
-      "contact": "0311-1234567",
+      "name": "Zee Sports Complex",
+      "address": "Main Boulevard, Model Town",
+      "openingTime": 8,
+      "closingTime": 23,
+      "rating": 9.5,
+      "sport": "futsal",
+      "rate": 2000,
+      "numOfFields": 3,
+      "contact": "0312-9876543",
       "fields": [
         {
-          "name": "Field 1",
-          "slots": [
-            {"time": "7pm-8pm", "available": true},
-            {"time": "8pm-9pm", "available": true},
-            {"time": "9pm-10pm", "available": false},
-            {"time": "10pm-11pm", "available": true},
-          ],
+          "name": "Futsal Field 1",
+          "slots": List.generate(23 - 8, (i) {
+            final start = 8 + i;
+            final end = start + 1;
+            return {"time": "$start–$end", "available": i % 3 != 0};
+          }),
         },
         {
-          "name": "Field 2",
-          "slots": [
-            {"time": "7pm-8pm", "available": true},
-            {"time": "8pm-9pm", "available": false},
-            {"time": "9pm-10pm", "available": true},
-            {"time": "10pm-11pm", "available": true},
-          ],
+          "name": "Futsal Field 2",
+          "slots": List.generate(23 - 8, (i) {
+            final start = 8 + i;
+            final end = start + 1;
+            return {"time": "$start–$end", "available": i % 4 != 0};
+          }),
+        },
+        {
+          "name": "Futsal Field 3",
+          "slots": List.generate(23 - 8, (i) {
+            final start = 8 + i;
+            final end = start + 1;
+            return {"time": "$start–$end", "available": i % 2 == 0};
+          }),
         },
       ],
     };
   }
 
-  List<String> get allTimes => ["7pm-8pm", "8pm-9pm", "9pm-10pm", "10pm-11pm"];
+  bool isConsecutive(List<String> selected) {
+    if (selected.length < 2) return true;
 
-  bool isConsecutive(List<String> slots) {
-    if (slots.length < 2) return true;
-    List<int> indices = slots.map((t) => allTimes.indexOf(t)).toList()..sort();
+    List<int> indices = selected.map((t) => allTimes.indexOf(t)).toList()
+      ..sort();
+
     for (int i = 1; i < indices.length; i++) {
       if (indices[i] - indices[i - 1] != 1) return false;
     }
@@ -63,13 +82,27 @@ class _ViewCourtDetailsPageState extends State<ViewCourtDetailsPage> {
   @override
   void initState() {
     super.initState();
-    _loadCourtData();
+    _loadCourt();
   }
 
-  void _loadCourtData() async {
+  Future<void> _loadCourt() async {
     final data = await _fetchCourtDetails();
     if (!mounted) return;
-    setState(() => courtData = data);
+
+    final open = data["openingTime"];
+    final close = data["closingTime"];
+
+    allTimes = [for (int h = open; h < close; h++) "$h–${h + 1}"];
+
+    setState(() {
+      courtData = data;
+      selectedSlots = [];
+      selectedFieldName = null;
+    });
+  }
+
+  void _error(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -81,255 +114,304 @@ class _ViewCourtDetailsPageState extends State<ViewCourtDetailsPage> {
       );
     }
 
-    final fields = courtData!["fields"] as List;
+    final fields = courtData!['fields'] as List;
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final timeColWidth = screenWidth * 0.25;
+    final fieldColWidth = screenWidth * 0.45;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0E0E0E),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1B1B1B),
+        centerTitle: true,
         title: Text(
-          "${courtData!["courtName"]} (${courtData!["courtId"]})",
+          "${courtData!['name']} • ${courtData!['sport'].toString().toUpperCase()}",
           style: const TextStyle(color: Colors.white),
         ),
-        centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              courtData!["location"],
-              style: const TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Peak Rate: ${courtData!["peakRate"]}/hr",
-              style: const TextStyle(color: Colors.white70),
-            ),
-            Text(
-              "Off-Peak Rate: ${courtData!["offPeakRate"]}/hr",
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 15),
 
-            // Calendar
-            SizedBox(
-              height: 90,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: 7,
-                itemBuilder: (context, index) {
-                  final date = DateTime.now().add(Duration(days: index));
-                  final isSelected =
-                      date.year == selectedDate.year &&
-                      date.month == selectedDate.month &&
-                      date.day == selectedDate.day;
-
-                  return GestureDetector(
-                    onTap: () => setState(() => selectedDate = date),
-                    child: Container(
-                      width: 80,
-                      margin: const EdgeInsets.symmetric(horizontal: 6),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? Colors.deepPurpleAccent
-                            : Colors.grey[850],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              [
-                                "Sun",
-                                "Mon",
-                                "Tue",
-                                "Wed",
-                                "Thu",
-                                "Fri",
-                                "Sat",
-                              ][date.weekday % 7],
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              "${date.day}",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Slots table
-            Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
+      body: Column(
+        children: [
+          // -------------------- TOP INFO --------------------
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  courtData!['address'],
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 6),
+                Row(
                   children: [
-                    // Time column
-                    Column(
+                    Text(
+                      "Rate: Rs ${courtData!['rate']}/hr",
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    const SizedBox(width: 16),
+                    Text(
+                      "Fields: ${courtData!['numOfFields']}",
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    const SizedBox(width: 16),
+                    Row(
                       children: [
-                        Container(
-                          width: 100,
-                          padding: const EdgeInsets.all(8),
-                          color: Colors.red,
-                          child: const Text(
-                            "Time",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                        const Icon(
+                          Icons.star,
+                          color: Colors.amberAccent,
+                          size: 18,
                         ),
-                        ...allTimes.map(
-                          (t) => Container(
-                            width: 100,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.red),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              t,
-                              style: const TextStyle(color: Colors.white70),
-                            ),
-                          ),
+                        const SizedBox(width: 4),
+                        Text(
+                          courtData!['rating'].toString(),
+                          style: const TextStyle(color: Colors.white70),
                         ),
                       ],
                     ),
-
-                    // Field columns
-                    ...fields.map((field) {
-                      final slots = field["slots"] as List;
-                      return Column(
-                        children: [
-                          Container(
-                            width: 180,
-                            padding: const EdgeInsets.all(8),
-                            color: Colors.red,
-                            child: Text(
-                              field["name"],
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          ...slots.map((slot) {
-                            final time = slot["time"];
-                            final available = slot["available"];
-                            final isSelected = selectedSlots.contains(time);
-
-                            return GestureDetector(
-                              onTap: () {
-                                if (!available) return;
-                                setState(() {
-                                  if (isSelected) {
-                                    selectedSlots.remove(time);
-                                  } else {
-                                    selectedSlots.add(time);
-                                  }
-                                });
-                              },
-                              child: Container(
-                                width: 180,
-                                height: 60,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: !available
-                                      ? Colors.black
-                                      : (isSelected
-                                            ? Colors.deepPurpleAccent
-                                            : Colors.grey[900]),
-                                  border: Border.all(color: Colors.red),
-                                ),
-                                child: available
-                                    ? const Icon(
-                                        Icons.check,
-                                        color: Colors.white,
-                                      )
-                                    : const Icon(
-                                        Icons.block,
-                                        color: Colors.red,
-                                      ),
-                              ),
-                            );
-                          }).toList(),
-                        ],
-                      );
-                    }).toList(),
                   ],
                 ),
-              ),
+              ],
             ),
+          ),
 
-            const SizedBox(height: 10),
-            Center(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurpleAccent,
-                ),
-                onPressed: () {
-                  if (selectedSlots.isEmpty) {
-                    _error("Select at least 1 time slot");
-                    return;
-                  }
-                  if (!isConsecutive(selectedSlots)) {
-                    _error("Select consecutive time slots only");
-                    return;
-                  }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const PaymentPage()),
-                  );
-                },
-                child: const Text(
-                  "Proceed to Payment",
-                  style: TextStyle(color: Colors.white),
-                ),
+          // -------------------- CALENDAR --------------------
+          SizedBox(
+            height: 85,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: 7,
+              itemBuilder: (_, i) {
+                final date = DateTime.now().add(Duration(days: i));
+                final selected =
+                    date.day == selectedDate.day &&
+                    date.month == selectedDate.month;
+
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedDate = date;
+                      selectedSlots.clear();
+                      selectedFieldName = null;
+                    });
+                  },
+                  child: Container(
+                    width: 70,
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? Colors.deepPurpleAccent
+                          : Colors.grey[850],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            [
+                              "Sun",
+                              "Mon",
+                              "Tue",
+                              "Wed",
+                              "Thu",
+                              "Fri",
+                              "Sat",
+                            ][date.weekday % 7],
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "${date.day}",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: selected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          // -------------------- SLOTS TABLE --------------------
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  // ------------ TIME COLUMN -------------
+                  Column(
+                    children: [
+                      _header("Time", timeColWidth),
+                      ...allTimes.map(
+                        (t) => _cell(t, timeColWidth, Colors.transparent, true),
+                      ),
+                    ],
+                  ),
+
+                  // ------------ FIELD COLUMNS -------------
+                  ...fields.map((field) {
+                    final name = field['name'];
+                    final slots = field['slots'] as List;
+
+                    return Column(
+                      children: [
+                        _header(name, fieldColWidth),
+                        ...slots.map((slot) {
+                          final time = slot["time"];
+                          final available = slot["available"];
+
+                          final selected =
+                              selectedSlots.contains(time) &&
+                              selectedFieldName == name;
+
+                          return GestureDetector(
+                            onTap: () {
+                              if (!available) return;
+
+                              setState(() {
+                                if (selectedFieldName == null) {
+                                  selectedFieldName = name;
+                                }
+
+                                if (selectedFieldName != name) {
+                                  _error("Select slots only from one field.");
+                                  return;
+                                }
+
+                                if (selected) {
+                                  selectedSlots.remove(time);
+                                  if (selectedSlots.isEmpty)
+                                    selectedFieldName = null;
+                                } else {
+                                  selectedSlots.add(time);
+                                }
+                              });
+                            },
+                            child: _slot(
+                              available: available,
+                              selected: selected,
+                              width: fieldColWidth,
+                            ),
+                          );
+                        }).toList(),
+                      ],
+                    );
+                  }).toList(),
+                ],
               ),
             ),
-          ],
+          ),
+
+          // -------------------- BUTTON --------------------
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepPurpleAccent,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 14,
+                ),
+              ),
+              onPressed: () {
+                if (selectedSlots.isEmpty) {
+                  _error("Select at least one time slot.");
+                  return;
+                }
+                if (!isConsecutive(selectedSlots)) {
+                  _error("Select consecutive time slots only.");
+                  return;
+                }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PaymentPage(
+                      slotCount: selectedSlots.length,
+                      ratePerHour: courtData!['rate'],
+                      actionType: widget.actionType,
+                    ),
+                  ),
+                );
+              },
+              child: const Text(
+                "Proceed to Payment",
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // -------------------- UI HELPERS --------------------
+
+  Widget _header(String text, double width) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      color: Colors.red,
+      alignment: Alignment.center,
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );
   }
 
-  void _error(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-}
-
-class PaymentPage extends StatelessWidget {
-  const PaymentPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFF0E0E0E),
-      body: Center(
-        child: Text(
-          "Payment Page",
-          style: TextStyle(color: Colors.white, fontSize: 22),
-        ),
+  Widget _cell(String text, double width, Color bg, bool isTime) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.all(8),
+      height: 55,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: bg,
+        border: Border.all(color: Colors.red),
       ),
+      child: Text(
+        text,
+        style: TextStyle(color: isTime ? Colors.white70 : Colors.white),
+      ),
+    );
+  }
+
+  Widget _slot({
+    required bool available,
+    required bool selected,
+    required double width,
+  }) {
+    return Container(
+      width: width,
+      height: 55,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: !available
+            ? Colors.black
+            : selected
+            ? Colors.deepPurpleAccent
+            : Colors.grey[900],
+        border: Border.all(color: Colors.red),
+      ),
+      child: available
+          ? (selected
+                ? const Icon(Icons.check, color: Colors.white)
+                : const SizedBox.shrink())
+          : const Icon(Icons.block, color: Colors.red),
     );
   }
 }

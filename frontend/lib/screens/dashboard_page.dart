@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'profile_page.dart';
 import 'leaderboard_page.dart';
 import 'challenges_page.dart';
-import 'create_booking_page.dart';
+import 'available_courts_page.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -54,7 +54,9 @@ class DashboardPage extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const CreateBookingPage(),
+                    builder: (context) => const AvailableCourtsPage(
+                      actionType: "booking",
+                    ), // 👈 navigate here
                   ),
                 );
               },

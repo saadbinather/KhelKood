@@ -13,4 +13,3 @@ class CreateBookingPage extends StatelessWidget {
     );
   }
 }
-

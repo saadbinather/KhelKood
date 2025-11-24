@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dashboard_page.dart';
-import '../CourtOwner/dash_board.dart'; // <-- Import court owner dashboard
+import '../CourtOwner/dash_board.dart';
+import '../Admin/dashboard.dart'; // <-- Import Admin dashboard
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -21,14 +22,22 @@ class _LoginPageState extends State<LoginPage> {
   Future<String?> authenticateUser(String email, String password) async {
     await Future.delayed(const Duration(seconds: 1)); // simulate API delay
 
-    // Mock logic:
+    // Mock admin login
+    if (email == "admin@gmail.com" && password == "admin123") {
+      return "admin";
+    }
+
+    // Mock court owner
     if (email == "owner@gmail.com" && password == "1234") {
       return "courtOwner";
-    } else if (email == "player@gmail.com" && password == "1234") {
-      return "player";
-    } else {
-      return null; // authentication failed
     }
+
+    // Mock player
+    if (email == "player@gmail.com" && password == "1234") {
+      return "player";
+    }
+
+    return null; // authentication failed
   }
 
   void handleLogin() async {
@@ -64,7 +73,12 @@ class _LoginPageState extends State<LoginPage> {
     // ----------------------------------------------------------
     // ROLE-BASED NAVIGATION
     // ----------------------------------------------------------
-    if (role == "courtOwner") {
+    if (role == "admin") {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminDashboard()),
+      );
+    } else if (role == "courtOwner") {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const CourtOwnerDashboard()),
@@ -80,7 +94,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // Black background
+      backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.redAccent,
         title: const Text("Login", style: TextStyle(color: Colors.white)),
@@ -103,7 +117,6 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 40),
 
-            // ---------------------------- EMAIL FIELD ----------------------------
             TextField(
               controller: emailController,
               style: const TextStyle(color: Colors.white),
@@ -119,7 +132,6 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 20),
 
-            // ---------------------------- PASSWORD FIELD ----------------------------
             TextField(
               controller: passwordController,
               obscureText: true,
@@ -137,7 +149,6 @@ class _LoginPageState extends State<LoginPage> {
 
             const SizedBox(height: 30),
 
-            // ---------------------------- LOGIN BUTTON ----------------------------
             SizedBox(
               width: double.infinity,
               height: 48,

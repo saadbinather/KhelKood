@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class CourtManagementPage extends StatefulWidget {
-  const CourtManagementPage({Key? key}) : super(key: key);
+  const CourtManagementPage({super.key});
 
   @override
   State<CourtManagementPage> createState() => _CourtManagementPageState();
@@ -58,7 +58,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
-              value: _selectedSport,
+              initialValue: _selectedSport,
               items: ["Cricket", "Football", "Padel"]
                   .map((sport) => DropdownMenuItem(value: sport, child: Text(sport)))
                   .toList(),
@@ -121,8 +121,8 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: showAddCourtDialog,
-        child: const Icon(Icons.add),
         backgroundColor: Colors.redAccent,
+        child: const Icon(Icons.add),
       ),
     );
   }

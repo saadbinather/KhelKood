@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class BookingManagementPage extends StatefulWidget {
-  const BookingManagementPage({Key? key}) : super(key: key);
+  const BookingManagementPage({super.key});
 
   @override
   State<BookingManagementPage> createState() => _BookingManagementPageState();
@@ -128,7 +128,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
               const SizedBox(height: 8),
               ...upcomingBookings
                   .map((booking) => buildBookingCard(booking, isUpcoming: true))
-                  .toList(),
+                  ,
               const SizedBox(height: 20),
               const Text(
                 "Past Bookings",
@@ -137,7 +137,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
               const SizedBox(height: 8),
               ...pastBookings
                   .map((booking) => buildBookingCard(booking, isUpcoming: false))
-                  .toList(),
+                  ,
             ],
           ),
         ),

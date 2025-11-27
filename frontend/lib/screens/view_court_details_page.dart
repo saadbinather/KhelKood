@@ -280,9 +280,7 @@ class _ViewCourtDetailsPageState extends State<ViewCourtDetailsPage> {
                               if (!available) return;
 
                               setState(() {
-                                if (selectedFieldName == null) {
-                                  selectedFieldName = name;
-                                }
+                                selectedFieldName ??= name;
 
                                 if (selectedFieldName != name) {
                                   _error("Select slots only from one field.");
@@ -291,8 +289,9 @@ class _ViewCourtDetailsPageState extends State<ViewCourtDetailsPage> {
 
                                 if (selected) {
                                   selectedSlots.remove(time);
-                                  if (selectedSlots.isEmpty)
+                                  if (selectedSlots.isEmpty) {
                                     selectedFieldName = null;
+                                  }
                                 } else {
                                   selectedSlots.add(time);
                                 }
@@ -304,10 +303,10 @@ class _ViewCourtDetailsPageState extends State<ViewCourtDetailsPage> {
                               width: fieldColWidth,
                             ),
                           );
-                        }).toList(),
+                        }),
                       ],
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),

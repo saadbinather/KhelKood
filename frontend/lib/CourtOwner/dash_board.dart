@@ -55,7 +55,7 @@ class CourtOwnerDashboard extends StatelessWidget {
             ),
 
             dashboardButton(
-              title: "View Bookings",
+              title: "Manage Bookings",
               icon: Icons.calendar_month,
               onTap: () {
                 Navigator.push(

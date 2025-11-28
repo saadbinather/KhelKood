@@ -50,8 +50,8 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
           ownerName: nameCtrl.text.trim(),
           ownerEmail: emailCtrl.text.trim(),
           ownerPassword: passwordCtrl.text.trim(),
-          ownerPhone: phoneCtrl.text.trim(),
-          ownerCnic: cnicCtrl.text.trim(),
+          ownerPhone: phoneCtrl.text,
+          ownerCnic: cnicCtrl.text,
           ownerLocation: locationCtrl.text.trim(),
         ),
       ),
@@ -71,9 +71,13 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
           children: [
             textField("Full Name", nameCtrl),
             textField("Email", emailCtrl, isEmail: true),
-            textField("Password (min 6 characters)", passwordCtrl, isPassword: true),
+            textField(
+              "Password (min 6 characters)",
+              passwordCtrl,
+              isPassword: true,
+            ),
             textField("Phone Number", phoneCtrl, isNumber: true),
-            textField("CNIC", cnicCtrl),
+            textField("CNIC", cnicCtrl, isNumber: true),
             textField("Location", locationCtrl),
             const SizedBox(height: 20),
             ElevatedButton(
@@ -85,15 +89,20 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
                 "Next: Register Courts",
                 style: TextStyle(color: Colors.white),
               ),
-            )
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget textField(String label, TextEditingController controller,
-      {bool isPassword = false, bool isEmail = false, bool isNumber = false}) {
+  Widget textField(
+    String label,
+    TextEditingController controller, {
+    bool isPassword = false,
+    bool isEmail = false,
+    bool isNumber = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: TextField(
@@ -102,8 +111,8 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
         keyboardType: isEmail
             ? TextInputType.emailAddress
             : isNumber
-                ? TextInputType.phone
-                : TextInputType.text,
+            ? TextInputType.number
+            : TextInputType.text,
         decoration: InputDecoration(
           labelText: label,
           border: OutlineInputBorder(),

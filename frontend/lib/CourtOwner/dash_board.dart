@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -7,6 +6,7 @@ import 'court_management_page.dart';
 import 'booking_management_page.dart';
 import 'feedback.dart'; // Court Feedback Page
 import 'payments.dart'; // Payments Page
+import 'profile_settings_page.dart';
 
 class CourtOwnerDashboard extends StatelessWidget {
   const CourtOwnerDashboard({super.key});
@@ -24,11 +24,17 @@ class CourtOwnerDashboard extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
+            child: const Text(
+              'Logout',
+              style: TextStyle(color: Colors.redAccent),
+            ),
           ),
         ],
       ),
@@ -39,7 +45,7 @@ class CourtOwnerDashboard extends StatelessWidget {
         // Call logout endpoint
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('auth_token');
-        
+
         if (token != null) {
           await http.post(
             Uri.parse('http://localhost:5000/api/auth/logout'),
@@ -49,7 +55,7 @@ class CourtOwnerDashboard extends StatelessWidget {
             },
           );
         }
-        
+
         // Clear local token
         await prefs.remove('auth_token');
       } catch (e) {
@@ -57,7 +63,7 @@ class CourtOwnerDashboard extends StatelessWidget {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('auth_token');
       }
-      
+
       if (context.mounted) {
         Navigator.pushAndRemoveUntil(
           context,
@@ -154,9 +160,7 @@ class CourtOwnerDashboard extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const PaymentsPage(),
-                  ),
+                  MaterialPageRoute(builder: (context) => const PaymentsPage()),
                 );
               },
             ),
@@ -164,7 +168,14 @@ class CourtOwnerDashboard extends StatelessWidget {
             dashboardButton(
               title: "Profile Settings",
               icon: Icons.settings,
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ProfileSettingsPage(),
+                  ),
+                );
+              },
             ),
           ],
         ),

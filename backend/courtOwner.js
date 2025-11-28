@@ -178,7 +178,15 @@ const CourtOwnerService = {
     if (!owner) {
       throw new Error("Courtowner not found");
     }
-    return owner;
+
+    // Get court information
+    const courts = await CourtOwnerRepository.findCourtsByOwnerId(ownerID);
+    const court = courts.length > 0 ? courts[0] : null;
+
+    return {
+      ...owner,
+      court: court || null,
+    };
   },
 
   async updateCourt(ownerID, updates) {
@@ -369,12 +377,19 @@ const CourtOwnerController = {
   async getProfile(req, res) {
     try {
       const ownerID = req.user.uid;
-      const owner = await CourtOwnerService.getProfile(ownerID);
+      const profileData = await CourtOwnerService.getProfile(ownerID);
+
+      // Separate courtowner and court data for cleaner response
+      const { court, ...courtowner } = profileData;
+
       return sendSuccess(
         res,
         200,
         "Courtowner profile fetched successfully ✅",
-        { courtowner: owner }
+        {
+          courtowner: courtowner,
+          court: court,
+        }
       );
     } catch (error) {
       if (error.message === "Courtowner not found") {

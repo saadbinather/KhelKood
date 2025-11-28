@@ -64,6 +64,7 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
           "password": widget.ownerPassword,
           "role": "courtowner",
           "phone": widget.ownerPhone,
+          "cnic": widget.ownerCnic,
           "courtName": widget.ownerLocation, // Using location as courtName
           "location": widget.ownerLocation,
           "courtTitle": courtTitleCtrl.text.trim(),

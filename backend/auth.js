@@ -7,7 +7,11 @@ import {
   sendValidationError,
   sendNotFoundError,
 } from "./utils/response.js";
-import { validateRequired } from "./utils/validators.js";
+import {
+  validateRequired,
+  validatePhone,
+  validateCNIC,
+} from "./utils/validators.js";
 
 const router = express.Router();
 
@@ -97,6 +101,7 @@ const AuthService = {
       teamName,
       sports,
       phone,
+      cnic,
       players,
       courtName,
       location,
@@ -124,6 +129,21 @@ const AuthService = {
       throw new Error(validation.error);
     }
 
+    // Role-specific validation
+    if (role === "courtowner") {
+      // Validate phone number for court owners
+      const phoneValidation = validatePhone(phone);
+      if (!phoneValidation.isValid) {
+        throw new Error(phoneValidation.error);
+      }
+
+      // Validate CNIC for court owners
+      const cnicValidation = validateCNIC(cnic);
+      if (!cnicValidation.isValid) {
+        throw new Error(cnicValidation.error);
+      }
+    }
+
     // Create Firebase Auth user
     const firebase_uid = await AuthRepository.createFirebaseUser(
       email,
@@ -142,10 +162,16 @@ const AuthService = {
 
     // Role-specific handling
     if (role === "courtowner") {
+      // Clean phone and CNIC (remove formatting)
+      const cleanedPhone = phone;
+      const cleanedCNIC = cnic;
+
       const courtownerData = {
         userId: firebase_uid,
         name,
         email,
+        phone: cleanedPhone,
+        cnic: cleanedCNIC,
         courtName: courtName || "",
         location: location || "",
         createdAt: new Date(),
@@ -241,7 +267,10 @@ const AuthController = {
     } catch (error) {
       const errorMessage =
         error.response?.data?.error?.message || error.message;
-      if (errorMessage.includes("required")) {
+      if (
+        errorMessage.includes("required") ||
+        errorMessage.includes("Invalid")
+      ) {
         return sendValidationError(res, errorMessage);
       }
       return sendError(res, 400, errorMessage);

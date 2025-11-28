@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
 import 'dashboard_page.dart';
-import '../CourtOwner/dash_board.dart'; // <-- Import court owner dashboard
+import '../CourtOwner/dash_board.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,19 +18,29 @@ class _LoginPageState extends State<LoginPage> {
 
   bool isLoading = false;
 
-  // ----------------------------------------------------------
-  // THIS FUNCTION IS MEANT TO BE REPLACED WITH YOUR REAL API
-  // ----------------------------------------------------------
+  // REAL BACKEND AUTHENTICATION
   Future<String?> authenticateUser(String email, String password) async {
-    await Future.delayed(const Duration(seconds: 1)); // simulate API delay
+    try {
+      final response = await http.post(
+        Uri.parse("http://127.0.0.1:5000/api/login"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"email": email, "password": password}),
+      );
 
-    // Mock logic:
-    if (email == "owner@gmail.com" && password == "1234") {
-      return "courtOwner";
-    } else if (email == "player@gmail.com" && password == "1234") {
-      return "player";
-    } else {
-      return null; // authentication failed
+      print("Status Code: ${response.statusCode}");
+      print("Response Body: ${response.body}");
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+
+        if (data.containsKey("role")) {
+          return data["role"].toString().toLowerCase();
+        }
+      }
+      return null;
+    } catch (e) {
+      print("Login Error: $e");
+      return null;
     }
   }
 
@@ -61,18 +74,29 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    // ----------------------------------------------------------
-    // ROLE-BASED NAVIGATION
-    // ----------------------------------------------------------
-    if (role == "courtOwner") {
+    if (role == "courtowner") {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const CourtOwnerDashboard()),
       );
-    } else {
+    } else if (role == "player" || role == "team") {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const DashboardPage()),
+      );
+    } else if (role == "admin") {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Admin login coming soon"),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Unknown role: $role"),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -80,7 +104,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // Black background
+      backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.redAccent,
         title: const Text("Login", style: TextStyle(color: Colors.white)),
@@ -88,11 +112,9 @@ class _LoginPageState extends State<LoginPage> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
-
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // ---------------------------- LOGO / TITLE ----------------------------
             const Text(
               "KhelKood",
               style: TextStyle(
@@ -102,8 +124,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
             const SizedBox(height: 40),
-
-            // ---------------------------- EMAIL FIELD ----------------------------
             TextField(
               controller: emailController,
               style: const TextStyle(color: Colors.white),
@@ -118,8 +138,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
             const SizedBox(height: 20),
-
-            // ---------------------------- PASSWORD FIELD ----------------------------
             TextField(
               controller: passwordController,
               obscureText: true,
@@ -134,10 +152,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ),
-
             const SizedBox(height: 30),
-
-            // ---------------------------- LOGIN BUTTON ----------------------------
             SizedBox(
               width: double.infinity,
               height: 48,

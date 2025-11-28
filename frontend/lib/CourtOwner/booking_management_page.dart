@@ -8,7 +8,28 @@ class BookingManagementPage extends StatefulWidget {
 }
 
 class _BookingManagementPageState extends State<BookingManagementPage> {
-  // Dummy data
+  // -----------------------------
+  // Dummy Data
+  // -----------------------------
+  List<Map<String, dynamic>> incomingBookings = [
+    {
+      "id": 101,
+      "court": "Court 1",
+      "sport": "Cricket",
+      "team": "Team Thunder",
+      "date": "2025-11-27",
+      "time": "10:00 AM"
+    },
+    {
+      "id": 102,
+      "court": "Court 2",
+      "sport": "Football",
+      "team": "The Strikers",
+      "date": "2025-11-28",
+      "time": "3:00 PM"
+    },
+  ];
+
   List<Map<String, dynamic>> upcomingBookings = [
     {
       "id": 1,
@@ -43,6 +64,9 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
     },
   ];
 
+  // -----------------------------
+  // Actions
+  // -----------------------------
   void cancelBooking(int id) {
     setState(() {
       upcomingBookings.removeWhere((booking) => booking['id'] == id);
@@ -73,7 +97,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
           ),
           ElevatedButton(
             onPressed: () {
-              // Here you can send the result to your backend API later
+              // Send result to backend later
               print(
                   "Result for booking ${booking['id']}: ${resultController.text}");
               Navigator.pop(context);
@@ -85,7 +109,51 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
     );
   }
 
-  Widget buildBookingCard(Map<String, dynamic> booking, {bool isUpcoming = true}) {
+  void acceptBooking(Map<String, dynamic> booking) {
+    setState(() {
+      incomingBookings.removeWhere((b) => b['id'] == booking['id']);
+      upcomingBookings.add(booking);
+    });
+  }
+
+  void rejectBooking(int id) {
+    setState(() {
+      incomingBookings.removeWhere((booking) => booking['id'] == id);
+    });
+  }
+
+  // -----------------------------
+  // Widgets
+  // -----------------------------
+  Widget buildIncomingBookingCard(Map<String, dynamic> booking) {
+    return Card(
+      margin: const EdgeInsets.all(8),
+      child: ListTile(
+        title: Text("${booking['court']} - ${booking['sport']}"),
+        subtitle: Text(
+            "${booking['team']} | ${booking['date']} at ${booking['time']}"),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ElevatedButton(
+              onPressed: () => acceptBooking(booking),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              child: const Text("Accept"),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: () => rejectBooking(booking['id']),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+              child: const Text("Reject"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget buildBookingCard(Map<String, dynamic> booking,
+      {bool isUpcoming = true}) {
     return Card(
       margin: const EdgeInsets.all(8),
       child: ListTile(
@@ -108,6 +176,9 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
     );
   }
 
+  // -----------------------------
+  // Build Page
+  // -----------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -121,6 +192,15 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const Text(
+                "Incoming Bookings",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              ...incomingBookings
+                  .map((booking) => buildIncomingBookingCard(booking))
+                  ,
+              const SizedBox(height: 20),
               const Text(
                 "Upcoming Bookings",
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),

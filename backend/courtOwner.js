@@ -90,10 +90,7 @@ router.put("/edit-court", verifyToken(["courtowner"]), async (req, res) => {
 📌 GET 1 — Logged-in Courtowner Profile
 =====================================================
 */
-router.get(
-  "/courtowner-profile",
-  verifyToken(["courtowner"]),
-  async (req, res) => {
+router.get(  "/courtowner-profile", verifyToken(["courtowner"]),async (req, res) => {
     try {
       const ownerID = req.user.uid;
 
@@ -175,9 +172,7 @@ router.get("/my-court", verifyToken(["courtowner"]), async (req, res) => {
   }
 });
 
-router.put(
-  "/makewinner/:matchID",
-  verifyToken(["courtowner"]),
+router.put( "/makewinner/:matchID",verifyToken(["courtowner"]),
   async (req, res) => {
     try {
       const courtownerID = req.user.uid; // logged-in courtowner UID

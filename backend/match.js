@@ -340,6 +340,7 @@ const MatchController = {
 // ==================== ROUTES ====================
 
 router.post("/create", verifyToken(["team"]), MatchController.createCompetitiveMatch);
+
 router.post("/create-friendly", verifyToken(["team"]), MatchController.createFriendlyMatch);
 
 export default router;

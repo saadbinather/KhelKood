@@ -206,6 +206,15 @@ const AuthService = {
 
     if (user) {
       role = user.role;
+      const status = (user.verificationStatus || "pending").toLowerCase();
+      if (status !== "verified") {
+        if (status === "rejected") {
+          throw new Error(
+            "Account rejected by admin. Please contact support for assistance."
+          );
+        }
+        throw new Error("Account pending verification. Please wait for approval.");
+      }
     } else {
       const isAdmin = await AuthRepository.findAdminByEmail(email);
       if (!isAdmin) {

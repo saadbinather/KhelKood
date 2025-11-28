@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../Admin/dashboard.dart';
 
 import 'dashboard_page.dart';
@@ -20,7 +21,7 @@ class _LoginPageState extends State<LoginPage> {
   bool isLoading = false;
 
   // REAL BACKEND AUTHENTICATION
-  Future<String?> authenticateUser(String email, String password) async {
+  Future<Map<String, dynamic>> authenticateUser(String email, String password) async {
     try {
       final response = await http.post(
         Uri.parse("http://localhost:5000/api/auth/login"),
@@ -34,14 +35,34 @@ class _LoginPageState extends State<LoginPage> {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
 
-        if (data.containsKey("role")) {
-          return data["role"].toString().toLowerCase();
+        // Save token if available
+        if (data.containsKey("data") && data["data"].containsKey("token")) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('auth_token', data["data"]["token"]);
+        } else if (data.containsKey("token")) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('auth_token', data["token"]);
         }
+
+        if (data.containsKey("role") || (data.containsKey("data") && data["data"].containsKey("role"))) {
+          return {
+            'success': true,
+            'role': (data["role"] ?? data["data"]["role"]).toString().toLowerCase(),
+          };
+        }
+      } else {
+        // Parse error message
+        final errorData = jsonDecode(response.body);
+        final errorMessage = errorData['error'] ?? 'Login failed';
+        return {
+          'success': false,
+          'error': errorMessage,
+        };
       }
-      return null;
+      return {'success': false, 'error': 'Unknown error occurred'};
     } catch (e) {
       print("Login Error: $e");
-      return null;
+      return {'success': false, 'error': 'Network error. Please check your connection.'};
     }
   }
 
@@ -61,20 +82,40 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => isLoading = true);
 
-    final role = await authenticateUser(email, password);
+    final result = await authenticateUser(email, password);
 
     setState(() => isLoading = false);
 
-    if (role == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Invalid username or password"),
-          backgroundColor: Colors.red,
-        ),
-      );
+    if (!result['success']) {
+      final errorMessage = result['error'] ?? 'Login failed';
+      
+      // Check if it's a pending or rejected account
+      if (errorMessage.toLowerCase().contains('pending')) {
+        _showVerificationDialog(
+          title: 'Account Pending Verification',
+          message: 'Your account is pending admin approval. Please wait for approval before logging in.',
+          icon: Icons.pending_actions,
+          color: Colors.orange,
+        );
+      } else if (errorMessage.toLowerCase().contains('rejected')) {
+        _showVerificationDialog(
+          title: 'Account Rejected',
+          message: 'Your account has been rejected by admin. Please contact support for assistance.',
+          icon: Icons.cancel,
+          color: Colors.red,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
       return;
     }
 
+    final role = result['role'];
     if (role == "courtowner") {
       Navigator.pushReplacement(
         context,
@@ -98,6 +139,46 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
     }
+  }
+
+  void _showVerificationDialog({
+    required String title,
+    required String message,
+    required IconData icon,
+    required Color color,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: Row(
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(color: Colors.white, fontSize: 20),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white70, fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'OK',
+              style: TextStyle(color: Colors.redAccent, fontSize: 16),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

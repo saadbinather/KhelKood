@@ -44,6 +44,20 @@ export const verifyToken = (allowedRoles = []) => {
         userData = userDoc.data();
       }
 
+      // 🔹 Block unverified / rejected accounts (only for non-admins)
+      const status = userData.verificationStatus;
+      if (
+        userData.role !== "admin" &&
+        status &&
+        status.toLowerCase() !== "verified"
+      ) {
+        return res
+          .status(403)
+          .json({
+            error: `Account ${status}. Please contact support if you believe this is a mistake.`,
+          });
+      }
+
       // 🔹 Role-based restriction (if any)
       if (allowedRoles.length > 0 && !allowedRoles.includes(userData.role)) {
         return res.status(403).json({ error: "Access denied for this role" });

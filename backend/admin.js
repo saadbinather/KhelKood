@@ -16,18 +16,19 @@ const AdminRepository = {
     return userDoc.exists ? { id: userDoc.id, ...userDoc.data() } : null;
   },
 
-  async updateUserVerification(userDocId) {
+  async updateUserStatus(userDocId, status) {
     const userRef = db.collection("users").doc(userDocId);
-    await userRef.update({ verificationStatus: "verified" });
+    await userRef.update({ verificationStatus: status, updatedAt: new Date() });
     return await this.findUserById(userDocId);
   },
 
-  async logVerification(userDocId, userData) {
+  async logVerificationAction(userDocId, userData, status, details = {}) {
     await db.collection("verifications").add({
       User_ID: userDocId,
       Name: userData.name || "Unknown",
       Email: userData.email || "Unknown",
-      Status: "Verified",
+      Status: status,
+      Details: details.reason || null,
       Created_At: new Date().toISOString(),
     });
   },
@@ -51,10 +52,39 @@ const AdminService = {
     }
 
     // Update verification status
-    const updatedUser = await AdminRepository.updateUserVerification(userDocId.trim());
+    const updatedUser = await AdminRepository.updateUserStatus(
+      userDocId.trim(),
+      "verified"
+    );
 
     // Log verification
-    await AdminRepository.logVerification(userDocId.trim(), user);
+    await AdminRepository.logVerificationAction(userDocId.trim(), user, "Verified");
+
+    return updatedUser;
+  },
+
+  async rejectUser(userDocId, reason = "Rejected by admin") {
+    const validation = validateRequired({ userDocId }, ["userDocId"]);
+    if (!validation.isValid) {
+      throw new Error("Missing userDocId");
+    }
+
+    const user = await AdminRepository.findUserById(userDocId.trim());
+    if (!user) {
+      throw new Error("User not found in Firestore");
+    }
+
+    const updatedUser = await AdminRepository.updateUserStatus(
+      userDocId.trim(),
+      "rejected"
+    );
+
+    await AdminRepository.logVerificationAction(
+      userDocId.trim(),
+      user,
+      "Rejected",
+      { reason }
+    );
 
     return updatedUser;
   },
@@ -86,9 +116,34 @@ const AdminController = {
       return sendError(res, 500, error.message);
     }
   },
+
+  async rejectUser(req, res) {
+    try {
+      const { userDocId, reason } = req.body;
+      const user = await AdminService.rejectUser(userDocId, reason);
+
+      return sendSuccess(res, 200, "❌ User rejected successfully", {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          status: "rejected",
+        },
+      });
+    } catch (error) {
+      if (error.message === "User not found in Firestore") {
+        return sendNotFoundError(res, "User");
+      }
+      if (error.message.includes("Missing")) {
+        return sendValidationError(res, error.message);
+      }
+      return sendError(res, 500, error.message);
+    }
+  },
 };
 
 // ==================== ROUTES ====================
 router.post("/verify-user", verifyToken(["admin"]), AdminController.verifyUser);
+router.post("/reject-user", verifyToken(["admin"]), AdminController.rejectUser);
 
 export default router;

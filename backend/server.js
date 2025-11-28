@@ -10,6 +10,7 @@ import { db } from "./config/firebase.js";
 import challengeRoutes from "./challenges.js";
 import courtownerRoutes from "./courtOwner.js";
 import adminRoutes from "./admin.js";
+import userRoutes from "./user.js";
 import { sendSuccess, sendError, sendNotFoundError } from "./utils/response.js";
 
 const app = express();
@@ -18,6 +19,7 @@ app.use(cors());
 
 // ==================== ROUTES ====================
 app.use("/api/admin", adminRoutes);
+app.use("/api/user", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/courtowner", courtownerRoutes);
 app.use("/api/team", teamRoutes);
@@ -28,32 +30,40 @@ app.use("/api/payments", paymentRoutes);
 
 // ==================== ADDITIONAL ROUTES ====================
 // Example protected route
-app.get("/api/profile", verifyToken, async (req, res) => {
-  try {
-    const userDoc = await db.collection("users").doc(req.user.uid).get();
-    if (!userDoc.exists) {
-      return sendNotFoundError(res, "User");
+app.get(
+  "/api/profile",
+  verifyToken(["team", "courtowner", "admin"]),
+  async (req, res) => {
+    try {
+      const userDoc = await db.collection("users").doc(req.user.uid).get();
+      if (!userDoc.exists) {
+        return sendNotFoundError(res, "User");
+      }
+      return sendSuccess(res, 200, "Profile fetched successfully", {
+        uid: req.user.uid,
+        ...userDoc.data(),
+      });
+    } catch (error) {
+      return sendError(res, 500, error.message);
     }
-    return sendSuccess(res, 200, "Profile fetched successfully", {
-      uid: req.user.uid,
-      ...userDoc.data(),
-    });
-  } catch (error) {
-    return sendError(res, 500, error.message);
   }
-});
+);
 
 // Courtowner dashboard route
-app.get("/courtowner/dashboard", verifyToken(["courtowner"]), async (req, res) => {
-  try {
-    return sendSuccess(res, 200, "Welcome, Court Owner 👋", {
-      note: "You can manage your courts here!",
-      user: req.user,
-    });
-  } catch (error) {
-    return sendError(res, 500, error.message);
+app.get(
+  "/courtowner/dashboard",
+  verifyToken(["courtowner"]),
+  async (req, res) => {
+    try {
+      return sendSuccess(res, 200, "Welcome, Court Owner 👋", {
+        note: "You can manage your courts here!",
+        user: req.user,
+      });
+    } catch (error) {
+      return sendError(res, 500, error.message);
+    }
   }
-});
+);
 
 // Team players route
 app.get("/team/players", verifyToken(["team"]), async (req, res) => {

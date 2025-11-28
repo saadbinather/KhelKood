@@ -1,12 +1,37 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../screens/login_page.dart';
 
 /// ADMIN PAGES (single-file demo)
 /// - AdminDashboard
 /// - PendingRegistrationsPage (+ UserDetailPage)
 /// - PendingCourtsPage (+ CourtDetailPage)
 /// - ManageBlocksPage
-///
-/// Replace dummy data with real API calls where TODO comments are placed.
+
+const String baseUrl = 'http://localhost:5000/api';
+
+// Helper function to get auth token
+Future<String?> _getAuthToken() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('auth_token');
+  } catch (e) {
+    print('Error getting token: $e');
+    return null;
+  }
+}
+
+// Helper function to save auth token
+Future<void> _saveAuthToken(String token) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('auth_token', token);
+  } catch (e) {
+    print('Error saving token: $e');
+  }
+}
 
 class AdminDashboardEntry extends StatelessWidget {
   const AdminDashboardEntry({super.key});
@@ -20,6 +45,45 @@ class AdminDashboardEntry extends StatelessWidget {
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
 
+  Future<void> _logout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text('Logout', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Are you sure you want to logout?',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      // Clear token
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('auth_token');
+      
+      // Navigate to login page
+      if (context.mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+          (route) => false,
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,6 +95,13 @@ class AdminDashboard extends StatelessWidget {
           style: TextStyle(color: Colors.white),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: () => _logout(context),
+            tooltip: 'Logout',
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -161,94 +232,324 @@ class PendingRegistrationsPage extends StatefulWidget {
 class _PendingRegistrationsPageState extends State<PendingRegistrationsPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool isLoading = true;
+  String? errorMessage;
 
-  // Dummy data: replace with API-loaded lists
-  List<Map<String, dynamic>> pendingPlayers = [
-    {
-      "id": "P001",
-      "name": "Ali Khan",
-      "email": "ali@example.com",
-      "role": "player",
-      "registeredAt": "2025-11-22",
-    },
-    {
-      "id": "P002",
-      "name": "Sara Ahmed",
-      "email": "sara@example.com",
-      "role": "player",
-      "registeredAt": "2025-11-23",
-    },
-  ];
-
-  List<Map<String, dynamic>> pendingOwners = [
-    {
-      "id": "O001",
-      "name": "Zee Sports",
-      "email": "owner1@zee.com",
-      "role": "courtOwner",
-      "registeredAt": "2025-11-22",
-    },
-  ];
+  List<Map<String, dynamic>> pendingPlayers = [];
+  List<Map<String, dynamic>> pendingOwners = [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    // TODO: Replace dummy lists by calling API to fetch pending registrations
+    _fetchUnverifiedUsers();
+  }
+
+  Future<void> _fetchUnverifiedUsers() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        setState(() {
+          errorMessage = 'No authentication token found. Please login again.';
+          isLoading = false;
+        });
+        return;
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/user/unverified'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final users = List<Map<String, dynamic>>.from(data['data']['users'] ?? []);
+
+        setState(() {
+          // Separate users by role: "team" = players, "courtowner" = court owners
+          pendingPlayers = users
+              .where((user) => user['role'] == 'team')
+              .map((user) {
+                final createdAt = user['createdAt'];
+                String dateStr = 'Unknown';
+                if (createdAt != null) {
+                  try {
+                    if (createdAt is String) {
+                      dateStr = createdAt.split('T')[0];
+                    } else if (createdAt is Map && createdAt.containsKey('_seconds')) {
+                      dateStr = DateTime.fromMillisecondsSinceEpoch(
+                              createdAt['_seconds'] * 1000)
+                          .toString()
+                          .split(' ')[0];
+                    } else if (createdAt is Map && createdAt.containsKey('seconds')) {
+                      dateStr = DateTime.fromMillisecondsSinceEpoch(
+                              createdAt['seconds'] * 1000)
+                          .toString()
+                          .split(' ')[0];
+                    }
+                  } catch (e) {
+                    dateStr = 'Unknown';
+                  }
+                }
+                return {
+                  'id': user['id'],
+                  'name': user['name'] ?? 'Unknown',
+                  'email': user['email'] ?? '',
+                  'role': 'player',
+                  'registeredAt': dateStr,
+                };
+              })
+              .toList();
+
+          pendingOwners = users
+              .where((user) => user['role'] == 'courtowner')
+              .map((user) {
+                final createdAt = user['createdAt'];
+                String dateStr = 'Unknown';
+                if (createdAt != null) {
+                  try {
+                    if (createdAt is String) {
+                      dateStr = createdAt.split('T')[0];
+                    } else if (createdAt is Map && createdAt.containsKey('_seconds')) {
+                      dateStr = DateTime.fromMillisecondsSinceEpoch(
+                              createdAt['_seconds'] * 1000)
+                          .toString()
+                          .split(' ')[0];
+                    } else if (createdAt is Map && createdAt.containsKey('seconds')) {
+                      dateStr = DateTime.fromMillisecondsSinceEpoch(
+                              createdAt['seconds'] * 1000)
+                          .toString()
+                          .split(' ')[0];
+                    }
+                  } catch (e) {
+                    dateStr = 'Unknown';
+                  }
+                }
+                return {
+                  'id': user['id'],
+                  'name': user['name'] ?? 'Unknown',
+                  'email': user['email'] ?? '',
+                  'role': 'courtOwner',
+                  'registeredAt': dateStr,
+                };
+              })
+              .toList();
+
+          isLoading = false;
+        });
+      } else {
+        final errorData = jsonDecode(response.body);
+        setState(() {
+          errorMessage = errorData['error'] ?? 'Failed to fetch unverified users';
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Error: ${e.toString()}';
+        isLoading = false;
+      });
+    }
   }
 
   Future<void> _approveUser(Map<String, dynamic> user) async {
-    // Simulate API call
     final id = user['id'];
+    
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Approving...'),
         backgroundColor: Colors.blue,
       ),
     );
-    await Future.delayed(const Duration(milliseconds: 700));
-    if (!mounted) return;
 
-    setState(() {
-      if (user['role'] == 'player') {
-        pendingPlayers.removeWhere((u) => u['id'] == id);
-      } else {
-        pendingOwners.removeWhere((u) => u['id'] == id);
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No authentication token found'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
       }
-    });
 
-    // TODO: Replace the above with:
-    // await api.approveUser(userId: id);
+      final response = await http.post(
+        Uri.parse('$baseUrl/admin/verify-user'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'userDocId': id}),
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Approved $id'), backgroundColor: Colors.green),
-    );
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        setState(() {
+          if (user['role'] == 'player') {
+            pendingPlayers.removeWhere((u) => u['id'] == id);
+          } else {
+            pendingOwners.removeWhere((u) => u['id'] == id);
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('User ${user['name']} verified successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        final errorData = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorData['error'] ?? 'Failed to verify user'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Future<void> _rejectUser(Map<String, dynamic> user) async {
     final id = user['id'];
+    final reasonController = TextEditingController();
+
+    // Show confirmation dialog with optional reason
+    final rejectionReason = await showDialog<String?>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text('Reject User', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to reject ${user['name']}?',
+              style: const TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonController,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                hintText: 'Optional reason (e.g., incomplete documents)',
+                hintStyle: TextStyle(color: Colors.white54),
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: Colors.white24),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: Colors.redAccent),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(context, reasonController.text.trim()),
+            child:
+                const Text('Reject', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+
+    reasonController.dispose();
+
+    if (rejectionReason == null) return;
+    final reason = rejectionReason.isEmpty
+        ? 'Rejected by admin'
+        : rejectionReason;
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Rejecting...'),
         backgroundColor: Colors.blue,
       ),
     );
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
 
-    setState(() {
-      if (user['role'] == 'player') {
-        pendingPlayers.removeWhere((u) => u['id'] == id);
-      } else {
-        pendingOwners.removeWhere((u) => u['id'] == id);
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No authentication token found'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
       }
-    });
 
-    // TODO: api.rejectUser(userId: id);
+      final response = await http.post(
+        Uri.parse('$baseUrl/admin/reject-user'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'userDocId': id, 'reason': reason}),
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Rejected $id'), backgroundColor: Colors.red),
-    );
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        setState(() {
+          if (user['role'] == 'player') {
+            pendingPlayers.removeWhere((u) => u['id'] == id);
+          } else {
+            pendingOwners.removeWhere((u) => u['id'] == id);
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Rejected ${user['name']}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } else {
+        final errorData = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorData['error'] ?? 'Failed to reject user'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _openDetail(Map<String, dynamic> user) {
@@ -274,6 +575,13 @@ class _PendingRegistrationsPageState extends State<PendingRegistrationsPage>
           'Pending Registrations',
           style: TextStyle(color: Colors.white),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _fetchUnverifiedUsers,
+            tooltip: 'Refresh',
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
@@ -283,13 +591,38 @@ class _PendingRegistrationsPageState extends State<PendingRegistrationsPage>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildList(pendingPlayers, 'No pending players'),
-          _buildList(pendingOwners, 'No pending court owners'),
-        ],
-      ),
+      body: isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: Colors.redAccent),
+            )
+          : errorMessage != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        errorMessage!,
+                        style: const TextStyle(color: Colors.redAccent),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _fetchUnverifiedUsers,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                        ),
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                )
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildList(pendingPlayers, 'No pending players'),
+                    _buildList(pendingOwners, 'No pending court owners'),
+                  ],
+                ),
     );
   }
 

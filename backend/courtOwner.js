@@ -1,7 +1,13 @@
 import express from "express";
 import { db } from "./config/firebase.js";
 import { verifyToken } from "./middleware/verifyToken.js";
-import { sendSuccess, sendError, sendValidationError, sendNotFoundError, sendUnauthorizedError } from "./utils/response.js";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFoundError,
+  sendUnauthorizedError,
+} from "./utils/response.js";
 import { validateRequired } from "./utils/validators.js";
 
 const router = express.Router();
@@ -26,9 +32,11 @@ const CourtOwnerRepository = {
   },
 
   async findCourtsByOwnerId(ownerID) {
-    const courtsQuery = db.collection("courts").where("courtownerID", "==", ownerID);
+    const courtsQuery = db
+      .collection("courts")
+      .where("courtownerID", "==", ownerID);
     const courtsSnapshot = await courtsQuery.get();
-    return courtsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return courtsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   },
 
   async updateCourts(ownerID, updates) {
@@ -36,7 +44,7 @@ const CourtOwnerRepository = {
     if (courts.length === 0) return [];
 
     const batch = db.batch();
-    courts.forEach(court => {
+    courts.forEach((court) => {
       const courtRef = db.collection("courts").doc(court.id);
       batch.update(courtRef, {
         ...updates,
@@ -67,10 +75,94 @@ const CourtOwnerRepository = {
     });
     return await this.findMatchById(matchID);
   },
+
+  async findBookingsByCourtOwner(ownerID) {
+    // Get all courts owned by this owner
+    const courts = await this.findCourtsByOwnerId(ownerID);
+    const courtIDs = courts.map((court) => court.id);
+
+    if (courtIDs.length === 0) return [];
+
+    // Firestore "in" query has a limit of 10 items, so we need to batch if needed
+    const bookings = [];
+    const batchSize = 10;
+
+    for (let i = 0; i < courtIDs.length; i += batchSize) {
+      const batch = courtIDs.slice(i, i + batchSize);
+      const bookingsSnapshot = await db
+        .collection("bookings")
+        .where("courtID", "in", batch)
+        .get();
+
+      for (const bookingDoc of bookingsSnapshot.docs) {
+        const booking = { id: bookingDoc.id, ...bookingDoc.data() };
+
+        // Get court details
+        const court = courts.find((c) => c.id === booking.courtID);
+        if (court) {
+          booking.court = court;
+        }
+
+        // Get team details
+        if (booking.teamID) {
+          const teamDoc = await db
+            .collection("teams")
+            .doc(booking.teamID)
+            .get();
+          if (teamDoc.exists) {
+            booking.team = { id: teamDoc.id, ...teamDoc.data() };
+          }
+        }
+
+        bookings.push(booking);
+      }
+    }
+
+    return bookings;
+  },
+
+  async findBookingById(bookingID) {
+    const bookingRef = db.collection("bookings").doc(bookingID);
+    const bookingDoc = await bookingRef.get();
+    return bookingDoc.exists
+      ? { id: bookingDoc.id, ...bookingDoc.data() }
+      : null;
+  },
+
+  async updateBookingStatus(bookingID, status) {
+    const bookingRef = db.collection("bookings").doc(bookingID);
+    await bookingRef.update({
+      status,
+      updatedAt: new Date(),
+    });
+    return await this.findBookingById(bookingID);
+  },
 };
 
 // ==================== SERVICE LAYER (Business Logic) ====================
 // Single Responsibility: Handle court owner business rules
+
+// Helper function to parse Firestore dates
+const _parseFirestoreDate = (dateValue) => {
+  if (!dateValue) return null;
+  // Handle Firestore Timestamp
+  if (dateValue.toDate && typeof dateValue.toDate === "function") {
+    return dateValue.toDate();
+  }
+  // Handle Firestore Timestamp object with _seconds
+  if (dateValue._seconds) {
+    return new Date(dateValue._seconds * 1000);
+  }
+  // Handle regular Date object
+  if (dateValue instanceof Date) {
+    return dateValue;
+  }
+  // Handle ISO string
+  if (typeof dateValue === "string") {
+    return new Date(dateValue);
+  }
+  return null;
+};
 
 const CourtOwnerService = {
   async updateProfile(ownerID, updates) {
@@ -145,6 +237,105 @@ const CourtOwnerService = {
     // Update winner
     return await CourtOwnerRepository.updateMatchWinner(matchID, winnerID);
   },
+
+  async getBookings(courtownerID) {
+    const bookings = await CourtOwnerRepository.findBookingsByCourtOwner(
+      courtownerID
+    );
+    const now = new Date();
+
+    // Categorize bookings
+    const incoming = [];
+    const upcoming = [];
+    const past = [];
+
+    bookings.forEach((booking) => {
+      const startTime = _parseFirestoreDate(booking.startTime);
+      const endTime = _parseFirestoreDate(booking.endTime);
+
+      if (!startTime) return; // Skip invalid dates
+
+      if (booking.status === "Pending") {
+        incoming.push(booking);
+      } else if (
+        booking.status === "Confirmed" ||
+        booking.status === "Accepted"
+      ) {
+        if (startTime > now) {
+          upcoming.push(booking);
+        } else {
+          past.push(booking);
+        }
+      } else if (
+        booking.status === "Completed" ||
+        booking.status === "Cancelled" ||
+        booking.status === "Rejected"
+      ) {
+        past.push(booking);
+      } else if (endTime && endTime < now) {
+        past.push(booking);
+      } else if (startTime > now) {
+        upcoming.push(booking);
+      } else {
+        past.push(booking);
+      }
+    });
+
+    // Sort by date
+    const sortByDate = (a, b) => {
+      const aTime = _parseFirestoreDate(a.startTime) || new Date(0);
+      const bTime = _parseFirestoreDate(b.startTime) || new Date(0);
+      return aTime - bTime;
+    };
+
+    const sortByDateDesc = (a, b) => {
+      const aTime = _parseFirestoreDate(a.startTime) || new Date(0);
+      const bTime = _parseFirestoreDate(b.startTime) || new Date(0);
+      return bTime - aTime; // Most recent first
+    };
+
+    incoming.sort(sortByDate);
+    upcoming.sort(sortByDate);
+    past.sort(sortByDateDesc);
+
+    return { incoming, upcoming, past };
+  },
+
+  async acceptBooking(courtownerID, bookingID) {
+    const booking = await CourtOwnerRepository.findBookingById(bookingID);
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
+    // Verify court ownership
+    const court = await CourtOwnerRepository.findCourtById(booking.courtID);
+    if (!court || court.courtownerID !== courtownerID) {
+      throw new Error("Unauthorized: You do not own this court");
+    }
+
+    return await CourtOwnerRepository.updateBookingStatus(
+      bookingID,
+      "Confirmed"
+    );
+  },
+
+  async rejectBooking(courtownerID, bookingID) {
+    const booking = await CourtOwnerRepository.findBookingById(bookingID);
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
+    // Verify court ownership
+    const court = await CourtOwnerRepository.findCourtById(booking.courtID);
+    if (!court || court.courtownerID !== courtownerID) {
+      throw new Error("Unauthorized: You do not own this court");
+    }
+
+    return await CourtOwnerRepository.updateBookingStatus(
+      bookingID,
+      "Rejected"
+    );
+  },
 };
 
 // ==================== CONTROLLER LAYER (Request Handling) ====================
@@ -154,11 +345,19 @@ const CourtOwnerController = {
   async updateProfile(req, res) {
     try {
       const ownerID = req.user.uid;
-      const updatedOwner = await CourtOwnerService.updateProfile(ownerID, req.body);
-      return sendSuccess(res, 200, "Courtowner profile updated successfully ✅", {
-        updatedFields: req.body,
-        courtowner: updatedOwner,
-      });
+      const updatedOwner = await CourtOwnerService.updateProfile(
+        ownerID,
+        req.body
+      );
+      return sendSuccess(
+        res,
+        200,
+        "Courtowner profile updated successfully ✅",
+        {
+          updatedFields: req.body,
+          courtowner: updatedOwner,
+        }
+      );
     } catch (error) {
       if (error.message === "Courtowner not found") {
         return sendNotFoundError(res, "Courtowner");
@@ -171,7 +370,12 @@ const CourtOwnerController = {
     try {
       const ownerID = req.user.uid;
       const owner = await CourtOwnerService.getProfile(ownerID);
-      return sendSuccess(res, 200, "Courtowner profile fetched successfully ✅", { courtowner: owner });
+      return sendSuccess(
+        res,
+        200,
+        "Courtowner profile fetched successfully ✅",
+        { courtowner: owner }
+      );
     } catch (error) {
       if (error.message === "Courtowner not found") {
         return sendNotFoundError(res, "Courtowner");
@@ -184,10 +388,15 @@ const CourtOwnerController = {
     try {
       const ownerID = req.user.uid;
       const courts = await CourtOwnerService.updateCourt(ownerID, req.body);
-      return sendSuccess(res, 200, "Court(s) updated successfully for this courtowner ✅", {
-        updatedFields: req.body,
-        updatedCourtsCount: courts.length,
-      });
+      return sendSuccess(
+        res,
+        200,
+        "Court(s) updated successfully for this courtowner ✅",
+        {
+          updatedFields: req.body,
+          updatedCourtsCount: courts.length,
+        }
+      );
     } catch (error) {
       if (error.message.includes("No court found")) {
         return sendNotFoundError(res, "Court");
@@ -200,7 +409,9 @@ const CourtOwnerController = {
     try {
       const { courtID } = req.params;
       const court = await CourtOwnerService.getCourtById(courtID);
-      return sendSuccess(res, 200, "Court details fetched successfully ✅", { court });
+      return sendSuccess(res, 200, "Court details fetched successfully ✅", {
+        court,
+      });
     } catch (error) {
       if (error.message === "Court not found") {
         return sendNotFoundError(res, "Court");
@@ -227,21 +438,90 @@ const CourtOwnerController = {
       const courtownerID = req.user.uid;
       const { matchID } = req.params;
       const { winnerID } = req.body;
-      const match = await CourtOwnerService.setMatchWinner(courtownerID, matchID, winnerID);
+      const match = await CourtOwnerService.setMatchWinner(
+        courtownerID,
+        matchID,
+        winnerID
+      );
       return sendSuccess(res, 200, "Winner updated successfully ✅", {
         matchID,
         winnerID,
         match,
       });
     } catch (error) {
-      if (error.message === "Match not found" || error.message === "Court not found") {
+      if (
+        error.message === "Match not found" ||
+        error.message === "Court not found"
+      ) {
         return sendNotFoundError(res, error.message.split(" ")[0]);
       }
       if (error.message.includes("Unauthorized")) {
         return sendUnauthorizedError(res, error.message);
       }
-      if (error.message.includes("required") || error.message.includes("must be")) {
+      if (
+        error.message.includes("required") ||
+        error.message.includes("must be")
+      ) {
         return sendValidationError(res, error.message);
+      }
+      return sendError(res, 500, error.message);
+    }
+  },
+
+  async getBookings(req, res) {
+    try {
+      const courtownerID = req.user.uid;
+      const bookings = await CourtOwnerService.getBookings(courtownerID);
+      return sendSuccess(
+        res,
+        200,
+        "Bookings fetched successfully ✅",
+        bookings
+      );
+    } catch (error) {
+      return sendError(res, 500, error.message);
+    }
+  },
+
+  async acceptBooking(req, res) {
+    try {
+      const courtownerID = req.user.uid;
+      const { bookingID } = req.params;
+      const booking = await CourtOwnerService.acceptBooking(
+        courtownerID,
+        bookingID
+      );
+      return sendSuccess(res, 200, "Booking accepted successfully ✅", {
+        booking,
+      });
+    } catch (error) {
+      if (error.message === "Booking not found") {
+        return sendNotFoundError(res, "Booking");
+      }
+      if (error.message.includes("Unauthorized")) {
+        return sendUnauthorizedError(res, error.message);
+      }
+      return sendError(res, 500, error.message);
+    }
+  },
+
+  async rejectBooking(req, res) {
+    try {
+      const courtownerID = req.user.uid;
+      const { bookingID } = req.params;
+      const booking = await CourtOwnerService.rejectBooking(
+        courtownerID,
+        bookingID
+      );
+      return sendSuccess(res, 200, "Booking rejected successfully ✅", {
+        booking,
+      });
+    } catch (error) {
+      if (error.message === "Booking not found") {
+        return sendNotFoundError(res, "Booking");
+      }
+      if (error.message.includes("Unauthorized")) {
+        return sendUnauthorizedError(res, error.message);
       }
       return sendError(res, 500, error.message);
     }
@@ -250,11 +530,50 @@ const CourtOwnerController = {
 
 // ==================== ROUTES ====================
 
-router.put("/edit-courtowner", verifyToken(["courtowner"]), CourtOwnerController.updateProfile);
-router.put("/edit-court", verifyToken(["courtowner"]), CourtOwnerController.updateCourt);
-router.get("/courtowner-profile", verifyToken(["courtowner"]), CourtOwnerController.getProfile);
-router.get("/court/:courtID", verifyToken(["courtowner", "team", "admin"]), CourtOwnerController.getCourtById);
-router.get("/my-court", verifyToken(["courtowner"]), CourtOwnerController.getMyCourt);
-router.put("/makewinner/:matchID", verifyToken(["courtowner"]), CourtOwnerController.setMatchWinner);
+router.put(
+  "/edit-courtowner",
+  verifyToken(["courtowner"]),
+  CourtOwnerController.updateProfile
+);
+router.put(
+  "/edit-court",
+  verifyToken(["courtowner"]),
+  CourtOwnerController.updateCourt
+);
+router.get(
+  "/courtowner-profile",
+  verifyToken(["courtowner"]),
+  CourtOwnerController.getProfile
+);
+router.get(
+  "/court/:courtID",
+  verifyToken(["courtowner", "team", "admin"]),
+  CourtOwnerController.getCourtById
+);
+router.get(
+  "/my-court",
+  verifyToken(["courtowner"]),
+  CourtOwnerController.getMyCourt
+);
+router.put(
+  "/makewinner/:matchID",
+  verifyToken(["courtowner"]),
+  CourtOwnerController.setMatchWinner
+);
+router.get(
+  "/bookings",
+  verifyToken(["courtowner"]),
+  CourtOwnerController.getBookings
+);
+router.put(
+  "/bookings/:bookingID/accept",
+  verifyToken(["courtowner"]),
+  CourtOwnerController.acceptBooking
+);
+router.put(
+  "/bookings/:bookingID/reject",
+  verifyToken(["courtowner"]),
+  CourtOwnerController.rejectBooking
+);
 
 export default router;

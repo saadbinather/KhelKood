@@ -154,6 +154,7 @@ const PaymentController = {
 
 // ==================== ROUTES ====================
 router.post("/create-payment", verifyToken(["team"]), PaymentController.createPayment);
-router.put("/update-payment/:paymentID", verifyToken(["team", "courtowner"]), PaymentController.updatePaymentStatus);
+
+router.put("/update-payment/:paymentID", verifyToken(["courtowner"]), PaymentController.updatePaymentStatus);
 
 export default router;

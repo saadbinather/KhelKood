@@ -1,181 +1,6 @@
-// import 'package:flutter/material.dart';
-// import 'dashboard_page.dart';
-// import '../CourtOwner/dash_board.dart'; // <-- Import court owner dashboard
-
-// class LoginPage extends StatefulWidget {
-//   const LoginPage({super.key});
-
-//   @override
-//   State<LoginPage> createState() => _LoginPageState();
-// }
-
-// class _LoginPageState extends State<LoginPage> {
-//   final TextEditingController emailController = TextEditingController();
-//   final TextEditingController passwordController = TextEditingController();
-
-//   bool isLoading = false;
-
-//   // ----------------------------------------------------------
-//   // THIS FUNCTION IS MEANT TO BE REPLACED WITH YOUR REAL API
-//   // ----------------------------------------------------------
-//   Future<String?> authenticateUser(String email, String password) async {
-//     await Future.delayed(const Duration(seconds: 1)); // simulate API delay
-
-//     // Mock logic:
-//     if (email == "owner@gmail.com" && password == "1234") {
-//       return "courtOwner";
-//     } else if (email == "player@gmail.com" && password == "1234") {
-//       return "player";
-//     } else {
-//       return null; // authentication failed
-//     }
-//   }
-
-//   void handleLogin() async {
-//     final email = emailController.text.trim();
-//     final password = passwordController.text.trim();
-
-//     if (email.isEmpty || password.isEmpty) {
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         const SnackBar(
-//           content: Text("Please enter email and password"),
-//           backgroundColor: Colors.red,
-//         ),
-//       );
-//       return;
-//     }
-
-//     setState(() => isLoading = true);
-
-//     final role = await authenticateUser(email, password);
-
-//     setState(() => isLoading = false);
-
-//     if (role == null) {
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         const SnackBar(
-//           content: Text("Invalid username or password"),
-//           backgroundColor: Colors.red,
-//         ),
-//       );
-//       return;
-//     }
-
-//     // ----------------------------------------------------------
-//     // ROLE-BASED NAVIGATION
-//     // ----------------------------------------------------------
-//     if (role == "courtOwner") {
-//       Navigator.pushReplacement(
-//         context,
-//         MaterialPageRoute(builder: (_) => const CourtOwnerDashboard()),
-//       );
-//     } else {
-//       Navigator.pushReplacement(
-//         context,
-//         MaterialPageRoute(builder: (_) => const DashboardPage()),
-//       );
-//     }
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: Colors.black, // Black background
-//       appBar: AppBar(
-//         backgroundColor: Colors.redAccent,
-//         title: const Text("Login", style: TextStyle(color: Colors.white)),
-//         centerTitle: true,
-//       ),
-//       body: Padding(
-//         padding: const EdgeInsets.all(20.0),
-
-//         child: Column(
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           children: [
-//             // ---------------------------- LOGO / TITLE ----------------------------
-//             const Text(
-//               "KhelKood",
-//               style: TextStyle(
-//                 fontSize: 32,
-//                 fontWeight: FontWeight.bold,
-//                 color: Colors.redAccent,
-//               ),
-//             ),
-//             const SizedBox(height: 40),
-
-//             // ---------------------------- EMAIL FIELD ----------------------------
-//             TextField(
-//               controller: emailController,
-//               style: const TextStyle(color: Colors.white),
-//               decoration: InputDecoration(
-//                 filled: true,
-//                 fillColor: Colors.grey[900],
-//                 labelText: "Email",
-//                 labelStyle: const TextStyle(color: Colors.white70),
-//                 border: OutlineInputBorder(
-//                   borderRadius: BorderRadius.circular(10),
-//                 ),
-//               ),
-//             ),
-//             const SizedBox(height: 20),
-
-//             // ---------------------------- PASSWORD FIELD ----------------------------
-//             TextField(
-//               controller: passwordController,
-//               obscureText: true,
-//               style: const TextStyle(color: Colors.white),
-//               decoration: InputDecoration(
-//                 filled: true,
-//                 fillColor: Colors.grey[900],
-//                 labelText: "Password",
-//                 labelStyle: const TextStyle(color: Colors.white70),
-//                 border: OutlineInputBorder(
-//                   borderRadius: BorderRadius.circular(10),
-//                 ),
-//               ),
-//             ),
-
-//             const SizedBox(height: 30),
-
-//             // ---------------------------- LOGIN BUTTON ----------------------------
-//             SizedBox(
-//               width: double.infinity,
-//               height: 48,
-//               child: ElevatedButton(
-//                 style: ElevatedButton.styleFrom(
-//                   backgroundColor: Colors.redAccent,
-//                   shape: RoundedRectangleBorder(
-//                     borderRadius: BorderRadius.circular(10),
-//                   ),
-//                 ),
-//                 onPressed: isLoading ? null : handleLogin,
-//                 child: isLoading
-//                     ? const CircularProgressIndicator(color: Colors.white)
-//                     : const Text(
-//                         "LOGIN",
-//                         style: TextStyle(
-//                           color: Colors.white,
-//                           fontSize: 18,
-//                           letterSpacing: 1.2,
-//                         ),
-//                       ),
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-
 import 'dashboard_page.dart';
-import '../CourtOwner/dash_board.dart';
-import '../Admin/dashboard.dart'; // <-- Import Admin dashboard
-import '../CourtOwner/dash_board.dart'; // Court Owner Dashboard
+import '../CourtOwner/dash_board.dart'; // <-- Import court owner dashboard
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -191,57 +16,21 @@ class _LoginPageState extends State<LoginPage> {
   bool isLoading = false;
 
   // ----------------------------------------------------------
-  // REAL BACKEND AUTHENTICATION (UPDATED)
+  // THIS FUNCTION IS MEANT TO BE REPLACED WITH YOUR REAL API
   // ----------------------------------------------------------
   Future<String?> authenticateUser(String email, String password) async {
     await Future.delayed(const Duration(seconds: 1)); // simulate API delay
 
-    // Mock admin login
-    if (email == "admin@gmail.com" && password == "admin123") {
-      return "admin";
-    }
-
-    // Mock court owner
+    // Mock logic:
     if (email == "owner@gmail.com" && password == "1234") {
       return "courtOwner";
-    }
-
-    // Mock player
-    if (email == "player@gmail.com" && password == "1234") {
+    } else if (email == "player@gmail.com" && password == "1234") {
       return "player";
-    try {
-      final response = await http.post(
-        Uri.parse("http://10.0.2.2:5000/api/login"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"email": email, "password": password}),
-      );
-
-      print("Status Code: ${response.statusCode}");
-      print("Response Body: ${response.body}");
-
-      // Accept ANY success code: 200..299
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final data = jsonDecode(response.body);
-
-        // Ensure role exists and convert to lowercase
-        if (data.containsKey("role")) {
-          return data["role"].toString().toLowerCase();
-        }
-        return null;
-      }
-
-      return null;
-    } catch (e) {
-      print("Login Error: $e");
-      return null;
+    } else {
+      return null; // authentication failed
     }
-
-    return null; // authentication failed
   }
 
-  // ----------------------------------------------------------
-  // HANDLE LOGIN
-  // ----------------------------------------------------------
   void handleLogin() async {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
@@ -275,35 +64,15 @@ class _LoginPageState extends State<LoginPage> {
     // ----------------------------------------------------------
     // ROLE-BASED NAVIGATION
     // ----------------------------------------------------------
-    if (role == "admin") {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const AdminDashboard()),
-      );
-    } else if (role == "courtOwner") {
-    if (role == "courtowner") {
+    if (role == "courtOwner") {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const CourtOwnerDashboard()),
       );
-    } else if (role == "team") {
+    } else {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const DashboardPage()),
-      );
-    } else if (role == "admin") {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Admin login coming soon"),
-          backgroundColor: Colors.orange,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Unknown role: $role"),
-          backgroundColor: Colors.red,
-        ),
       );
     }
   }
@@ -311,7 +80,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.black, // Black background
       appBar: AppBar(
         backgroundColor: Colors.redAccent,
         title: const Text("Login", style: TextStyle(color: Colors.white)),
@@ -334,6 +103,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 40),
 
+            // ---------------------------- EMAIL FIELD ----------------------------
             TextField(
               controller: emailController,
               style: const TextStyle(color: Colors.white),
@@ -349,6 +119,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 20),
 
+            // ---------------------------- PASSWORD FIELD ----------------------------
             TextField(
               controller: passwordController,
               obscureText: true,
@@ -366,6 +137,7 @@ class _LoginPageState extends State<LoginPage> {
 
             const SizedBox(height: 30),
 
+            // ---------------------------- LOGIN BUTTON ----------------------------
             SizedBox(
               width: double.infinity,
               height: 48,

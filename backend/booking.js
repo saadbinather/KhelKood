@@ -1,47 +1,103 @@
 import express from "express";
 import { db } from "./config/firebase.js";
 import { verifyToken } from "./middleware/verifyToken.js";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFoundError,
+} from "./utils/response.js";
+import { validateRequired, validateDateRange } from "./utils/validators.js";
 
 const router = express.Router();
 
-// 🏟️ Create a Booking
-router.post("/book-court", verifyToken(["team"]), async (req, res) => {
-  try {
-    const teamID = req.user.uid; // Logged-in team UID
-    const { courtID, startTime, endTime } = req.body;
+// ==================== REPOSITORY LAYER (Data Access) ====================
+// Single Responsibility: Handle all database operations for bookings
 
-    if (!courtID || !startTime || !endTime) {
-      return res.status(400).json({ error: "courtID, startTime and endTime are required" });
-    }
-
-    // Optional: Check if court exists
+const BookingRepository = {
+  async findCourtById(courtID) {
     const courtRef = db.collection("courts").doc(courtID);
     const courtDoc = await courtRef.get();
-    if (!courtDoc.exists) {
-      return res.status(404).json({ error: "Court not found" });
+    return courtDoc.exists ? { id: courtDoc.id, ...courtDoc.data() } : null;
+  },
+
+  async create(bookingData) {
+    const docRef = await db.collection("bookings").add(bookingData);
+    return { id: docRef.id, ...bookingData };
+  },
+};
+
+// ==================== SERVICE LAYER (Business Logic) ====================
+// Single Responsibility: Handle booking business rules
+
+const BookingService = {
+  async createBooking(teamID, { courtID, startTime, endTime }) {
+    // Validation
+    const validation = validateRequired({ courtID, startTime, endTime }, [
+      "courtID",
+      "startTime",
+      "endTime",
+    ]);
+    if (!validation.isValid) {
+      throw new Error(validation.error);
     }
 
-    // Create booking object
+    const dateValidation = validateDateRange(startTime, endTime);
+    if (!dateValidation.isValid) {
+      throw new Error(dateValidation.error);
+    }
+
+    // Check if court exists
+    const court = await BookingRepository.findCourtById(courtID);
+    if (!court) {
+      throw new Error("Court not found");
+    }
+
+    // Create booking data
     const bookingData = {
       courtID,
       teamID,
       startTime: new Date(startTime),
       endTime: new Date(endTime),
-      status: "Pending", // You can later add "Confirmed", "Cancelled"
+      status: "Pending",
       createdAt: new Date(),
     };
 
-    // Save to Firestore
-    const docRef = await db.collection("bookings").add(bookingData);
+    // Save booking
+    const booking = await BookingRepository.create(bookingData);
+    return booking;
+  },
+};
 
-    res.status(201).json({
-      message: "Booking created successfully ✅",
-      bookingID: docRef.id,
-      booking: bookingData,
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// ==================== CONTROLLER LAYER (Request Handling) ====================
+// Single Responsibility: Handle HTTP requests and responses
+
+const BookingController = {
+  async bookCourt(req, res) {
+    try {
+      const teamID = req.user.uid;
+      const booking = await BookingService.createBooking(teamID, req.body);
+
+      return sendSuccess(res, 201, "Booking created successfully ✅", {
+        bookingID: booking.id,
+        booking,
+      });
+    } catch (error) {
+      if (error.message === "Court not found") {
+        return sendNotFoundError(res, "Court");
+      }
+      if (
+        error.message.includes("required") ||
+        error.message.includes("Invalid date")
+      ) {
+        return sendValidationError(res, error.message);
+      }
+      return sendError(res, 500, error.message);
+    }
+  },
+};
+
+// ==================== ROUTES ====================
+router.post("/book-court", verifyToken(["team"]), BookingController.bookCourt);
 
 export default router;

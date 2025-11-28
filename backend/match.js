@@ -58,60 +58,61 @@ import express from "express";
 import axios from "axios";
 import { db } from "./config/firebase.js";
 import { verifyToken } from "./middleware/verifyToken.js";
+import { sendSuccess, sendError, sendValidationError, sendNotFoundError, sendUnauthorizedError } from "./utils/response.js";
+import { validateRequired } from "./utils/validators.js";
 
 const router = express.Router();
 
-// 🏆 Create Match + Booking + Payment
-router.post("/create", verifyToken(["team"]), async (req, res) => {
-  try {
-    const { challengeID } = req.body;
-    const teamID = req.user.uid; // logged-in team UID
+const BASE_URL = "http://localhost:5000/api";
 
-    if (!challengeID) {
-      return res.status(400).json({ error: "challengeID is required" });
-    }
+// ==================== REPOSITORY LAYER (Data Access) ====================
+// Single Responsibility: Handle all database operations for matches
 
-    // Get the authorization token
-    const token = req.headers.authorization.split(" ")[1];
-    const baseURL = "http://localhost:5000/api";
-
-    // 🔹 1. Call your GET Challenge API
-    const challengeResponse = await axios.get(
-      `${baseURL}/challenges/challenge-details/${challengeID}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-
-    const challengeData = challengeResponse.data.challenge;
-    if (!challengeData) {
-      return res.status(404).json({ error: "Challenge not found" });
-    }
-
-    // 🔹 2. Ensure the logged-in team is the host
-    if (challengeData.hostTeamID === teamID) {
-      return res
-        .status(403)
-        .json({ error: "Unauthorized to create match for this challenge" });
-    }
-
-    // 🔹 3. Common data
-    const startTime = new Date(challengeData.stime);
-    const endTime = new Date(challengeData.etime);
-    const courtID = challengeData.courtFirebaseUID;
-    const sportType = challengeData.sport || "futsal"; // Get sport type from challenge
-
-    // 🔹 4. Get court details to fetch the price rates
+const MatchRepository = {
+  async findCourtById(courtID) {
     const courtDoc = await db.collection("courts").doc(courtID).get();
-    if (!courtDoc.exists) {
-      return res.status(404).json({ error: "Court not found" });
-    }
+    return courtDoc.exists ? { id: courtDoc.id, ...courtDoc.data() } : null;
+  },
 
-    const courtData = courtDoc.data();
+  async create(matchData) {
+    const matchRef = await db.collection("matches").add(matchData);
+    return { id: matchRef.id, ...matchData };
+  },
 
-    // 🔹 5. Calculate amount based on sport type and duration
-    const durationHours = (endTime - startTime) / (1000 * 60 * 60); // Convert ms to hours
+  async getChallengeById(challengeID, token) {
+    const response = await axios.get(
+      `${BASE_URL}/challenges/challenge-details/${challengeID}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return response.data.data?.challenge || response.data.challenge;
+  },
 
+  async createBooking(courtID, startTime, endTime, token) {
+    const response = await axios.post(
+      `${BASE_URL}/booking/book-court`,
+      { courtID, startTime, endTime },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return response.data.data?.bookingID || response.data.bookingID;
+  },
+
+  async createPayment(amount, bookingID, token) {
+    const response = await axios.post(
+      `${BASE_URL}/payments/create-payment`,
+      { amount, bookingID },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return response.data.data?.paymentID || response.data.paymentID;
+  },
+};
+
+// ==================== SERVICE LAYER (Business Logic) ====================
+// Single Responsibility: Handle match business rules
+
+const MatchService = {
+  calculatePrice(courtData, sportType, startTime, endTime) {
+    const durationHours = (new Date(endTime) - new Date(startTime)) / (1000 * 60 * 60);
+    
     let hourlyRate;
     switch (sportType.toLowerCase()) {
       case "cricket":
@@ -124,167 +125,129 @@ router.post("/create", verifyToken(["team"]), async (req, res) => {
         hourlyRate = courtData.padelRate || 3500;
         break;
       default:
-        hourlyRate = courtData.futsalRate || 2000; // Default to futsal rate
+        hourlyRate = courtData.futsalRate || 2000;
     }
 
-    const totalAmount = Math.round(durationHours * hourlyRate);
+    return {
+      hourlyRate,
+      durationHours: parseFloat(durationHours.toFixed(2)),
+      totalAmount: Math.round(durationHours * hourlyRate),
+    };
+  },
 
-    // 🔹 6. Create Booking by calling the book-court API
-    const bookingResponse = await axios.post(
-      `${baseURL}/booking/book-court`,
-      {
-        courtID,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-      },
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+  async createCompetitiveMatch(teamID, challengeID, token) {
+    // Validation
+    const validation = validateRequired({ challengeID }, ["challengeID"]);
+    if (!validation.isValid) {
+      throw new Error(validation.error);
+    }
+
+    // Get challenge
+    const challenge = await MatchRepository.getChallengeById(challengeID, token);
+    if (!challenge) {
+      throw new Error("Challenge not found");
+    }
+
+    // Validate host team
+    if (challenge.hostTeamID === teamID) {
+      throw new Error("Unauthorized to create match for this challenge");
+    }
+
+    // Prepare data
+    const startTime = new Date(challenge.stime);
+    const endTime = new Date(challenge.etime);
+    const courtID = challenge.courtFirebaseUID;
+    const sportType = challenge.sport || "futsal";
+
+    // Get court and calculate price
+    const court = await MatchRepository.findCourtById(courtID);
+    if (!court) {
+      throw new Error("Court not found");
+    }
+
+    const pricing = this.calculatePrice(court, sportType, startTime, endTime);
+
+    // Create booking
+    const bookingID = await MatchRepository.createBooking(
+      courtID,
+      startTime.toISOString(),
+      endTime.toISOString(),
+      token
     );
 
-    const bookingData = bookingResponse.data;
-    const bookingID = bookingData.bookingID;
-
-    // 🔹 7. Create Payment by calling the create-payment API
-    const paymentResponse = await axios.post(
-      `${baseURL}/payments/create-payment`,
-      {
-        amount: totalAmount,
-        bookingID: bookingID,
-      },
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+    // Create payment
+    const paymentID = await MatchRepository.createPayment(
+      pricing.totalAmount,
+      bookingID,
+      token
     );
 
-    const paymentData = paymentResponse.data;
-    const paymentID = paymentData.paymentID;
-
-    // 🔹 8. Create Match (with Winner = null)
+    // Create match
     const matchData = {
       Court_ID: courtID,
-      Host_Team_ID: challengeData.hostTeamID, // host from challenge
+      Host_Team_ID: challenge.hostTeamID,
       Guest_Team_ID: teamID,
       Sport: sportType,
       StartTime: startTime,
       EndTime: endTime,
       matchType: "competitive",
-      TeamName: challengeData.teamName,
+      TeamName: challenge.teamName,
       Challenge_ID: challengeID,
       Booking_ID: bookingID,
-      Payment_ID: paymentID, // Add payment reference to match
-      Winner: null, // initially empty
+      Payment_ID: paymentID,
+      Winner: null,
       createdAt: new Date(),
     };
 
-    const matchRef = await db.collection("matches").add(matchData);
+    const match = await MatchRepository.create(matchData);
 
-    // 🔹 9. Return success response
-    res.status(201).json({
-      message: "Match, booking and payment created successfully ✅",
-      matchID: matchRef.id,
-      bookingID: bookingID,
-      paymentID: paymentID,
-      match: matchData,
-      booking: bookingData.booking,
-      payment: paymentData.payment,
-      pricingDetails: {
-        sportType: sportType,
-        hourlyRate: hourlyRate,
-        durationHours: parseFloat(durationHours.toFixed(2)),
-        totalAmount: totalAmount,
+    return {
+      match,
+      bookingID,
+      paymentID,
+      pricing: {
+        sportType,
+        ...pricing,
       },
-    });
-  } catch (error) {
-    console.error("❌ Error creating match, booking and payment:", error);
-    res.status(500).json({
-      error: error.response?.data || error.message,
-    });
-  }
-});
+    };
+  },
 
-// 🏆 Create Friendly Match + Booking + Payment
-router.post("/create-friendly", verifyToken(["team"]), async (req, res) => {
-  try {
-    const { courtID, sport, startTime, endTime, teamName } = req.body;
-
-    const teamID = req.user.uid; // logged-in team UID
-
-    // 🔹 Validation
-    if (!courtID || !sport || !startTime || !endTime || !teamName) {
-      return res.status(400).json({
-        error: "courtID, sport, startTime, endTime and teamName are required",
-      });
+  async createFriendlyMatch(teamID, { courtID, sport, startTime, endTime, teamName }, token) {
+    // Validation
+    const validation = validateRequired(
+      { courtID, sport, startTime, endTime, teamName },
+      ["courtID", "sport", "startTime", "endTime", "teamName"]
+    );
+    if (!validation.isValid) {
+      throw new Error(validation.error);
     }
 
-    // Get the authorization token
-    const token = req.headers.authorization.split(" ")[1];
-    const baseURL = "http://localhost:5000/api";
-
-    // 🔹 1. Get court details to fetch the price rates
-    const courtDoc = await db.collection("courts").doc(courtID).get();
-    if (!courtDoc.exists) {
-      return res.status(404).json({ error: "Court not found" });
+    // Get court and calculate price
+    const court = await MatchRepository.findCourtById(courtID);
+    if (!court) {
+      throw new Error("Court not found");
     }
 
-    const courtData = courtDoc.data();
-
-    // 🔹 2. Parse times
     const startTimeDate = new Date(startTime);
     const endTimeDate = new Date(endTime);
+    const pricing = this.calculatePrice(court, sport, startTimeDate, endTimeDate);
 
-    // 🔹 3. Calculate amount based on sport type and duration
-    const durationHours = (endTimeDate - startTimeDate) / (1000 * 60 * 60); // Convert ms to hours
-
-    let hourlyRate;
-    switch (sport.toLowerCase()) {
-      case "cricket":
-        hourlyRate = courtData.cricketRate || 1800;
-        break;
-      case "futsal":
-        hourlyRate = courtData.futsalRate || 2000;
-        break;
-      case "padel":
-        hourlyRate = courtData.padelRate || 3500;
-        break;
-      default:
-        hourlyRate = courtData.futsalRate || 2000; // Default to futsal rate
-    }
-
-    const totalAmount = Math.round(durationHours * hourlyRate);
-
-    // 🔹 4. Create Booking by calling the book-court API
-    const bookingResponse = await axios.post(
-      `${baseURL}/booking/book-court`,
-      {
-        courtID,
-        startTime: startTimeDate.toISOString(),
-        endTime: endTimeDate.toISOString(),
-      },
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+    // Create booking
+    const bookingID = await MatchRepository.createBooking(
+      courtID,
+      startTimeDate.toISOString(),
+      endTimeDate.toISOString(),
+      token
     );
 
-    const bookingData = bookingResponse.data;
-    const bookingID = bookingData.bookingID;
-
-    // 🔹 5. Create Payment by calling the create-payment API
-    const paymentResponse = await axios.post(
-      `${baseURL}/payments/create-payment`,
-      {
-        amount: totalAmount,
-        bookingID: bookingID,
-      },
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+    // Create payment
+    const paymentID = await MatchRepository.createPayment(
+      pricing.totalAmount,
+      bookingID,
+      token
     );
 
-    const paymentData = paymentResponse.data;
-    const paymentID = paymentData.paymentID;
-
-    // 🔹 6. Create Friendly Match (with Winner = null)
+    // Create match
     const matchData = {
       Court_ID: courtID,
       Host_Team_ID: teamID,
@@ -292,40 +255,91 @@ router.post("/create-friendly", verifyToken(["team"]), async (req, res) => {
       StartTime: startTimeDate,
       EndTime: endTimeDate,
       TeamName: teamName,
-      matchType: "friendly", // Mark as friendly match
+      matchType: "friendly",
       Booking_ID: bookingID,
       Payment_ID: paymentID,
-      Winner: null, // initially empty
+      Winner: null,
       createdAt: new Date(),
     };
 
-    const matchRef = await db.collection("matches").add(matchData);
+    const match = await MatchRepository.create(matchData);
 
-    // 🔹 7. Return success response
-    res.status(201).json({
-      message: "Friendly match, booking and payment created successfully ✅",
-      matchID: matchRef.id,
-      bookingID: bookingID,
-      paymentID: paymentID,
-      match: matchData,
-      booking: bookingData.booking,
-      payment: paymentData.payment,
-      pricingDetails: {
+    return {
+      match,
+      bookingID,
+      paymentID,
+      pricing: {
         sportType: sport,
-        hourlyRate: hourlyRate,
-        durationHours: parseFloat(durationHours.toFixed(2)),
-        totalAmount: totalAmount,
+        ...pricing,
       },
-    });
-  } catch (error) {
-    console.error(
-      "❌ Error creating friendly match, booking and payment:",
-      error
-    );
-    res.status(500).json({
-      error: error.response?.data || error.message,
-    });
-  }
-});
+    };
+  },
+};
+
+// ==================== CONTROLLER LAYER (Request Handling) ====================
+// Single Responsibility: Handle HTTP requests and responses
+
+const MatchController = {
+  async createCompetitiveMatch(req, res) {
+    try {
+      const teamID = req.user.uid;
+      const { challengeID } = req.body;
+      const token = req.headers.authorization.split(" ")[1];
+
+      const result = await MatchService.createCompetitiveMatch(teamID, challengeID, token);
+
+      return sendSuccess(res, 201, "Match, booking and payment created successfully ✅", {
+        matchID: result.match.id,
+        bookingID: result.bookingID,
+        paymentID: result.paymentID,
+        match: result.match,
+        pricingDetails: result.pricing,
+      });
+    } catch (error) {
+      if (error.message === "Challenge not found" || error.message === "Court not found") {
+        return sendNotFoundError(res, error.message.split(" ")[0]);
+      }
+      if (error.message.includes("Unauthorized")) {
+        return sendUnauthorizedError(res, error.message);
+      }
+      if (error.message.includes("required")) {
+        return sendValidationError(res, error.message);
+      }
+      const errorMessage = error.response?.data?.error || error.message;
+      return sendError(res, 500, errorMessage);
+    }
+  },
+
+  async createFriendlyMatch(req, res) {
+    try {
+      const teamID = req.user.uid;
+      const token = req.headers.authorization.split(" ")[1];
+
+      const result = await MatchService.createFriendlyMatch(teamID, req.body, token);
+
+      return sendSuccess(res, 201, "Friendly match, booking and payment created successfully ✅", {
+        matchID: result.match.id,
+        bookingID: result.bookingID,
+        paymentID: result.paymentID,
+        match: result.match,
+        pricingDetails: result.pricing,
+      });
+    } catch (error) {
+      if (error.message === "Court not found") {
+        return sendNotFoundError(res, "Court");
+      }
+      if (error.message.includes("required")) {
+        return sendValidationError(res, error.message);
+      }
+      const errorMessage = error.response?.data?.error || error.message;
+      return sendError(res, 500, errorMessage);
+    }
+  },
+};
+
+// ==================== ROUTES ====================
+
+router.post("/create", verifyToken(["team"]), MatchController.createCompetitiveMatch);
+router.post("/create-friendly", verifyToken(["team"]), MatchController.createFriendlyMatch);
 
 export default router;

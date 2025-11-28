@@ -1,240 +1,260 @@
 import express from "express";
 import { db } from "./config/firebase.js";
 import { verifyToken } from "./middleware/verifyToken.js";
+import { sendSuccess, sendError, sendValidationError, sendNotFoundError, sendUnauthorizedError } from "./utils/response.js";
+import { validateRequired } from "./utils/validators.js";
 
 const router = express.Router();
 
-/*
-=====================================================
-📝 PUT 1 — Update Courtowner Profile
-=====================================================
-*/
-router.put(
-  "/edit-courtowner",
-  verifyToken(["courtowner"]),
-  async (req, res) => {
-    try {
-      const ownerID = req.user.uid;
-      const updates = req.body;
+// ==================== REPOSITORY LAYER (Data Access) ====================
+// Single Responsibility: Handle all database operations for court owners
 
-      const ownerRef = db.collection("courtowners").doc(ownerID);
-      const ownerDoc = await ownerRef.get();
+const CourtOwnerRepository = {
+  async findById(ownerID) {
+    const ownerRef = db.collection("courtowners").doc(ownerID);
+    const ownerDoc = await ownerRef.get();
+    return ownerDoc.exists ? { id: ownerDoc.id, ...ownerDoc.data() } : null;
+  },
 
-      if (!ownerDoc.exists) {
-        return res.status(404).json({ error: "Courtowner not found." });
-      }
+  async update(ownerID, updates) {
+    const ownerRef = db.collection("courtowners").doc(ownerID);
+    await ownerRef.update({
+      ...updates,
+      updatedAt: new Date(),
+    });
+    return await this.findById(ownerID);
+  },
 
-      await ownerRef.update({
-        ...updates,
-        updatedAt: new Date(),
-      });
-
-      res.json({
-        message: "Courtowner profile updated successfully ✅",
-        updatedFields: updates,
-      });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  }
-);
-
-/*
-=====================================================
-🏟️ PUT 2 — Update a Court (Single Court by ID)
-=====================================================
-*/
-router.put("/edit-court", verifyToken(["courtowner"]), async (req, res) => {
-  try {
-    const ownerID = req.user.uid;
-    const updates = req.body;
-
-    // Get all courts owned by this courtowner
-    const courtsQuery = db
-      .collection("courts")
-      .where("courtownerID", "==", ownerID);
-
+  async findCourtsByOwnerId(ownerID) {
+    const courtsQuery = db.collection("courts").where("courtownerID", "==", ownerID);
     const courtsSnapshot = await courtsQuery.get();
+    return courtsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  },
 
-    if (courtsSnapshot.empty) {
-      return res
-        .status(404)
-        .json({ error: "No court found for this courtowner." });
-    }
+  async updateCourts(ownerID, updates) {
+    const courts = await this.findCourtsByOwnerId(ownerID);
+    if (courts.length === 0) return [];
 
-    // Batch update all owned courts
     const batch = db.batch();
-
-    courtsSnapshot.forEach((courtDoc) => {
-      const courtRef = db.collection("courts").doc(courtDoc.id);
+    courts.forEach(court => {
+      const courtRef = db.collection("courts").doc(court.id);
       batch.update(courtRef, {
         ...updates,
         updatedAt: new Date(),
       });
     });
-
     await batch.commit();
+    return courts;
+  },
 
-    res.json({
-      message: "Court(s) updated successfully for this courtowner ✅",
-      updatedFields: updates,
-      updatedCourtsCount: courtsSnapshot.size,
+  async findCourtById(courtID) {
+    const courtRef = db.collection("courts").doc(courtID);
+    const courtDoc = await courtRef.get();
+    return courtDoc.exists ? { id: courtDoc.id, ...courtDoc.data() } : null;
+  },
+
+  async findMatchById(matchID) {
+    const matchRef = db.collection("matches").doc(matchID);
+    const matchDoc = await matchRef.get();
+    return matchDoc.exists ? { id: matchDoc.id, ...matchDoc.data() } : null;
+  },
+
+  async updateMatchWinner(matchID, winnerID) {
+    const matchRef = db.collection("matches").doc(matchID);
+    await matchRef.update({
+      Winner: winnerID,
+      updatedAt: new Date(),
     });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+    return await this.findMatchById(matchID);
+  },
+};
 
-/*
-=====================================================
-📌 GET 1 — Logged-in Courtowner Profile
-=====================================================
-*/
-router.get(  "/courtowner-profile", verifyToken(["courtowner"]),async (req, res) => {
+// ==================== SERVICE LAYER (Business Logic) ====================
+// Single Responsibility: Handle court owner business rules
+
+const CourtOwnerService = {
+  async updateProfile(ownerID, updates) {
+    const owner = await CourtOwnerRepository.findById(ownerID);
+    if (!owner) {
+      throw new Error("Courtowner not found");
+    }
+    return await CourtOwnerRepository.update(ownerID, updates);
+  },
+
+  async getProfile(ownerID) {
+    const owner = await CourtOwnerRepository.findById(ownerID);
+    if (!owner) {
+      throw new Error("Courtowner not found");
+    }
+    return owner;
+  },
+
+  async updateCourt(ownerID, updates) {
+    const courts = await CourtOwnerRepository.updateCourts(ownerID, updates);
+    if (courts.length === 0) {
+      throw new Error("No court found for this courtowner");
+    }
+    return courts;
+  },
+
+  async getCourtById(courtID) {
+    const court = await CourtOwnerRepository.findCourtById(courtID);
+    if (!court) {
+      throw new Error("Court not found");
+    }
+    return court;
+  },
+
+  async getMyCourt(ownerID) {
+    const courts = await CourtOwnerRepository.findCourtsByOwnerId(ownerID);
+    if (courts.length === 0) {
+      throw new Error("No court found for this courtowner");
+    }
+    return courts[0];
+  },
+
+  async setMatchWinner(courtownerID, matchID, winnerID) {
+    // Validation
+    const validation = validateRequired({ winnerID }, ["winnerID"]);
+    if (!validation.isValid) {
+      throw new Error(validation.error);
+    }
+
+    // Get match
+    const match = await CourtOwnerRepository.findMatchById(matchID);
+    if (!match) {
+      throw new Error("Match not found");
+    }
+
+    // Validate winner ID
+    const { Court_ID, Host_Team_ID, Guest_Team_ID } = match;
+    if (winnerID !== Host_Team_ID && winnerID !== Guest_Team_ID) {
+      throw new Error("winnerID must be either Host_Team_ID or Guest_Team_ID");
+    }
+
+    // Check court ownership
+    const court = await CourtOwnerRepository.findCourtById(Court_ID);
+    if (!court) {
+      throw new Error("Court not found for this match");
+    }
+
+    if (court.courtownerID !== courtownerID) {
+      throw new Error("Unauthorized: You do not own the court for this match");
+    }
+
+    // Update winner
+    return await CourtOwnerRepository.updateMatchWinner(matchID, winnerID);
+  },
+};
+
+// ==================== CONTROLLER LAYER (Request Handling) ====================
+// Single Responsibility: Handle HTTP requests and responses
+
+const CourtOwnerController = {
+  async updateProfile(req, res) {
     try {
       const ownerID = req.user.uid;
-
-      const ownerRef = db.collection("courtowners").doc(ownerID);
-      const ownerDoc = await ownerRef.get();
-
-      if (!ownerDoc.exists) {
-        return res.status(404).json({ error: "Courtowner not found." });
-      }
-
-      res.json({
-        message: "Courtowner profile fetched successfully ✅",
-        courtowner: { id: ownerDoc.id, ...ownerDoc.data() },
+      const updatedOwner = await CourtOwnerService.updateProfile(ownerID, req.body);
+      return sendSuccess(res, 200, "Courtowner profile updated successfully ✅", {
+        updatedFields: req.body,
+        courtowner: updatedOwner,
       });
     } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  }
-);
-
-/*
-=====================================================
-🏟️ GET 2 — Get Single Court Details (by Court ID)
-=====================================================
-*/
-router.get(
-  "/court/:courtID",
-  verifyToken(["courtowner", "team", "admin"]),
-  async (req, res) => {
-    try {
-      const courtID = req.params.courtID;
-
-      const courtRef = db.collection("courts").doc(courtID);
-      const courtDoc = await courtRef.get();
-
-      if (!courtDoc.exists) {
-        return res.status(404).json({ error: "Court not found." });
+      if (error.message === "Courtowner not found") {
+        return sendNotFoundError(res, "Courtowner");
       }
+      return sendError(res, 500, error.message);
+    }
+  },
 
-      res.json({
-        message: "Court details fetched successfully ✅",
-        court: { id: courtDoc.id, ...courtDoc.data() },
+  async getProfile(req, res) {
+    try {
+      const ownerID = req.user.uid;
+      const owner = await CourtOwnerService.getProfile(ownerID);
+      return sendSuccess(res, 200, "Courtowner profile fetched successfully ✅", { courtowner: owner });
+    } catch (error) {
+      if (error.message === "Courtowner not found") {
+        return sendNotFoundError(res, "Courtowner");
+      }
+      return sendError(res, 500, error.message);
+    }
+  },
+
+  async updateCourt(req, res) {
+    try {
+      const ownerID = req.user.uid;
+      const courts = await CourtOwnerService.updateCourt(ownerID, req.body);
+      return sendSuccess(res, 200, "Court(s) updated successfully for this courtowner ✅", {
+        updatedFields: req.body,
+        updatedCourtsCount: courts.length,
       });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      if (error.message.includes("No court found")) {
+        return sendNotFoundError(res, "Court");
+      }
+      return sendError(res, 500, error.message);
     }
-  }
-);
+  },
 
-// 🟦 GET Court Details for Logged-in Courtowner
-router.get("/my-court", verifyToken(["courtowner"]), async (req, res) => {
-  try {
-    const ownerID = req.user.uid;
-
-    // Find the court that belongs to this courtowner
-    const courtQuery = await db
-      .collection("courts")
-      .where("courtownerID", "==", ownerID)
-      .limit(1)
-      .get();
-
-    if (courtQuery.empty) {
-      return res.status(404).json({
-        error: "No court found for this courtowner.",
-      });
-    }
-
-    const courtDoc = courtQuery.docs[0];
-
-    res.json({
-      message: "Court fetched successfully ✅",
-      court: {
-        id: courtDoc.id,
-        ...courtDoc.data(),
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-router.put( "/makewinner/:matchID",verifyToken(["courtowner"]),
-  async (req, res) => {
+  async getCourtById(req, res) {
     try {
-      const courtownerID = req.user.uid; // logged-in courtowner UID
-      const matchID = req.params.matchID;
+      const { courtID } = req.params;
+      const court = await CourtOwnerService.getCourtById(courtID);
+      return sendSuccess(res, 200, "Court details fetched successfully ✅", { court });
+    } catch (error) {
+      if (error.message === "Court not found") {
+        return sendNotFoundError(res, "Court");
+      }
+      return sendError(res, 500, error.message);
+    }
+  },
+
+  async getMyCourt(req, res) {
+    try {
+      const ownerID = req.user.uid;
+      const court = await CourtOwnerService.getMyCourt(ownerID);
+      return sendSuccess(res, 200, "Court fetched successfully ✅", { court });
+    } catch (error) {
+      if (error.message.includes("No court found")) {
+        return sendNotFoundError(res, "Court");
+      }
+      return sendError(res, 500, error.message);
+    }
+  },
+
+  async setMatchWinner(req, res) {
+    try {
+      const courtownerID = req.user.uid;
+      const { matchID } = req.params;
       const { winnerID } = req.body;
-
-      if (!winnerID) {
-        return res.status(400).json({ error: "winnerID is required." });
-      }
-
-      // 1️⃣ Fetch match
-      const matchRef = db.collection("matches").doc(matchID);
-      const matchDoc = await matchRef.get();
-
-      if (!matchDoc.exists) {
-        return res.status(404).json({ error: "Match not found." });
-      }
-
-      const matchData = matchDoc.data();
-      const { Court_ID, Host_Team_ID, Guest_Team_ID } = matchData;
-
-      // 2️⃣ Validate winner ID belongs to one of the two teams
-      if (winnerID !== Host_Team_ID && winnerID !== Guest_Team_ID) {
-        return res.status(400).json({
-          error: "winnerID must be either Host_Team_ID or Guest_Team_ID.",
-        });
-      }
-
-      // 3️⃣ Fetch court of this match
-      const courtDoc = await db.collection("courts").doc(Court_ID).get();
-
-      if (!courtDoc.exists) {
-        return res
-          .status(404)
-          .json({ error: "Court not found for this match." });
-      }
-
-      const courtData = courtDoc.data();
-
-      // 4️⃣ Check court belongs to logged-in courtowner
-      if (courtData.courtownerID !== courtownerID) {
-        return res.status(403).json({
-          error: "Unauthorized: You do not own the court for this match.",
-        });
-      }
-
-      // 5️⃣ Update winner
-      await matchRef.update({
-        Winner: winnerID,
-        updatedAt: new Date(),
-      });
-
-      res.json({
-        message: "Winner updated successfully ✅",
+      const match = await CourtOwnerService.setMatchWinner(courtownerID, matchID, winnerID);
+      return sendSuccess(res, 200, "Winner updated successfully ✅", {
         matchID,
         winnerID,
+        match,
       });
     } catch (error) {
-      console.error("❌ Error updating winner:", error);
-      res.status(500).json({ error: error.message });
+      if (error.message === "Match not found" || error.message === "Court not found") {
+        return sendNotFoundError(res, error.message.split(" ")[0]);
+      }
+      if (error.message.includes("Unauthorized")) {
+        return sendUnauthorizedError(res, error.message);
+      }
+      if (error.message.includes("required") || error.message.includes("must be")) {
+        return sendValidationError(res, error.message);
+      }
+      return sendError(res, 500, error.message);
     }
-  }
-);
+  },
+};
+
+// ==================== ROUTES ====================
+
+router.put("/edit-courtowner", verifyToken(["courtowner"]), CourtOwnerController.updateProfile);
+router.put("/edit-court", verifyToken(["courtowner"]), CourtOwnerController.updateCourt);
+router.get("/courtowner-profile", verifyToken(["courtowner"]), CourtOwnerController.getProfile);
+router.get("/court/:courtID", verifyToken(["courtowner", "team", "admin"]), CourtOwnerController.getCourtById);
+router.get("/my-court", verifyToken(["courtowner"]), CourtOwnerController.getMyCourt);
+router.put("/makewinner/:matchID", verifyToken(["courtowner"]), CourtOwnerController.setMatchWinner);
 
 export default router;

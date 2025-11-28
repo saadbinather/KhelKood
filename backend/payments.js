@@ -1,33 +1,62 @@
 import express from "express";
 import { db } from "./config/firebase.js";
 import { verifyToken } from "./middleware/verifyToken.js";
+import { sendSuccess, sendError, sendValidationError, sendNotFoundError, sendUnauthorizedError } from "./utils/response.js";
+import { validateRequired, validatePositiveNumber } from "./utils/validators.js";
 
 const router = express.Router();
 
-// 💳 Create Payment with Pending Status
-router.post("/create-payment", verifyToken(["team"]), async (req, res) => {
-  try {
-    const { amount, bookingID } = req.body;
-    const teamID = req.user.uid; // logged-in team UID
+// ==================== REPOSITORY LAYER (Data Access) ====================
+// Single Responsibility: Handle all database operations for payments
 
-    // 🔹 Validation
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ error: "Valid amount is required" });
-    }
-
-    if (!bookingID || bookingID.trim() === "") {
-      return res.status(400).json({ error: "bookingID is required" });
-    }
-
-    // 🔹 Optional: Verify booking exists
+const PaymentRepository = {
+  async findBookingById(bookingID) {
     const bookingRef = db.collection("bookings").doc(bookingID);
     const bookingDoc = await bookingRef.get();
-    
-    if (!bookingDoc.exists) {
-      return res.status(404).json({ error: "Booking not found" });
+    return bookingDoc.exists ? { id: bookingDoc.id, ...bookingDoc.data() } : null;
+  },
+
+  async create(paymentData) {
+    const paymentRef = await db.collection("payments").add(paymentData);
+    return { id: paymentRef.id, ...paymentData };
+  },
+
+  async findById(paymentID) {
+    const paymentRef = db.collection("payments").doc(paymentID);
+    const paymentDoc = await paymentRef.get();
+    return paymentDoc.exists ? { id: paymentDoc.id, ...paymentDoc.data() } : null;
+  },
+
+  async update(paymentID, updateData) {
+    const paymentRef = db.collection("payments").doc(paymentID);
+    await paymentRef.update(updateData);
+    return await this.findById(paymentID);
+  },
+};
+
+// ==================== SERVICE LAYER (Business Logic) ====================
+// Single Responsibility: Handle payment business rules
+
+const PaymentService = {
+  async createPayment(teamID, { amount, bookingID }) {
+    // Validation
+    const amountValidation = validatePositiveNumber(amount, "amount");
+    if (!amountValidation.isValid) {
+      throw new Error(amountValidation.error);
     }
 
-    // 🔹 Create payment data
+    const bookingValidation = validateRequired({ bookingID }, ["bookingID"]);
+    if (!bookingValidation.isValid) {
+      throw new Error(bookingValidation.error);
+    }
+
+    // Verify booking exists
+    const booking = await PaymentRepository.findBookingById(bookingID.trim());
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
+    // Create payment data
     const paymentData = {
       amount: Number(amount),
       bookingID: bookingID.trim(),
@@ -37,85 +66,94 @@ router.post("/create-payment", verifyToken(["team"]), async (req, res) => {
       updatedAt: new Date(),
     };
 
-    // 🔹 Save to Firestore
-    const paymentRef = await db.collection("payments").add(paymentData);
+    return await PaymentRepository.create(paymentData);
+  },
 
-    res.status(201).json({
-      message: "Payment created successfully ✅",
-      paymentID: paymentRef.id,
-      payment: paymentData,
-    });
-  } catch (error) {
-    console.error("❌ Error creating payment:", error);
-    res.status(500).json({
-      error: error.message,
-    });
-  }
-});
-
-// 💳 Update Payment Status to Paid
-router.put("/update-payment/:paymentID", verifyToken(["team", "courtowner"]), async (req, res) => {
-  try {
-    const { paymentID } = req.params;
-    const userID = req.user.uid; // logged-in user UID (team or courtowner)
-
-    // 🔹 Validation
+  async updatePaymentStatus(paymentID, userID, userRole) {
+    // Validation
     if (!paymentID || paymentID.trim() === "") {
-      return res.status(400).json({ error: "paymentID is required" });
+      throw new Error("paymentID is required");
     }
 
-    // 🔹 Verify payment exists
-    const paymentRef = db.collection("payments").doc(paymentID);
-    const paymentDoc = await paymentRef.get();
-    
-    if (!paymentDoc.exists) {
-      return res.status(404).json({ error: "Payment not found" });
+    // Get payment
+    const payment = await PaymentRepository.findById(paymentID);
+    if (!payment) {
+      throw new Error("Payment not found");
     }
 
-    const paymentData = paymentDoc.data();
-
-    // 🔹 Optional: Check if user is authorized to update this payment
-    // Team can only update their own payments, courtowner can update any payment for their court
-    if (req.user.role === "team" && paymentData.teamID !== userID) {
-      return res.status(403).json({ 
-        error: "Unauthorized - You can only update your own payments" 
-      });
+    // Authorization check
+    if (userRole === "team" && payment.teamID !== userID) {
+      throw new Error("Unauthorized - You can only update your own payments");
     }
 
-    // 🔹 Check if payment is already paid
-    if (paymentData.status === true) {
-      return res.status(400).json({ 
-        error: "Payment is already completed",
-        payment: paymentData
-      });
+    // Check if already paid
+    if (payment.status === true) {
+      throw new Error("Payment is already completed");
     }
 
-    // 🔹 Update payment data - ONLY status and updatedAt
+    // Update payment
     const updateData = {
       status: true, // true = payment completed
       updatedAt: new Date(),
     };
 
-    // 🔹 Update in Firestore
-    await paymentRef.update(updateData);
+    return await PaymentRepository.update(paymentID, updateData);
+  },
+};
 
-    // 🔹 Get updated payment data
-    const updatedPaymentDoc = await paymentRef.get();
-    const updatedPayment = {
-      id: updatedPaymentDoc.id,
-      ...updatedPaymentDoc.data()
-    };
+// ==================== CONTROLLER LAYER (Request Handling) ====================
+// Single Responsibility: Handle HTTP requests and responses
 
-    res.status(200).json({
-      message: "Payment status updated to paid successfully ✅",
-      payment: updatedPayment,
-    });
-  } catch (error) {
-    console.error("❌ Error updating payment status:", error);
-    res.status(500).json({
-      error: error.message,
-    });
-  }
-});
+const PaymentController = {
+  async createPayment(req, res) {
+    try {
+      const teamID = req.user.uid;
+      const payment = await PaymentService.createPayment(teamID, req.body);
+      
+      return sendSuccess(res, 201, "Payment created successfully ✅", {
+        paymentID: payment.id,
+        payment,
+      });
+    } catch (error) {
+      if (error.message === "Booking not found") {
+        return sendNotFoundError(res, "Booking");
+      }
+      if (error.message.includes("required") || error.message.includes("Valid")) {
+        return sendValidationError(res, error.message);
+      }
+      return sendError(res, 500, error.message);
+    }
+  },
+
+  async updatePaymentStatus(req, res) {
+    try {
+      const { paymentID } = req.params;
+      const userID = req.user.uid;
+      const userRole = req.user.role;
+      
+      const payment = await PaymentService.updatePaymentStatus(paymentID, userID, userRole);
+      
+      return sendSuccess(res, 200, "Payment status updated to paid successfully ✅", { payment });
+    } catch (error) {
+      if (error.message === "Payment not found") {
+        return sendNotFoundError(res, "Payment");
+      }
+      if (error.message.includes("Unauthorized")) {
+        return sendUnauthorizedError(res, error.message);
+      }
+      if (error.message.includes("already completed")) {
+        return sendValidationError(res, error.message);
+      }
+      if (error.message.includes("required")) {
+        return sendValidationError(res, error.message);
+      }
+      return sendError(res, 500, error.message);
+    }
+  },
+};
+
+// ==================== ROUTES ====================
+router.post("/create-payment", verifyToken(["team"]), PaymentController.createPayment);
+router.put("/update-payment/:paymentID", verifyToken(["team", "courtowner"]), PaymentController.updatePaymentStatus);
 
 export default router;

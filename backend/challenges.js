@@ -1,35 +1,68 @@
 import express from "express";
 import { db } from "./config/firebase.js";
 import { verifyToken } from "./middleware/verifyToken.js";
+import { sendSuccess, sendError, sendValidationError, sendNotFoundError } from "./utils/response.js";
+import { validateRequired, validateDateRange } from "./utils/validators.js";
 
 const router = express.Router();
 
-// 🏆 Create a Challenge
-router.post("/create", verifyToken(["team"]), async (req, res) => {
-  try {
-    const { courtFirebaseUID, stime, etime } = req.body;
-    const hostTeamUID = req.user.uid; // logged-in team's Firebase UID
+// ==================== REPOSITORY LAYER (Data Access) ====================
+// Single Responsibility: Handle all database operations for challenges
 
-    // 🔹 Get team info by userId
+const ChallengeRepository = {
+  async findTeamByUserId(userId) {
     const teamQuery = await db
       .collection("teams")
-      .where("userId", "==", hostTeamUID)
+      .where("userId", "==", userId)
       .limit(1)
       .get();
+    
+    if (teamQuery.empty) return null;
+    const teamDoc = teamQuery.docs[0];
+    return { id: teamDoc.id, ...teamDoc.data() };
+  },
 
-    if (teamQuery.empty) {
-      return res.status(404).json({ error: "Team not found" });
+  async create(challengeData) {
+    const docRef = await db.collection("challenges").add(challengeData);
+    return { id: docRef.id, ...challengeData };
+  },
+
+  async findById(challengeID) {
+    const challengeDoc = await db.collection("challenges").doc(challengeID).get();
+    return challengeDoc.exists ? { id: challengeDoc.id, ...challengeDoc.data() } : null;
+  },
+};
+
+// ==================== SERVICE LAYER (Business Logic) ====================
+// Single Responsibility: Handle challenge business rules
+
+const ChallengeService = {
+  async createChallenge(hostTeamUID, { courtFirebaseUID, stime, etime }) {
+    // Validation
+    const validation = validateRequired(
+      { courtFirebaseUID, stime, etime },
+      ["courtFirebaseUID", "stime", "etime"]
+    );
+    if (!validation.isValid) {
+      throw new Error(validation.error);
     }
 
-    const teamDoc = teamQuery.docs[0];
-    const teamData = teamDoc.data();
-    const sport = teamData.sports;
+    const dateValidation = validateDateRange(stime, etime);
+    if (!dateValidation.isValid) {
+      throw new Error(dateValidation.error);
+    }
 
-    // ✅ Build challenge data
+    // Get team info
+    const team = await ChallengeRepository.findTeamByUserId(hostTeamUID);
+    if (!team) {
+      throw new Error("Team not found");
+    }
+
+    // Build challenge data
     const challengeData = {
       hostTeamID: hostTeamUID,
-      teamName: teamData.teamName,
-      sport,
+      teamName: team.teamName,
+      sport: team.sports,
       courtFirebaseUID,
       stime,
       etime,
@@ -37,40 +70,59 @@ router.post("/create", verifyToken(["team"]), async (req, res) => {
       createdAt: new Date(),
     };
 
-    // ✅ Save to Firestore
-    const docRef = await db.collection("challenges").add(challengeData);
+    return await ChallengeRepository.create(challengeData);
+  },
 
-    res.status(201).json({
-      message: "Challenge created successfully ✅",
-      challengeID: docRef.id,
-      challenge: challengeData,
-    });
-  } catch (error) {
-    console.error("Error creating challenge:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-
-// 🏆 Get Challenge Details by Firestore Document ID
-router.get("/challenge-details/:challengeID", verifyToken(["team"]), async (req, res) => {
-  try {
-    const { challengeID } = req.params;
-
-    // Use the document ID directly
-    const challengeDoc = await db.collection("challenges").doc(challengeID).get();
-
-    if (!challengeDoc.exists) {
-      return res.status(404).json({ error: "Challenge not found" });
+  async getChallengeById(challengeID) {
+    const challenge = await ChallengeRepository.findById(challengeID);
+    if (!challenge) {
+      throw new Error("Challenge not found");
     }
+    return challenge;
+  },
+};
 
-    res.json({
-      message: "Challenge fetched successfully ✅",
-      challenge: { id: challengeDoc.id, ...challengeDoc.data() }, // doc ID included manually
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// ==================== CONTROLLER LAYER (Request Handling) ====================
+// Single Responsibility: Handle HTTP requests and responses
+
+const ChallengeController = {
+  async create(req, res) {
+    try {
+      const hostTeamUID = req.user.uid;
+      const challenge = await ChallengeService.createChallenge(hostTeamUID, req.body);
+      
+      return sendSuccess(res, 201, "Challenge created successfully ✅", {
+        challengeID: challenge.id,
+        challenge,
+      });
+    } catch (error) {
+      if (error.message === "Team not found" || error.message === "Challenge not found") {
+        return sendNotFoundError(res, error.message.split(" ")[0]);
+      }
+      if (error.message.includes("required") || error.message.includes("Invalid date")) {
+        return sendValidationError(res, error.message);
+      }
+      return sendError(res, 500, error.message);
+    }
+  },
+
+  async getChallengeDetails(req, res) {
+    try {
+      const { challengeID } = req.params;
+      const challenge = await ChallengeService.getChallengeById(challengeID);
+      
+      return sendSuccess(res, 200, "Challenge fetched successfully ✅", { challenge });
+    } catch (error) {
+      if (error.message === "Challenge not found") {
+        return sendNotFoundError(res, "Challenge");
+      }
+      return sendError(res, 500, error.message);
+    }
+  },
+};
+
+// ==================== ROUTES ====================
+router.post("/create", verifyToken(["team"]), ChallengeController.create);
+router.get("/challenge-details/:challengeID", verifyToken(["team"]), ChallengeController.getChallengeDetails);
 
 export default router;

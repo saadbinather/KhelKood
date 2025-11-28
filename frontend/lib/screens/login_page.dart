@@ -182,6 +182,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../Admin/dashboard.dart';
 
 import 'dashboard_page.dart';
 import '../CourtOwner/dash_board.dart'; // Court Owner Dashboard
@@ -205,7 +206,7 @@ class _LoginPageState extends State<LoginPage> {
   Future<String?> authenticateUser(String email, String password) async {
     try {
       final response = await http.post(
-        Uri.parse("http://127.0.0.1:5000/api/login"),
+        Uri.parse("http://localhost:5000/api/auth/login"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"email": email, "password": password}),
       );
@@ -278,11 +279,9 @@ class _LoginPageState extends State<LoginPage> {
         MaterialPageRoute(builder: (_) => const DashboardPage()),
       );
     } else if (role == "admin") {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Admin login coming soon"),
-          backgroundColor: Colors.orange,
-        ),
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => AdminDashboard()),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

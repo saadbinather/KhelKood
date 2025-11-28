@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../Admin/dashboard.dart';
-
-import 'dashboard_page.dart';
 import '../CourtOwner/dash_board.dart';
+import 'dashboard_page.dart';
+import 'choose_register_page.dart'; // NEW PAGE
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -129,7 +129,7 @@ class _LoginPageState extends State<LoginPage> {
     } else if (role == "admin") {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => AdminDashboard()),
+        MaterialPageRoute(builder: (_) => AdminDashboard()),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -204,6 +204,8 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
             const SizedBox(height: 40),
+
+            // EMAIL FIELD
             TextField(
               controller: emailController,
               style: const TextStyle(color: Colors.white),
@@ -217,7 +219,10 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ),
+
             const SizedBox(height: 20),
+
+            // PASSWORD FIELD
             TextField(
               controller: passwordController,
               obscureText: true,
@@ -232,7 +237,10 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ),
+
             const SizedBox(height: 30),
+
+            // LOGIN BUTTON
             SizedBox(
               width: double.infinity,
               height: 48,
@@ -254,6 +262,26 @@ class _LoginPageState extends State<LoginPage> {
                           letterSpacing: 1.2,
                         ),
                       ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // NEW TEXT BUTTON: New to KhelKood?
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ChooseRegisterPage()),
+                );
+              },
+              child: const Text(
+                "New to KhelKood?",
+                style: TextStyle(
+                  color: Colors.redAccent,
+                  fontSize: 16,
+                  decoration: TextDecoration.underline,
+                ),
               ),
             ),
           ],

@@ -213,7 +213,9 @@ const AuthService = {
             "Account rejected by admin. Please contact support for assistance."
           );
         }
-        throw new Error("Account pending verification. Please wait for approval.");
+        throw new Error(
+          "Account pending verification. Please wait for approval."
+        );
       }
     } else {
       const isAdmin = await AuthRepository.findAdminByEmail(email);
@@ -269,11 +271,24 @@ const AuthController = {
       return sendError(res, 400, errorMessage);
     }
   },
+
+  async logout(req, res) {
+    try {
+      // Logout is primarily client-side (token removal)
+      // This endpoint can be used for logging logout events, invalidating tokens, etc.
+      // For now, we'll just return success
+      return sendSuccess(res, 200, "Logout successful", null);
+    } catch (error) {
+      return sendError(res, 500, error.message);
+    }
+  },
 };
 
 // ==================== ROUTES ====================
 router.post("/signup", AuthController.signup);
 
 router.post("/login", AuthController.login);
+
+router.post("/logout", AuthController.logout);
 
 export default router;

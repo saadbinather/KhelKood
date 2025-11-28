@@ -69,9 +69,28 @@ class AdminDashboard extends StatelessWidget {
     );
 
     if (confirmed == true) {
-      // Clear token
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('auth_token');
+      try {
+        // Call logout endpoint
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('auth_token');
+        
+        if (token != null) {
+          await http.post(
+            Uri.parse('http://localhost:5000/api/auth/logout'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          );
+        }
+        
+        // Clear local token
+        await prefs.remove('auth_token');
+      } catch (e) {
+        // Even if API call fails, clear local token
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('auth_token');
+      }
       
       // Navigate to login page
       if (context.mounted) {

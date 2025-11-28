@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 import '../screens/login_page.dart';
 import 'court_management_page.dart';
 import 'booking_management_page.dart';
@@ -33,8 +35,28 @@ class CourtOwnerDashboard extends StatelessWidget {
     );
 
     if (confirmed == true) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('auth_token');
+      try {
+        // Call logout endpoint
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('auth_token');
+        
+        if (token != null) {
+          await http.post(
+            Uri.parse('http://localhost:5000/api/auth/logout'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          );
+        }
+        
+        // Clear local token
+        await prefs.remove('auth_token');
+      } catch (e) {
+        // Even if API call fails, clear local token
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('auth_token');
+      }
       
       if (context.mounted) {
         Navigator.pushAndRemoveUntil(

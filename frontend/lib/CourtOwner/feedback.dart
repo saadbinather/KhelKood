@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class CourtFeedbackPage extends StatefulWidget {
-  const CourtFeedbackPage({Key? key}) : super(key: key);
+  const CourtFeedbackPage({super.key});
 
   @override
   State<CourtFeedbackPage> createState() => _CourtFeedbackPageState();

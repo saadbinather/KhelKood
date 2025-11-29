@@ -184,7 +184,7 @@ const AuthService = {
         courtownerID: firebase_uid,
         numOfCricketFields: Number(numOfCricketFields) || 0,
         numOfPadelCourts: Number(numOfPadelCourts) || 0,
-        numOfPadelFields: Number(numOfFutsalFields) || 0,
+        numOfFutsalFields: Number(numOfFutsalFields) || 0,
         cricketRate: Number(cricketRate) || 0,
         futsalRate: Number(futsalRate) || 0,
         padelRate: Number(padelRate) || 0,

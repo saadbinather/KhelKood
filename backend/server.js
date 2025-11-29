@@ -11,6 +11,7 @@ import challengeRoutes from "./challenges.js";
 import courtownerRoutes from "./courtOwner.js";
 import adminRoutes from "./admin.js";
 import userRoutes from "./user.js";
+import reviewRoutes from "./review.js";
 import { sendSuccess, sendError, sendNotFoundError } from "./utils/response.js";
 
 const app = express();
@@ -27,6 +28,7 @@ app.use("/api/booking", bookingRoutes);
 app.use("/api/match", matchRoutes);
 app.use("/api/challenges", challengeRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/review", reviewRoutes);
 
 // ==================== ADDITIONAL ROUTES ====================
 // Example protected route

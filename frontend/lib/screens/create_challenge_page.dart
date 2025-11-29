@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import '../widgets/time_slot_grid.dart';
 
 class CreateChallengePage extends StatefulWidget {
   const CreateChallengePage({super.key});
@@ -136,20 +137,6 @@ class _CreateChallengePageState extends State<CreateChallengePage> {
     });
   }
 
-  bool _isSlotSelected(int dayIndex, int hour) {
-    if (selectedStartSlot == null || selectedEndSlot == null) return false;
-    final slotIndex = dayIndex * 24 + hour;
-    final start = selectedStartSlot!;
-    final end = selectedEndSlot!;
-    return slotIndex >= start && slotIndex <= end;
-  }
-
-  bool _isSlotInRange(int dayIndex, int hour) {
-    if (selectedCourt == null) return false;
-    final openingTime = selectedCourt!['openingTime'] ?? 8;
-    final closingTime = selectedCourt!['closingTime'] ?? 23;
-    return hour >= openingTime && hour <= closingTime;
-  }
 
   DateTime? _getSelectedStartDateTime() {
     if (selectedStartSlot == null) return null;
@@ -366,124 +353,17 @@ class _CreateChallengePageState extends State<CreateChallengePage> {
     }
 
     final days = _getNext7Days();
-    final availableHours = _getAvailableHours();
-    final openingTime = selectedCourt!['openingTime'] ?? 8;
-    final closingTime = selectedCourt!['closingTime'] ?? 23;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 30),
-        const Divider(color: Colors.white24),
-        const SizedBox(height: 20),
-        Row(
-          children: [
-            const Text(
-              'Select Time Slot',
-              style: TextStyle(
-                color: Colors.redAccent,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const Spacer(),
-            Text(
-              '${openingTime}:00 - ${closingTime}:00',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
-            ),
-          ],
+        TimeSlotGrid(
+          selectedCourt: selectedCourt,
+          selectedStartSlot: selectedStartSlot,
+          selectedEndSlot: selectedEndSlot,
+          onSlotSelected: _selectTimeSlot,
+          days: days,
         ),
-        const SizedBox(height: 8),
-        const Text(
-          'Select 2-3 consecutive hours on the same day',
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
-          ),
-        ),
-        const SizedBox(height: 20),
-        
-        // Time slot grid
-        ...days.asMap().entries.map((entry) {
-          final dayIndex = entry.key;
-          final day = entry.value;
-          final dayName = _getDayName(day);
-          final dateStr = '${day.day}/${day.month}';
-          
-          return Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.grey[900],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.redAccent.withOpacity(0.3),
-                width: 1,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$dayName, $dateStr',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: availableHours.map((hour) {
-                    final isSelected = _isSlotSelected(dayIndex, hour);
-                    final isInRange = _isSlotInRange(dayIndex, hour);
-                    
-                    return GestureDetector(
-                      onTap: isInRange ? () => _selectTimeSlot(dayIndex, hour) : null,
-                      child: Container(
-                        width: 60,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? Colors.redAccent
-                              : isInRange
-                                  ? Colors.grey[800]
-                                  : Colors.grey[900],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isSelected
-                                ? Colors.redAccent
-                                : Colors.white24,
-                            width: isSelected ? 2 : 1,
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            '$hour:00',
-                            style: TextStyle(
-                              color: isSelected
-                                  ? Colors.white
-                                  : isInRange
-                                      ? Colors.white70
-                                      : Colors.white38,
-                              fontSize: 12,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          );
-        }),
         
         const SizedBox(height: 20),
         

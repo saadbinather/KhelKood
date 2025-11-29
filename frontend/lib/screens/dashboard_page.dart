@@ -8,6 +8,8 @@ import 'leaderboard_page.dart';
 import 'challenges_page.dart';
 import 'available_courts_page.dart';
 import 'create_challenge_page.dart';
+import 'create_booking_page.dart';
+import 'all_courts_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -573,16 +575,28 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                   _buildDashboardCard(
                     context: context,
-                    title: 'Bookings',
-                    subtitle: 'Create new bookings',
+                    title: 'Book a court for yourself',
+                    subtitle: 'Friendly match',
                     icon: Icons.calendar_today,
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const AvailableCourtsPage(
-                            actionType: "booking",
-                          ),
+                          builder: (context) => const CreateBookingPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDashboardCard(
+                    context: context,
+                    title: 'All Courts',
+                    subtitle: 'Browse and review courts',
+                    icon: Icons.sports_soccer,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AllCourtsPage(),
                         ),
                       );
                     },

@@ -12,6 +12,8 @@ import courtownerRoutes from "./courtOwner.js";
 import adminRoutes from "./admin.js";
 import userRoutes from "./user.js";
 import courtsRoutes from "./courts.js";
+import reviewsRoutes from "./reviews.js";
+import leaderboardRoutes from "./leaderboard.js";
 import { sendSuccess, sendError, sendNotFoundError } from "./utils/response.js";
 
 const app = express();
@@ -29,6 +31,8 @@ app.use("/api/match", matchRoutes);
 app.use("/api/challenges", challengeRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/courts", courtsRoutes);
+app.use("/api/reviews", reviewsRoutes);
+app.use("/api/leaderboard", leaderboardRoutes);
 
 // ==================== ADDITIONAL ROUTES ====================
 // Example protected route

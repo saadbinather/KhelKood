@@ -55,6 +55,37 @@ const CourtOwnerRepository = {
     return courts;
   },
 
+  async incrementFieldCount(ownerID, sportType) {
+    const courts = await this.findCourtsByOwnerId(ownerID);
+    if (courts.length === 0) {
+      throw new Error("No court found for this courtowner");
+    }
+
+    const court = courts[0];
+    const courtRef = db.collection("courts").doc(court.id);
+    const currentData = court;
+
+    let fieldToUpdate = "";
+    const sport = sportType.toLowerCase();
+    if (sport === "cricket") {
+      fieldToUpdate = "numOfCricketFields";
+    } else if (sport === "futsal" || sport === "football") {
+      fieldToUpdate = "numOfPadelFields"; // Based on the naming in auth.js, this is for futsal
+    } else if (sport === "padel") {
+      fieldToUpdate = "numOfPadelCourts";
+    } else {
+      throw new Error("Invalid sport type");
+    }
+
+    const currentCount = Number(currentData[fieldToUpdate]) || 0;
+    await courtRef.update({
+      [fieldToUpdate]: currentCount + 1,
+      updatedAt: new Date(),
+    });
+
+    return await this.findCourtById(court.id);
+  },
+
   async findCourtById(courtID) {
     const courtRef = db.collection("courts").doc(courtID);
     const courtDoc = await courtRef.get();
@@ -137,6 +168,20 @@ const CourtOwnerRepository = {
     });
     return await this.findBookingById(bookingID);
   },
+
+  async create(courtData) {
+    const docRef = await db.collection("courts").add(courtData);
+    return { id: docRef.id, ...courtData };
+  },
+
+  async updateSingle(courtID, updates) {
+    const courtRef = db.collection("courts").doc(courtID);
+    await courtRef.update({
+      ...updates,
+      updatedAt: new Date(),
+    });
+    return await this.findCourtById(courtID);
+  },
 };
 
 // ==================== SERVICE LAYER (Business Logic) ====================
@@ -197,6 +242,21 @@ const CourtOwnerService = {
     return courts;
   },
 
+  async addField(ownerID, sportType) {
+    // Validation
+    const validation = validateRequired({ sportType }, ["sportType"]);
+    if (!validation.isValid) {
+      throw new Error(validation.error);
+    }
+
+    const validSports = ["cricket", "futsal", "football", "padel"];
+    if (!validSports.includes(sportType.toLowerCase())) {
+      throw new Error("Invalid sport type. Must be: cricket, futsal, football, or padel");
+    }
+
+    return await CourtOwnerRepository.incrementFieldCount(ownerID, sportType);
+  },
+
   async getCourtById(courtID) {
     const court = await CourtOwnerRepository.findCourtById(courtID);
     if (!court) {
@@ -211,6 +271,47 @@ const CourtOwnerService = {
       throw new Error("No court found for this courtowner");
     }
     return courts[0];
+  },
+
+  async getAllCourts(ownerID) {
+    const courts = await CourtOwnerRepository.findCourtsByOwnerId(ownerID);
+    return courts;
+  },
+
+  async createCourt(ownerID, courtData) {
+    const validation = validateRequired(courtData, ["sport"]);
+    if (!validation.isValid) {
+      throw new Error(validation.error);
+    }
+
+    const newCourt = {
+      name: null,
+      address: "",
+      courtownerID: ownerID,
+      sport: courtData.sport,
+      cricketRate: courtData.cricketRate || 0,
+      futsalRate: courtData.futsalRate || 0,
+      padelRate: courtData.padelRate || 0,
+      rating: 0,
+      openingTime: 8,
+      closingTime: 23,
+      createdAt: new Date(),
+    };
+
+    return await CourtOwnerRepository.create(newCourt);
+  },
+
+  async updateSingleCourt(ownerID, courtID, updates) {
+    const court = await CourtOwnerRepository.findCourtById(courtID);
+    if (!court) {
+      throw new Error("Court not found");
+    }
+
+    if (court.courtownerID !== ownerID) {
+      throw new Error("Unauthorized: You do not own this court");
+    }
+
+    return await CourtOwnerRepository.updateSingle(courtID, updates);
   },
 
   async setMatchWinner(courtownerID, matchID, winnerID) {
@@ -448,6 +549,50 @@ const CourtOwnerController = {
     }
   },
 
+  async getAllCourts(req, res) {
+    try {
+      const ownerID = req.user.uid;
+      const courts = await CourtOwnerService.getAllCourts(ownerID);
+      return sendSuccess(res, 200, "Courts fetched successfully ✅", { courts });
+    } catch (error) {
+      return sendError(res, 500, error.message);
+    }
+  },
+
+  async createCourt(req, res) {
+    try {
+      const ownerID = req.user.uid;
+      const court = await CourtOwnerService.createCourt(ownerID, req.body);
+      return sendSuccess(res, 201, "Court created successfully ✅", { court });
+    } catch (error) {
+      if (error.message.includes("required")) {
+        return sendValidationError(res, error.message);
+      }
+      return sendError(res, 500, error.message);
+    }
+  },
+
+  async updateSingleCourt(req, res) {
+    try {
+      const ownerID = req.user.uid;
+      const { courtID } = req.params;
+      const court = await CourtOwnerService.updateSingleCourt(
+        ownerID,
+        courtID,
+        req.body
+      );
+      return sendSuccess(res, 200, "Court updated successfully ✅", { court });
+    } catch (error) {
+      if (error.message === "Court not found") {
+        return sendNotFoundError(res, "Court");
+      }
+      if (error.message.includes("Unauthorized")) {
+        return sendUnauthorizedError(res, error.message);
+      }
+      return sendError(res, 500, error.message);
+    }
+  },
+
   async setMatchWinner(req, res) {
     try {
       const courtownerID = req.user.uid;
@@ -541,6 +686,23 @@ const CourtOwnerController = {
       return sendError(res, 500, error.message);
     }
   },
+
+  async addField(req, res) {
+    try {
+      const ownerID = req.user.uid;
+      const { sportType } = req.body;
+      const court = await CourtOwnerService.addField(ownerID, sportType);
+      return sendSuccess(res, 200, "Field added successfully ✅", { court });
+    } catch (error) {
+      if (error.message.includes("required") || error.message.includes("Invalid")) {
+        return sendValidationError(res, error.message);
+      }
+      if (error.message.includes("No court found")) {
+        return sendNotFoundError(res, "Court");
+      }
+      return sendError(res, 500, error.message);
+    }
+  },
 };
 
 // ==================== ROUTES ====================
@@ -570,6 +732,21 @@ router.get(
   verifyToken(["courtowner"]),
   CourtOwnerController.getMyCourt
 );
+router.get(
+  "/courts",
+  verifyToken(["courtowner"]),
+  CourtOwnerController.getAllCourts
+);
+router.post(
+  "/courts",
+  verifyToken(["courtowner"]),
+  CourtOwnerController.createCourt
+);
+router.put(
+  "/courts/:courtID",
+  verifyToken(["courtowner"]),
+  CourtOwnerController.updateSingleCourt
+);
 router.put(
   "/makewinner/:matchID",
   verifyToken(["courtowner"]),
@@ -589,6 +766,11 @@ router.put(
   "/bookings/:bookingID/reject",
   verifyToken(["courtowner"]),
   CourtOwnerController.rejectBooking
+);
+router.put(
+  "/add-field",
+  verifyToken(["courtowner"]),
+  CourtOwnerController.addField
 );
 
 export default router;

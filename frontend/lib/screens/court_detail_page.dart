@@ -473,6 +473,12 @@ class _CourtDetailPageState extends State<CourtDetailPage> {
             selectedStartSlot: selectedStartSlot,
             selectedEndSlot: selectedEndSlot,
             onSlotSelected: _selectTimeSlot,
+            onChallengeAccepted: () {
+              setState(() {
+                selectedStartSlot = null;
+                selectedEndSlot = null;
+              });
+            },
             days: _getNext7Days(),
           ),
         ],

@@ -128,18 +128,7 @@ class CourtOwnerDashboard extends StatelessWidget {
               },
             ),
 
-            dashboardButton(
-              title: "Manage Bookings",
-              icon: Icons.calendar_month,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const BookingManagementPage(),
-                  ),
-                );
-              },
-            ),
+
 
             dashboardButton(
               title: "View Feedback",

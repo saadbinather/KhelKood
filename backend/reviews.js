@@ -20,6 +20,14 @@ const ReviewsRepository = {
     return courtDoc.exists ? { id: courtDoc.id, ...courtDoc.data() } : null;
   },
 
+  async findCourtsByOwnerId(ownerID) {
+    const courtsQuery = await db
+      .collection("courts")
+      .where("courtownerID", "==", ownerID)
+      .get();
+    return courtsQuery.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  },
+
   async findTeamByUserId(userId) {
     const teamQuery = await db
       .collection("teams")
@@ -150,6 +158,54 @@ const ReviewsService = {
     console.log(`Retrieved ${reviews.length} reviews for court ${courtID}`);
     return reviews;
   },
+
+  async getCourtOwnerReviews(courtOwnerID) {
+    // Get all courts owned by this court owner
+    const courts = await ReviewsRepository.findCourtsByOwnerId(courtOwnerID);
+    const courtIDs = courts.map((court) => court.id);
+
+    if (courtIDs.length === 0) {
+      return [];
+    }
+
+    // Get all reviews for these courts
+    const allReviews = [];
+    for (const courtID of courtIDs) {
+      try {
+        const reviews = await ReviewsRepository.findByCourtId(courtID);
+        // Enrich reviews with court information
+        const court = courts.find((c) => c.id === courtID);
+        const enrichedReviews = reviews.map((review) => ({
+          ...review,
+          court: court
+            ? {
+                id: court.id,
+                name: court.name || "",
+                address: court.address || "",
+              }
+            : null,
+        }));
+        allReviews.push(...enrichedReviews);
+      } catch (error) {
+        console.log(
+          `Error fetching reviews for court ${courtID}: ${error.message}`
+        );
+      }
+    }
+
+    // Sort by createdAt descending (most recent first)
+    allReviews.sort((a, b) => {
+      const dateA = a.createdAt?.toDate
+        ? a.createdAt.toDate()
+        : new Date(a.createdAt);
+      const dateB = b.createdAt?.toDate
+        ? b.createdAt.toDate()
+        : new Date(b.createdAt);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    return allReviews;
+  },
 };
 
 // ==================== CONTROLLER LAYER (Request Handling) ====================
@@ -207,6 +263,25 @@ const ReviewsController = {
       return sendError(res, 500, error.message);
     }
   },
+
+  async getCourtOwnerReviews(req, res) {
+    try {
+      const courtOwnerID = req.user.uid;
+      console.log(`Fetching reviews for court owner: ${courtOwnerID}`);
+      const reviews = await ReviewsService.getCourtOwnerReviews(courtOwnerID);
+      console.log(
+        `Found ${reviews.length} reviews for court owner ${courtOwnerID}`
+      );
+
+      return sendSuccess(res, 200, "Reviews fetched successfully ✅", {
+        count: reviews.length,
+        reviews,
+      });
+    } catch (error) {
+      console.error(`Error fetching court owner reviews: ${error.message}`);
+      return sendError(res, 500, error.message);
+    }
+  },
 };
 
 // ==================== ROUTES ====================
@@ -217,6 +292,12 @@ router.get(
   "/court/:courtID",
   verifyToken(["team", "courtowner", "admin"]),
   ReviewsController.getCourtReviews
+);
+
+router.get(
+  "/courtowner",
+  verifyToken(["courtowner"]),
+  ReviewsController.getCourtOwnerReviews
 );
 
 export default router;

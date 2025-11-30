@@ -1,5 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'payment_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'payment_summary_page.dart';
+import 'login_page.dart';
 
 class ViewCourtDetailsPage extends StatefulWidget {
   final String courtId;
@@ -22,6 +26,8 @@ class _ViewCourtDetailsPageState extends State<ViewCourtDetailsPage> {
   DateTime selectedDate = DateTime.now();
   List<String> selectedSlots = [];
   String? selectedFieldName;
+  bool isCreatingChallenge = false;
+  bool isCreatingBooking = false;
 
   // -------------------- SIMULATED API --------------------
   Future<Map<String, dynamic>> _fetchCourtDetails() async {
@@ -102,7 +108,358 @@ class _ViewCourtDetailsPageState extends State<ViewCourtDetailsPage> {
   }
 
   void _error(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  DateTime? _getStartDateTime() {
+    if (selectedSlots.isEmpty) return null;
+    final sortedSlots = List<String>.from(selectedSlots)..sort();
+    final firstSlot = sortedSlots.first;
+    final parts = firstSlot.split('–');
+    if (parts.length != 2) return null;
+    final startHour = int.tryParse(parts[0]);
+    if (startHour == null) return null;
+    return DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      startHour,
+    );
+  }
+
+  DateTime? _getEndDateTime() {
+    if (selectedSlots.isEmpty) return null;
+    final sortedSlots = List<String>.from(selectedSlots)..sort();
+    final lastSlot = sortedSlots.last;
+    final parts = lastSlot.split('–');
+    if (parts.length != 2) return null;
+    final endHour = int.tryParse(parts[1]);
+    if (endHour == null) return null;
+    return DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      endHour,
+    );
+  }
+
+  Future<bool> _checkAuth() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    return token != null;
+  }
+
+  Future<void> _showLoginDialog(Function onLoginSuccess) async {
+    final shouldLogin = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          'Login Required',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'You need to login to continue. Would you like to login now?',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+            ),
+            child: const Text('Login'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogin == true && mounted) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+      );
+      
+      // Check if user logged in after returning
+      if (mounted) {
+        final isAuthenticated = await _checkAuth();
+        if (isAuthenticated) {
+          onLoginSuccess();
+        }
+      }
+    }
+  }
+
+  Future<void> _createChallenge() async {
+    if (selectedSlots.isEmpty) {
+      _error("Select at least one time slot.");
+      return;
+    }
+    if (!isConsecutive(selectedSlots)) {
+      _error("Select consecutive time slots only.");
+      return;
+    }
+
+    final startDateTime = _getStartDateTime();
+    final endDateTime = _getEndDateTime();
+
+    if (startDateTime == null || endDateTime == null) {
+      _error("Invalid time selection.");
+      return;
+    }
+
+    // Check authentication
+    final isAuthenticated = await _checkAuth();
+    if (!isAuthenticated) {
+      await _showLoginDialog(_createChallenge);
+      return;
+    }
+
+    setState(() {
+      isCreatingChallenge = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) {
+        setState(() {
+          isCreatingChallenge = false;
+        });
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse('http://localhost:5000/api/challenges/create'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'courtFirebaseUID': widget.courtId,
+          'stime': startDateTime.toIso8601String(),
+          'etime': endDateTime.toIso8601String(),
+        }),
+      );
+
+      setState(() {
+        isCreatingChallenge = false;
+      });
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(data['message'] ?? 'Challenge created successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Clear selection
+          setState(() {
+            selectedSlots.clear();
+            selectedFieldName = null;
+          });
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorData['error'] ?? 'Failed to create challenge'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() {
+        isCreatingChallenge = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showActionDialog() {
+    if (selectedSlots.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          'Select Action',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'What would you like to do with the selected slots?',
+              style: TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _createChallenge();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: const Text(
+                'Create Challenge',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _bookForYourself();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: const Text(
+                'Book for Yourself (Friendly)',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _bookForYourself() async {
+    if (selectedSlots.isEmpty) {
+      _error("Select at least one time slot.");
+      return;
+    }
+    if (!isConsecutive(selectedSlots)) {
+      _error("Select consecutive time slots only.");
+      return;
+    }
+
+    final startDateTime = _getStartDateTime();
+    final endDateTime = _getEndDateTime();
+
+    if (startDateTime == null || endDateTime == null) {
+      _error("Invalid time selection.");
+      return;
+    }
+
+    // Check authentication
+    final isAuthenticated = await _checkAuth();
+    if (!isAuthenticated) {
+      await _showLoginDialog(_bookForYourself);
+      return;
+    }
+
+    setState(() {
+      isCreatingBooking = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) {
+        setState(() {
+          isCreatingBooking = false;
+        });
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse('http://localhost:5000/api/booking/book-court'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'courtID': widget.courtId,
+          'startTime': startDateTime.toIso8601String(),
+          'endTime': endDateTime.toIso8601String(),
+        }),
+      );
+
+      setState(() {
+        isCreatingBooking = false;
+      });
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(data['message'] ?? 'Booking created successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Clear selection
+          setState(() {
+            selectedSlots.clear();
+            selectedFieldName = null;
+          });
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorData['error'] ?? 'Failed to create booking'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() {
+        isCreatingBooking = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -202,7 +559,7 @@ class _ViewCourtDetailsPageState extends State<ViewCourtDetailsPage> {
                     decoration: BoxDecoration(
                       color: selected
                           ? Colors.deepPurpleAccent
-                          : Colors.grey[850],
+                          : Colors.grey[900],
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Center(
@@ -294,6 +651,10 @@ class _ViewCourtDetailsPageState extends State<ViewCourtDetailsPage> {
                                   }
                                 } else {
                                   selectedSlots.add(time);
+                                  // Show dialog when slots are selected
+                                  if (selectedSlots.length == 1) {
+                                    _showActionDialog();
+                                  }
                                 }
                               });
                             },
@@ -312,43 +673,46 @@ class _ViewCourtDetailsPageState extends State<ViewCourtDetailsPage> {
             ),
           ),
 
-          // -------------------- BUTTON --------------------
-          Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepPurpleAccent,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 14,
-                ),
+          // -------------------- SELECTED SLOTS INFO --------------------
+          if (selectedSlots.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
               ),
-              onPressed: () {
-                if (selectedSlots.isEmpty) {
-                  _error("Select at least one time slot.");
-                  return;
-                }
-                if (!isConsecutive(selectedSlots)) {
-                  _error("Select consecutive time slots only.");
-                  return;
-                }
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => PaymentPage(
-                      slotCount: selectedSlots.length,
-                      ratePerHour: courtData!['rate'],
-                      actionType: widget.actionType,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Selected Slots:',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
                     ),
                   ),
-                );
-              },
-              child: const Text(
-                "Proceed to Payment",
-                style: TextStyle(color: Colors.white),
+                  const SizedBox(height: 4),
+                  Text(
+                    selectedSlots.join(', '),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (isCreatingChallenge || isCreatingBooking) ...[
+                    const SizedBox(height: 12),
+                    const Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-          ),
         ],
       ),
     );

@@ -49,25 +49,37 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
         return;
       }
 
+      final url = '$baseUrl/reviews/courtowner';
+      print('Fetching reviews from: $url');
+      
       final response = await http.get(
-        Uri.parse('$baseUrl/review'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
       );
 
-      if (response.statusCode == 200) {
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
-        final reviews = data['data']['reviews'] as List<dynamic>;
+        final reviews = data['data']?['reviews'] ?? data['reviews'] ?? [];
 
         setState(() {
-          feedbackList = reviews.map((review) {
+          feedbackList = (reviews as List).map((review) {
             return {
               'team': review['teamName'] ?? 'Unknown Team',
               'rating': review['rating'] ?? 0,
-              'comment': review['comment'],
-              'publishedAt': review['publishedAt'],
+              'comment': review['comment'] ?? '',
+              'publishedAt': review['createdAt'],
+              'court': review['court'] != null
+                  ? {
+                      'name': review['court']['name'] ?? 'Unknown Court',
+                      'address': review['court']['address'] ?? '',
+                    }
+                  : null,
             };
           }).toList();
           isLoading = false;
@@ -87,27 +99,40 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
     }
   }
 
-  String _formatDate(String? dateString) {
-    if (dateString == null) return '';
+  String _formatDate(dynamic dateValue) {
+    if (dateValue == null) return 'Recently';
     try {
-      final date = DateTime.parse(dateString);
+      DateTime date;
+      if (dateValue is Map) {
+        if (dateValue['_seconds'] != null) {
+          date = DateTime.fromMillisecondsSinceEpoch(dateValue['_seconds'] * 1000);
+        } else if (dateValue['seconds'] != null) {
+          date = DateTime.fromMillisecondsSinceEpoch(dateValue['seconds'] * 1000);
+        } else {
+          return 'Recently';
+        }
+      } else if (dateValue is String) {
+        date = DateTime.parse(dateValue);
+      } else {
+        return 'Recently';
+      }
       return '${date.day}/${date.month}/${date.year}';
     } catch (e) {
-      return dateString;
+      return 'Recently';
     }
   }
 
   // -----------------------------
-  // Widget to display star rating
+  // Widget to display star rating (out of 10)
   // -----------------------------
   Widget buildStars(int rating) {
     return Row(
       children: List.generate(
-        5,
+        10,
         (index) => Icon(
           index < rating ? Icons.star : Icons.star_border,
           color: Colors.amber,
-          size: 20,
+          size: 16,
         ),
       ),
     );
@@ -117,6 +142,8 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
   // Feedback card
   // -----------------------------
   Widget buildFeedbackCard(Map<String, dynamic> feedback) {
+    final court = feedback['court'] as Map<String, dynamic>?;
+    
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       color: Colors.grey[900],
@@ -129,12 +156,30 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  feedback['team'] ?? 'Unknown Team',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.white,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        feedback['team'] ?? 'Unknown Team',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                      if (court != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          court['name'] ?? 'Unknown Court',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white70,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 if (feedback['publishedAt'] != null)
@@ -144,13 +189,28 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                   ),
               ],
             ),
-            const SizedBox(height: 4),
-            buildStars(feedback['rating'] ?? 0),
             const SizedBox(height: 8),
-            Text(
-              feedback['comment'] ?? "No comment provided.",
-              style: const TextStyle(fontSize: 14, color: Colors.white70),
+            Row(
+              children: [
+                buildStars(feedback['rating'] ?? 0),
+                const SizedBox(width: 8),
+                Text(
+                  '${feedback['rating'] ?? 0}/10',
+                  style: const TextStyle(fontSize: 12, color: Colors.white70),
+                ),
+              ],
             ),
+            const SizedBox(height: 8),
+            if (feedback['comment'] != null && feedback['comment'].toString().isNotEmpty)
+              Text(
+                feedback['comment'] ?? "No comment provided.",
+                style: const TextStyle(fontSize: 14, color: Colors.white70),
+              )
+            else
+              const Text(
+                "No comment provided.",
+                style: TextStyle(fontSize: 14, color: Colors.white54, fontStyle: FontStyle.italic),
+              ),
           ],
         ),
       ),

@@ -101,6 +101,56 @@ const PaymentRepository = {
     const teamDoc = await teamRef.get();
     return teamDoc.exists ? { id: teamDoc.id, ...teamDoc.data() } : null;
   },
+
+  async findMatchesByCourtIds(courtIDs) {
+    if (courtIDs.length === 0) return [];
+
+    const matches = [];
+    const batchSize = 10;
+
+    for (let i = 0; i < courtIDs.length; i += batchSize) {
+      const batch = courtIDs.slice(i, i + batchSize);
+      const matchesSnapshot = await db
+        .collection("matches")
+        .where("Court_ID", "in", batch)
+        .get();
+
+      matchesSnapshot.docs.forEach((doc) => {
+        matches.push({ id: doc.id, ...doc.data() });
+      });
+    }
+
+    return matches;
+  },
+
+  async findPaymentsByPaymentIds(paymentIDs) {
+    if (paymentIDs.length === 0) return [];
+
+    const payments = [];
+    // Fetch payments individually since Firestore doesn't support "in" with document IDs easily
+    for (const paymentID of paymentIDs) {
+      const paymentDoc = await db.collection("payments").doc(paymentID).get();
+      if (paymentDoc.exists) {
+        payments.push({ id: paymentDoc.id, ...paymentDoc.data() });
+      }
+    }
+
+    return payments;
+  },
+
+  async updateTeamPoints(teamID, pointsToAdd) {
+    const teamRef = db.collection("teams").doc(teamID);
+    const teamDoc = await teamRef.get();
+    if (!teamDoc.exists) {
+      throw new Error("Team not found");
+    }
+    const currentPoints = teamDoc.data().points || 0;
+    await teamRef.update({
+      points: currentPoints + pointsToAdd,
+      updatedAt: new Date(),
+    });
+    return currentPoints + pointsToAdd;
+  },
 };
 
 // ==================== SERVICE LAYER (Business Logic) ====================
@@ -160,7 +210,15 @@ const PaymentService = {
     return await PaymentRepository.create(paymentData);
   },
 
-  async updatePaymentStatus(paymentID, userID, userRole, courtOwnerID) {
+  async updatePaymentStatus(
+    paymentID,
+    userID,
+    userRole,
+    courtOwnerID,
+    matchID,
+    winnerID,
+    isTie
+  ) {
     // Validation
     if (!paymentID || paymentID.trim() === "") {
       throw new Error("paymentID is required");
@@ -200,6 +258,63 @@ const PaymentService = {
       throw new Error("Payment is already completed");
     }
 
+    // If this is a match payment, handle winner selection and points
+    if (matchID) {
+      const matchDoc = await db.collection("matches").doc(matchID).get();
+      if (!matchDoc.exists) {
+        throw new Error("Match not found");
+      }
+      const match = { id: matchDoc.id, ...matchDoc.data() };
+
+      // Verify court ownership for match
+      if (userRole === "courtowner" && courtOwnerID) {
+        const courts = await PaymentRepository.findCourtsByOwnerId(
+          courtOwnerID
+        );
+        const courtIds = courts.map((c) => c.id);
+        if (!courtIds.includes(match.Court_ID)) {
+          throw new Error(
+            "Unauthorized - You do not own the court for this match"
+          );
+        }
+      }
+
+      // Update match winner
+      if (isTie) {
+        // For tie: give 1 point to each team
+        await db.collection("matches").doc(matchID).update({
+          Winner: "tie",
+          updatedAt: new Date(),
+        });
+
+        // Update points for both teams
+        if (match.Host_Team_ID) {
+          await PaymentRepository.updateTeamPoints(match.Host_Team_ID, 1);
+        }
+        if (match.Guest_Team_ID) {
+          await PaymentRepository.updateTeamPoints(match.Guest_Team_ID, 1);
+        }
+      } else if (winnerID) {
+        // Validate winner ID
+        if (
+          winnerID !== match.Host_Team_ID &&
+          winnerID !== match.Guest_Team_ID
+        ) {
+          throw new Error(
+            "winnerID must be either Host_Team_ID or Guest_Team_ID"
+          );
+        }
+
+        await db.collection("matches").doc(matchID).update({
+          Winner: winnerID,
+          updatedAt: new Date(),
+        });
+
+        // Give 3 points to winner
+        await PaymentRepository.updateTeamPoints(winnerID, 3);
+      }
+    }
+
     // Update payment
     const updateData = {
       status: true, // true = payment completed
@@ -210,77 +325,131 @@ const PaymentService = {
   },
 
   async getPendingPaymentsForCourtOwner(courtOwnerID) {
-    // Database structure:
-    // - Payments: { bookingID, teamID, amount, status, createdAt, updatedAt }
-    // - Bookings: { courtID, teamID, startTime, endTime, status, createdAt }
-    // - Courts: { courtownerID, name, address, ... }
-    // Flow: Courts → Bookings (via courtID) → Payments (via bookingID)
-
     // Step 1: Get all courts owned by this courtOwner
     const courts = await PaymentRepository.findCourtsByOwnerId(courtOwnerID);
     const courtIDs = courts.map((court) => court.id);
 
-    if (courtIDs.length === 0) return [];
+    if (courtIDs.length === 0) return { bookings: [], matches: [] };
 
-    // Step 2: Get all bookings for these courts (bookings have courtID)
-    const bookings = await PaymentRepository.findBookingsByCourtIds(courtIDs);
-    const bookingIDs = bookings.map((booking) => booking.id);
-
-    if (bookingIDs.length === 0) return [];
-
-    // Step 3: Get all payments for these bookings (payments have bookingID)
-    const allPayments = await PaymentRepository.findPaymentsByBookingIds(
-      bookingIDs
-    );
-
-    // Step 4: Filter pending payments (status === false)
-    const pendingPayments = allPayments.filter(
-      (payment) => payment.status === false
-    );
-
-    // Step 5: Filter payments where booking time has passed (match has been conducted)
     const now = new Date();
-    const pastPendingPayments = pendingPayments.filter((payment) => {
-      // Get booking using payment.bookingID (payments don't have courtID directly)
-      const booking = bookings.find((b) => b.id === payment.bookingID);
+
+    // ========== GET ALL BOOKINGS ==========
+    // Get all bookings for these courts
+    const allBookings = await PaymentRepository.findBookingsByCourtIds(
+      courtIDs
+    );
+    const allBookingIDs = allBookings.map((booking) => booking.id);
+
+    // Get all payments for these bookings
+    const allBookingPayments =
+      allBookingIDs.length > 0
+        ? await PaymentRepository.findPaymentsByBookingIds(allBookingIDs)
+        : [];
+
+    // Filter pending payments where booking time has passed
+    const pastPendingPayments = allBookingPayments.filter((payment) => {
+      if (payment.status === true) return false; // Already paid
+
+      const booking = allBookings.find((b) => b.id === payment.bookingID);
       if (!booking || !booking.endTime) return false;
 
       const endTime = _parseFirestoreDate(booking.endTime);
       if (!endTime) return false;
 
-      // Only include payments where booking endTime has passed
       return endTime < now;
     });
 
-    // Step 6: Enrich payments with booking, court, and team information
-    const enrichedPayments = await Promise.all(
-      pastPendingPayments.map(async (payment) => {
-        // Get booking using payment.bookingID
-        const booking = bookings.find((b) => b.id === payment.bookingID);
-        // Get court using booking.courtID (bookings have courtID, payments don't)
-        const court = booking
-          ? courts.find((c) => c.id === booking.courtID)
+    // ========== SEPARATE FRIENDLY BOOKINGS AND COMPETITIVE MATCHES ==========
+    const friendlyBookings = [];
+    const competitiveMatches = [];
+
+    for (const payment of pastPendingPayments) {
+      const booking = allBookings.find((b) => b.id === payment.bookingID);
+      if (!booking) continue;
+
+      const court = courts.find((c) => c.id === booking.courtID);
+      const team = payment.teamID
+        ? await PaymentRepository.findTeamById(payment.teamID)
+        : null;
+
+      if (booking.matchID) {
+        // Competitive match - get match details
+        const matchDoc = await db
+          .collection("matches")
+          .doc(booking.matchID)
+          .get();
+        if (!matchDoc.exists) continue;
+
+        const match = { id: matchDoc.id, ...matchDoc.data() };
+        const hostTeam = match.Host_Team_ID
+          ? await PaymentRepository.findTeamById(match.Host_Team_ID)
           : null;
-        // Get team using payment.teamID (payments have teamID)
-        const team = payment.teamID
-          ? await PaymentRepository.findTeamById(payment.teamID)
+        const guestTeam = match.Guest_Team_ID
+          ? await PaymentRepository.findTeamById(match.Guest_Team_ID)
           : null;
 
-        return {
+        competitiveMatches.push({
           id: payment.id,
           amount: payment.amount,
           status: payment.status,
           createdAt: payment.createdAt,
           updatedAt: payment.updatedAt,
-          booking: booking
+          type: "match",
+          matchID: match.id,
+          bookingID: booking.id,
+          match: {
+            id: match.id,
+            Court_ID: match.Court_ID,
+            Host_Team_ID: match.Host_Team_ID,
+            Guest_Team_ID: match.Guest_Team_ID,
+            Sport: match.Sport,
+            StartTime: match.StartTime,
+            EndTime: match.EndTime,
+            Winner: match.Winner,
+          },
+          booking: {
+            id: booking.id,
+            courtID: booking.courtID,
+            startTime: booking.startTime,
+            endTime: booking.endTime,
+            status: booking.status,
+          },
+          court: court
             ? {
-                id: booking.id,
-                courtID: booking.courtID,
-                startTime: booking.startTime,
-                endTime: booking.endTime,
-                status: booking.status,
+                id: court.id,
+                name: court.name,
+                address: court.address,
               }
             : null,
+          hostTeam: hostTeam
+            ? {
+                id: hostTeam.id,
+                teamName: hostTeam.teamName || hostTeam.name,
+              }
+            : null,
+          guestTeam: guestTeam
+            ? {
+                id: guestTeam.id,
+                teamName: guestTeam.teamName || guestTeam.name,
+              }
+            : null,
+        });
+      } else {
+        // Friendly booking
+        friendlyBookings.push({
+          id: payment.id,
+          amount: payment.amount,
+          status: payment.status,
+          createdAt: payment.createdAt,
+          updatedAt: payment.updatedAt,
+          type: "booking",
+          booking: {
+            id: booking.id,
+            courtID: booking.courtID,
+            startTime: booking.startTime,
+            endTime: booking.endTime,
+            status: booking.status,
+          },
           court: court
             ? {
                 id: court.id,
@@ -294,11 +463,14 @@ const PaymentService = {
                 teamName: team.teamName || team.name,
               }
             : null,
-        };
-      })
-    );
+        });
+      }
+    }
 
-    return enrichedPayments;
+    return {
+      bookings: friendlyBookings,
+      matches: competitiveMatches,
+    };
   },
 
   async getPaidBookingsForCourtOwner(courtOwnerID) {
@@ -422,6 +594,7 @@ const PaymentController = {
   async updatePaymentStatus(req, res) {
     try {
       const { paymentID } = req.params;
+      const { matchID, winnerID, isTie } = req.body;
       const userID = req.user.uid;
       const userRole = req.user.role;
       const courtOwnerID = userRole === "courtowner" ? userID : null;
@@ -430,7 +603,10 @@ const PaymentController = {
         paymentID,
         userID,
         userRole,
-        courtOwnerID
+        courtOwnerID,
+        matchID,
+        winnerID,
+        isTie
       );
 
       return sendSuccess(
@@ -462,11 +638,13 @@ const PaymentController = {
   async getPendingPayments(req, res) {
     try {
       const courtOwnerID = req.user.uid;
-      const pendingPayments =
-        await PaymentService.getPendingPaymentsForCourtOwner(courtOwnerID);
+      const result = await PaymentService.getPendingPaymentsForCourtOwner(
+        courtOwnerID
+      );
 
       return sendSuccess(res, 200, "Pending payments fetched successfully ✅", {
-        payments: pendingPayments,
+        bookings: result.bookings || [],
+        matches: result.matches || [],
       });
     } catch (error) {
       return sendError(res, 500, error.message);

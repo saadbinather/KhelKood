@@ -8,6 +8,7 @@ class TimeSlotGrid extends StatefulWidget {
   final int? selectedStartSlot;
   final int? selectedEndSlot;
   final Function(int dayIndex, int hour) onSlotSelected;
+  final VoidCallback? onChallengeAccepted; // Callback to clear selection after accepting challenge
   final List<DateTime> days;
 
   const TimeSlotGrid({
@@ -16,6 +17,7 @@ class TimeSlotGrid extends StatefulWidget {
     required this.selectedStartSlot,
     required this.selectedEndSlot,
     required this.onSlotSelected,
+    this.onChallengeAccepted,
     required this.days,
   });
 
@@ -142,19 +144,28 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
         final bookingStart = DateTime(startTime.year, startTime.month, startTime.day, startTime.hour);
         final bookingEnd = DateTime(endTime.year, endTime.month, endTime.day, endTime.hour);
         
-        // Check if slot overlaps with booking time range
-        // Slot overlaps if: slotStart < bookingEnd && slotEnd > bookingStart
-        // Use inclusive boundaries to catch exact matches
-        final overlaps = (slotStart.isBefore(bookingEnd) || slotStart.isAtSameMomentAs(bookingEnd)) && 
-                        (slotEnd.isAfter(bookingStart) || slotEnd.isAtSameMomentAs(bookingStart));
+        // Check if slot is completely within booking time range
+        // Only mark as booked if the slot hour is within the booking's hour range
+        // This ensures only the exact hours of the booking are marked, not adjacent hours
+        final slotHour = slotStart.hour;
+        final bookingStartHour = bookingStart.hour;
+        final bookingEndHour = bookingEnd.hour;
+        
+        // Check if slot hour is within booking hours (inclusive start, exclusive end for hour comparison)
+        // For example: booking 9:00-11:00 should block 9:00 and 10:00, but not 11:00
+        // But if booking is exactly 10:00-11:00, only 10:00 should be blocked
+        bool overlaps = false;
+        if (slotStart.year == bookingStart.year && 
+            slotStart.month == bookingStart.month && 
+            slotStart.day == bookingStart.day) {
+          // Same day - check hour overlap
+          // Slot is booked if its hour is >= booking start hour and < booking end hour
+          overlaps = slotHour >= bookingStartHour && slotHour < bookingEndHour;
+        }
         
         if (overlaps) {
           // Debug: print when we find a match
-          if (slotStart.year == bookingStart.year && 
-              slotStart.month == bookingStart.month && 
-              slotStart.day == bookingStart.day) {
-            print('BOOKED: Slot $slotStart-$slotEnd overlaps with booking $bookingStart-$bookingEnd');
-          }
+          print('BOOKED: Slot hour $slotHour is within booking $bookingStartHour-$bookingEndHour');
           return true;
         }
       }
@@ -175,9 +186,8 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
       days[dayIndex].day,
       hour,
     );
-    final slotEnd = slotStart.add(const Duration(hours: 1));
 
-    // Check challenges
+    // Check challenges - only show challenge for exact hour matches
     for (final challenge in challenges) {
       final startTime = _parseTimestamp(challenge['stime']);
       final endTime = _parseTimestamp(challenge['etime']);
@@ -187,9 +197,22 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
         final challengeStart = DateTime(startTime.year, startTime.month, startTime.day, startTime.hour);
         final challengeEnd = DateTime(endTime.year, endTime.month, endTime.day, endTime.hour);
         
-        // Check if slot overlaps with challenge time range
-        // Slot overlaps if: slotStart < challengeEnd && slotEnd > challengeStart
-        if (slotStart.isBefore(challengeEnd) && slotEnd.isAfter(challengeStart)) {
+        // Only show challenge if the slot hour is within the challenge's hour range
+        // This ensures only the exact hours of the challenge are shown, not adjacent hours
+        final slotHour = slotStart.hour;
+        final challengeStartHour = challengeStart.hour;
+        final challengeEndHour = challengeEnd.hour;
+        
+        // Check if slot hour is within challenge hours (inclusive start, exclusive end)
+        bool isWithinChallenge = false;
+        if (slotStart.year == challengeStart.year && 
+            slotStart.month == challengeStart.month && 
+            slotStart.day == challengeStart.day) {
+          // Same day - check hour overlap
+          isWithinChallenge = slotHour >= challengeStartHour && slotHour < challengeEndHour;
+        }
+        
+        if (isWithinChallenge) {
           return challenge;
         }
       }
@@ -276,6 +299,11 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
     if (_isSlotBooked(dayIndex, hour)) {
       return false;
     }
+
+    // Check if slot is in the past for today
+    if (_isSlotInPast(dayIndex, hour)) {
+      return false;
+    }
     
     if (widget.selectedStartSlot == null) {
       // No selection yet - all hours within operating hours and not booked are available
@@ -290,6 +318,35 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
       return hour >= startHour && hour <= startHour + 2 && hour <= closingTime;
     }
     return false;
+  }
+
+  bool _isSlotInPast(int dayIndex, int hour) {
+    final days = widget.days;
+    if (dayIndex >= days.length) return false;
+
+    final now = DateTime.now();
+    final slotDate = DateTime(
+      days[dayIndex].year,
+      days[dayIndex].month,
+      days[dayIndex].day,
+      hour,
+    );
+
+    // Check if this slot is today and in the past
+    final isToday = slotDate.year == now.year &&
+        slotDate.month == now.month &&
+        slotDate.day == now.day;
+
+    if (isToday) {
+      // If it's today, check if the hour has passed
+      // If current time is 9:45, mark 9:00 as passed (current hour >= slot hour)
+      // If current hour is greater than slot hour, it's passed
+      // If current hour equals slot hour, it's also passed (we're past the start of that hour)
+      return now.hour >= slotDate.hour;
+    }
+
+    // If it's a past day, it's in the past
+    return slotDate.isBefore(DateTime(now.year, now.month, now.day));
   }
 
   String _getDayName(DateTime date) {
@@ -427,6 +484,10 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
             backgroundColor: Colors.green,
           ),
         );
+        // Clear selection in parent widget if callback provided
+        if (widget.onChallengeAccepted != null) {
+          widget.onChallengeAccepted!();
+        }
         // Refresh conflicts to update the grid
         _fetchConflicts();
       } else {
@@ -544,11 +605,12 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
                     final hasChallenge = challenge != null;
                     final isChallengeOpen = hasChallenge ? _isChallengeOpen(challenge!) : false;
                     final isInRange = _isSlotInRange(dayIndex, hour);
+                    final isInPast = _isSlotInPast(dayIndex, hour);
                     
                     return GestureDetector(
                       onTap: hasChallenge && isChallengeOpen
                           ? () => _showChallengeDetails(challenge!, dayIndex, hour)
-                          : (isInRange && !isBooked && !hasChallenge)
+                          : (isInRange && !isBooked && !hasChallenge && !isInPast)
                               ? () => widget.onSlotSelected(dayIndex, hour)
                               : null,
                       child: Container(
@@ -561,11 +623,13 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
                                   : Colors.red.withOpacity(0.3)) // Closed challenge - red
                               : isBooked
                                   ? Colors.grey[700] // Booked slots - darker grey
-                                  : isSelected
-                                      ? Colors.redAccent
-                                      : isInRange
-                                          ? Colors.grey[800]
-                                          : Colors.grey[900],
+                                  : isInPast
+                                      ? Colors.black.withOpacity(0.5) // Past slots - very dark
+                                      : isSelected
+                                          ? Colors.redAccent
+                                          : isInRange
+                                              ? Colors.grey[800]
+                                              : Colors.grey[900],
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: hasChallenge
@@ -574,9 +638,11 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
                                     : Colors.red) // Closed challenge - red border
                                 : isBooked
                                     ? Colors.orange.withOpacity(0.5) // Booked slots - orange border
-                                    : isSelected
-                                        ? Colors.redAccent
-                                        : Colors.white24,
+                                    : isInPast
+                                        ? Colors.grey[600]!.withOpacity(0.3) // Past slots - very dim border
+                                        : isSelected
+                                            ? Colors.redAccent
+                                            : Colors.white24,
                             width: isSelected || isBooked || hasChallenge ? 2 : 1,
                           ),
                         ),
@@ -593,11 +659,13 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
                                           : Colors.red) // Closed challenge text - red
                                       : isBooked
                                           ? Colors.orange // Booked text - orange
-                                          : isSelected
-                                              ? Colors.white
-                                              : isInRange
-                                                  ? Colors.white70
-                                                  : Colors.white38,
+                                          : isInPast
+                                              ? Colors.grey[600] // Past text - dim grey
+                                              : isSelected
+                                                  ? Colors.white
+                                                  : isInRange
+                                                      ? Colors.white70
+                                                      : Colors.white38,
                                   fontSize: 12,
                                   fontWeight: isSelected || isBooked || hasChallenge
                                       ? FontWeight.bold
@@ -615,6 +683,12 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
                                   Icons.block,
                                   size: 12,
                                   color: Colors.orange,
+                                )
+                              else if (isInPast)
+                                Icon(
+                                  Icons.lock_clock,
+                                  size: 12,
+                                  color: Colors.grey[600],
                                 ),
                             ],
                           ),

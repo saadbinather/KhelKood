@@ -90,7 +90,7 @@ const MatchRepository = {
   async createBooking(courtID, startTime, endTime, token) {
     const response = await axios.post(
       `${BASE_URL}/booking/book-court`,
-      { courtID, startTime, endTime },
+      { courtID, startTime, endTime, skipPayment: true }, // Skip payment creation - match service will create it
       { headers: { Authorization: `Bearer ${token}` } }
     );
     return response.data.data?.bookingID || response.data.bookingID;
@@ -103,6 +103,18 @@ const MatchRepository = {
       { headers: { Authorization: `Bearer ${token}` } }
     );
     return response.data.data?.paymentID || response.data.paymentID;
+  },
+
+  async updateBooking(bookingID, updateData) {
+    const bookingRef = db.collection("bookings").doc(bookingID);
+    await bookingRef.update({
+      ...updateData,
+      updatedAt: new Date(),
+    });
+    const bookingDoc = await bookingRef.get();
+    return bookingDoc.exists
+      ? { id: bookingDoc.id, ...bookingDoc.data() }
+      : null;
   },
 };
 
@@ -200,6 +212,11 @@ const MatchService = {
     };
 
     const match = await MatchRepository.create(matchData);
+
+    // Update booking with matchID (only for competitive matches from challenges)
+    await MatchRepository.updateBooking(bookingID, {
+      matchID: match.id,
+    });
 
     return {
       match,

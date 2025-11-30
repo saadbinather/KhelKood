@@ -536,13 +536,17 @@ class _DashboardPageState extends State<DashboardPage> {
                     title: 'Profile',
                     subtitle: 'View & edit your profile',
                     icon: Icons.person,
-                    onTap: () {
-                      Navigator.push(
+                    onTap: () async {
+                      final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ProfilePage(),
+                          builder: (context) => const ProfilePage(),
                         ),
                       );
+                      // Refresh team data if changes were made
+                      if (result == true) {
+                        _fetchTeamDetails();
+                      }
                     },
                   ),
                   _buildDashboardCard(

@@ -2,7 +2,7 @@ import express from "express";
 import { db } from "./config/firebase.js";
 import { verifyToken } from "./middleware/verifyToken.js";
 import { sendSuccess, sendError, sendValidationError, sendNotFoundError } from "./utils/response.js";
-import { validateRequired } from "./utils/validators.js";
+import { validateRequired, validateTeamPhone, validateEmail } from "./utils/validators.js";
 
 const router = express.Router();
 
@@ -14,6 +14,35 @@ const TeamRepository = {
     const teamRef = db.collection("teams").doc(teamID);
     const teamDoc = await teamRef.get();
     return teamDoc.exists ? { id: teamDoc.id, ...teamDoc.data() } : null;
+  },
+
+  async findByEmail(email, excludeTeamID = null) {
+    const teamsSnapshot = await db.collection("teams")
+      .where("email", "==", email)
+      .get();
+    
+    const teams = teamsSnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(team => team.id !== excludeTeamID);
+    
+    return teams.length > 0 ? teams[0] : null;
+  },
+
+  async findByPhone(phone, excludeTeamID = null) {
+    // Normalize phone: remove dashes for comparison
+    const normalizedPhone = phone.replace(/-/g, '');
+    
+    const teamsSnapshot = await db.collection("teams").get();
+    
+    const teams = teamsSnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(team => {
+        if (team.id === excludeTeamID) return false;
+        const teamPhone = (team.phone || '').replace(/-/g, '');
+        return teamPhone === normalizedPhone;
+      });
+    
+    return teams.length > 0 ? teams[0] : null;
   },
 
   async update(teamID, updates) {
@@ -78,6 +107,39 @@ const TeamService = {
     if (!team) {
       throw new Error("Team not found");
     }
+
+    // Validate phone number if provided
+    if (updates.phone !== undefined) {
+      const phoneValidation = validateTeamPhone(updates.phone);
+      if (!phoneValidation.isValid) {
+        throw new Error(phoneValidation.error);
+      }
+      
+      // Check for duplicate phone number
+      const existingTeamWithPhone = await TeamRepository.findByPhone(updates.phone, teamID);
+      if (existingTeamWithPhone) {
+        throw new Error("Phone number is already in use by another team");
+      }
+      
+      // Use cleaned phone (without dash) for storage, or keep original format
+      // Store with optional dash format as user entered
+      updates.phone = updates.phone;
+    }
+
+    // Validate email if provided
+    if (updates.email !== undefined) {
+      const emailValidation = validateEmail(updates.email);
+      if (!emailValidation.isValid) {
+        throw new Error(emailValidation.error);
+      }
+      
+      // Check for duplicate email
+      const existingTeamWithEmail = await TeamRepository.findByEmail(updates.email, teamID);
+      if (existingTeamWithEmail) {
+        throw new Error("Email is already in use by another team");
+      }
+    }
+
     return await TeamRepository.update(teamID, updates);
   },
 
@@ -121,6 +183,12 @@ const TeamController = {
     } catch (error) {
       if (error.message === "Team not found") {
         return sendNotFoundError(res, "Team");
+      }
+      // Return validation errors with 400 status
+      if (error.message.includes("Invalid") || 
+          error.message.includes("required") ||
+          error.message.includes("already in use")) {
+        return sendValidationError(res, error.message);
       }
       return sendError(res, 500, error.message);
     }

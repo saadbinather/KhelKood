@@ -359,6 +359,12 @@ class _CreateBookingPageState extends State<CreateBookingPage> {
           selectedStartSlot: selectedStartSlot,
           selectedEndSlot: selectedEndSlot,
           onSlotSelected: _selectTimeSlot,
+          onChallengeAccepted: () {
+            setState(() {
+              selectedStartSlot = null;
+              selectedEndSlot = null;
+            });
+          },
           days: days,
         ),
         

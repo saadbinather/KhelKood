@@ -70,7 +70,7 @@ const CourtOwnerRepository = {
     if (sport === "cricket") {
       fieldToUpdate = "numOfCricketFields";
     } else if (sport === "futsal" || sport === "football") {
-      fieldToUpdate = "numOfPadelFields"; // Based on the naming in auth.js, this is for futsal
+      fieldToUpdate = "numOfFutsalFields";
     } else if (sport === "padel") {
       fieldToUpdate = "numOfPadelCourts";
     } else {
@@ -251,7 +251,9 @@ const CourtOwnerService = {
 
     const validSports = ["cricket", "futsal", "football", "padel"];
     if (!validSports.includes(sportType.toLowerCase())) {
-      throw new Error("Invalid sport type. Must be: cricket, futsal, football, or padel");
+      throw new Error(
+        "Invalid sport type. Must be: cricket, futsal, football, or padel"
+      );
     }
 
     return await CourtOwnerRepository.incrementFieldCount(ownerID, sportType);
@@ -553,7 +555,9 @@ const CourtOwnerController = {
     try {
       const ownerID = req.user.uid;
       const courts = await CourtOwnerService.getAllCourts(ownerID);
-      return sendSuccess(res, 200, "Courts fetched successfully ✅", { courts });
+      return sendSuccess(res, 200, "Courts fetched successfully ✅", {
+        courts,
+      });
     } catch (error) {
       return sendError(res, 500, error.message);
     }
@@ -694,7 +698,10 @@ const CourtOwnerController = {
       const court = await CourtOwnerService.addField(ownerID, sportType);
       return sendSuccess(res, 200, "Field added successfully ✅", { court });
     } catch (error) {
-      if (error.message.includes("required") || error.message.includes("Invalid")) {
+      if (
+        error.message.includes("required") ||
+        error.message.includes("Invalid")
+      ) {
         return sendValidationError(res, error.message);
       }
       if (error.message.includes("No court found")) {

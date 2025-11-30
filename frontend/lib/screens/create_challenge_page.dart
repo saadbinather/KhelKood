@@ -362,6 +362,12 @@ class _CreateChallengePageState extends State<CreateChallengePage> {
           selectedStartSlot: selectedStartSlot,
           selectedEndSlot: selectedEndSlot,
           onSlotSelected: _selectTimeSlot,
+          onChallengeAccepted: () {
+            setState(() {
+              selectedStartSlot = null;
+              selectedEndSlot = null;
+            });
+          },
           days: days,
         ),
         

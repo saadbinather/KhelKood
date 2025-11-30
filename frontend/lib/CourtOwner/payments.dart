@@ -30,7 +30,8 @@ class _PaymentsPageState extends State<PaymentsPage>
   String? errorMessagePending;
   String? errorMessagePaid;
 
-  List<Map<String, dynamic>> pendingPayments = [];
+  List<Map<String, dynamic>> pendingBookings = [];
+  List<Map<String, dynamic>> pendingMatches = [];
   List<Map<String, dynamic>> paidBookings = [];
 
   @override
@@ -38,7 +39,7 @@ class _PaymentsPageState extends State<PaymentsPage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
-      if (_tabController.index == 0 && pendingPayments.isEmpty) {
+      if (_tabController.index == 0 && pendingBookings.isEmpty && pendingMatches.isEmpty) {
         _fetchPendingPayments();
       } else if (_tabController.index == 1 && paidBookings.isEmpty) {
         _fetchPaidBookings();
@@ -77,32 +78,73 @@ class _PaymentsPageState extends State<PaymentsPage>
         },
       );
 
+      print('Pending payments response status: ${response.statusCode}');
+      print('Pending payments response body: ${response.body}');
+
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final payments = data['data']['payments'] as List<dynamic>;
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final dataObj = data['data'] as Map<String, dynamic>?;
+        
+        // Handle bookings
+        final bookingsList = dataObj?['bookings'] as List<dynamic>? ?? [];
+        final bookings = bookingsList.map((item) {
+          final payment = item as Map<String, dynamic>?;
+          final booking = payment?['booking'] as Map<String, dynamic>?;
+          final team = payment?['team'] as Map<String, dynamic>?;
+          final court = payment?['court'] as Map<String, dynamic>?;
+          
+          return {
+            'id': payment?['id']?.toString() ?? '',
+            'amount': payment?['amount'] ?? 0,
+            'type': 'booking',
+            'team': team?['teamName']?.toString() ?? 'Unknown Team',
+            'court': court?['name']?.toString() ?? 'Unknown Court',
+            'startTime': booking?['startTime'],
+            'endTime': booking?['endTime'],
+          };
+        }).toList();
+
+        // Handle matches
+        final matchesList = dataObj?['matches'] as List<dynamic>? ?? [];
+        final matches = matchesList.map((item) {
+          final payment = item as Map<String, dynamic>?;
+          final match = payment?['match'] as Map<String, dynamic>?;
+          final hostTeam = payment?['hostTeam'] as Map<String, dynamic>?;
+          final guestTeam = payment?['guestTeam'] as Map<String, dynamic>?;
+          final court = payment?['court'] as Map<String, dynamic>?;
+          
+          return {
+            'id': payment?['id']?.toString() ?? '',
+            'amount': payment?['amount'] ?? 0,
+            'type': 'match',
+            'matchID': match?['id']?.toString() ?? '',
+            'sport': match?['Sport']?.toString() ?? 'Unknown',
+            'hostTeam': hostTeam?['teamName']?.toString() ?? 'Unknown',
+            'guestTeam': guestTeam?['teamName']?.toString() ?? 'Unknown',
+            'hostTeamID': match?['Host_Team_ID']?.toString() ?? '',
+            'guestTeamID': match?['Guest_Team_ID']?.toString() ?? '',
+            'team': '${hostTeam?['teamName'] ?? 'Unknown'} vs ${guestTeam?['teamName'] ?? 'Unknown'}',
+            'court': court?['name']?.toString() ?? 'Unknown Court',
+            'startTime': match?['StartTime'],
+            'endTime': match?['EndTime'],
+          };
+        }).toList();
 
         setState(() {
-          pendingPayments = payments.map((payment) {
-            return {
-              'id': payment['id'],
-              'amount': payment['amount'],
-              'team': payment['team']?['teamName'] ?? 'Unknown Team',
-              'court': payment['court']?['name'] ?? 'Unknown Court',
-              'startTime': payment['booking']?['startTime'],
-              'endTime': payment['booking']?['endTime'],
-            };
-          }).toList();
+          pendingBookings = bookings;
+          pendingMatches = matches;
           isLoadingPending = false;
         });
       } else {
-        final errorData = jsonDecode(response.body);
+        final errorData = jsonDecode(response.body) as Map<String, dynamic>?;
         setState(() {
           errorMessagePending =
-              errorData['error'] ?? 'Failed to fetch pending payments';
+              errorData?['error']?.toString() ?? 'Failed to fetch pending payments';
           isLoadingPending = false;
         });
       }
     } catch (e) {
+      print('Error fetching pending payments: $e');
       setState(() {
         errorMessagePending = 'Error: ${e.toString()}';
         isLoadingPending = false;
@@ -135,27 +177,33 @@ class _PaymentsPageState extends State<PaymentsPage>
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final bookings = data['data']['bookings'] as List<dynamic>;
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final dataObj = data['data'] as Map<String, dynamic>?;
+        final bookingsList = dataObj?['bookings'] as List<dynamic>? ?? [];
 
         setState(() {
-          paidBookings = bookings.map((item) {
+          paidBookings = bookingsList.map((item) {
+            final booking = item['booking'] as Map<String, dynamic>?;
+            final payment = item['payment'] as Map<String, dynamic>?;
+            final team = item['team'] as Map<String, dynamic>?;
+            final court = item['court'] as Map<String, dynamic>?;
+            
             return {
-              'id': item['booking']?['id'],
-              'amount': item['payment']?['amount'] ?? 0,
-              'team': item['team']?['teamName'] ?? 'Unknown Team',
-              'court': item['court']?['name'] ?? 'Unknown Court',
-              'startTime': item['booking']?['startTime'],
-              'endTime': item['booking']?['endTime'],
+              'id': booking?['id']?.toString() ?? '',
+              'amount': payment?['amount'] ?? 0,
+              'team': team?['teamName']?.toString() ?? 'Unknown Team',
+              'court': court?['name']?.toString() ?? 'Unknown Court',
+              'startTime': booking?['startTime'],
+              'endTime': booking?['endTime'],
             };
           }).toList();
           isLoadingPaid = false;
         });
       } else {
-        final errorData = jsonDecode(response.body);
+        final errorData = jsonDecode(response.body) as Map<String, dynamic>?;
         setState(() {
           errorMessagePaid =
-              errorData['error'] ?? 'Failed to fetch paid bookings';
+              errorData?['error']?.toString() ?? 'Failed to fetch paid bookings';
           isLoadingPaid = false;
         });
       }
@@ -167,25 +215,35 @@ class _PaymentsPageState extends State<PaymentsPage>
     }
   }
 
-  Future<void> _markAsPaid(String paymentID) async {
+  Future<void> _markAsPaid(String paymentID, {String? matchID, String? sport}) async {
     try {
       final token = await _getAuthToken();
       if (token == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No authentication token found'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No authentication token found'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
         return;
       }
 
+      // If it's a match, show winner selection dialog
+      if (matchID != null && matchID.isNotEmpty) {
+        _showMatchWinnerDialog(paymentID, matchID, sport ?? '');
+        return;
+      }
+
+      // For bookings, just mark as paid
       final response = await http.put(
         Uri.parse('$baseUrl/payments/update-payment/$paymentID'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
+        body: jsonEncode({}),
       );
 
       if (response.statusCode == 200) {
@@ -196,16 +254,215 @@ class _PaymentsPageState extends State<PaymentsPage>
               backgroundColor: Colors.green,
             ),
           );
-          // Refresh both lists
           await _fetchPendingPayments();
           await _fetchPaidBookings();
         }
       } else {
-        final errorData = jsonDecode(response.body);
+        final errorData = jsonDecode(response.body) as Map<String, dynamic>?;
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(errorData['error'] ?? 'Failed to update payment'),
+              content: Text(errorData?['error']?.toString() ?? 'Failed to update payment'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showMatchWinnerDialog(String paymentID, String matchID, String sport) {
+    String? selectedWinner;
+    bool isTie = false;
+
+    // Get the payment to extract team IDs (check both lists)
+    final payment = [...pendingBookings, ...pendingMatches].firstWhere(
+      (p) => p['id']?.toString() == paymentID,
+      orElse: () => <String, dynamic>{},
+    );
+    
+    final hostTeamID = payment['hostTeamID']?.toString() ?? '';
+    final guestTeamID = payment['guestTeamID']?.toString() ?? '';
+    final hostTeamName = payment['hostTeam']?.toString() ?? 'Host Team';
+    final guestTeamName = payment['guestTeam']?.toString() ?? 'Guest Team';
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (buildContext, setDialogState) => AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: const Text(
+            'Select Match Winner',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    payment['team']?.toString() ?? 'Match',
+                    style: const TextStyle(color: Colors.white70, fontSize: 16),
+                  ),
+                  const SizedBox(height: 16),
+                  if (sport.toLowerCase() == 'futsal' || sport.toLowerCase() == 'football') ...[
+                    RadioListTile<String>(
+                      title: Text('$hostTeamName (Host)', style: const TextStyle(color: Colors.white)),
+                      value: 'host',
+                      groupValue: isTie ? null : (selectedWinner ?? ''),
+                      onChanged: (value) {
+                        setDialogState(() {
+                          selectedWinner = value ?? '';
+                          isTie = false;
+                        });
+                      },
+                    ),
+                    RadioListTile<String>(
+                      title: Text('$guestTeamName (Guest)', style: const TextStyle(color: Colors.white)),
+                      value: 'guest',
+                      groupValue: isTie ? null : (selectedWinner ?? ''),
+                      onChanged: (value) {
+                        setDialogState(() {
+                          selectedWinner = value ?? '';
+                          isTie = false;
+                        });
+                      },
+                    ),
+                    CheckboxListTile(
+                      title: const Text('Tie', style: TextStyle(color: Colors.white)),
+                      value: isTie,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          isTie = value ?? false;
+                          if (isTie) selectedWinner = null;
+                        });
+                      },
+                    ),
+                  ] else ...[
+                    RadioListTile<String>(
+                      title: Text('$hostTeamName (Host)', style: const TextStyle(color: Colors.white)),
+                      value: 'host',
+                      groupValue: selectedWinner ?? '',
+                      onChanged: (value) {
+                        setDialogState(() {
+                          selectedWinner = value ?? '';
+                          isTie = false;
+                        });
+                      },
+                    ),
+                    RadioListTile<String>(
+                      title: Text('$guestTeamName (Guest)', style: const TextStyle(color: Colors.white)),
+                      value: 'guest',
+                      groupValue: selectedWinner ?? '',
+                      onChanged: (value) {
+                        setDialogState(() {
+                          selectedWinner = value ?? '';
+                          isTie = false;
+                        });
+                      },
+                    ),
+                  ],
+                ],
+              ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            ),
+            ElevatedButton(
+              onPressed: (selectedWinner == null && !isTie)
+                  ? null
+                  : () async {
+                      await _updatePaymentStatus(
+                        paymentID,
+                        matchID,
+                        selectedWinner,
+                        isTie,
+                        payment,
+                      );
+                      if (mounted) {
+                        Navigator.pop(dialogContext);
+                      }
+                    },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+              child: const Text('Confirm', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _updatePaymentStatus(
+    String paymentID,
+    String matchID,
+    String? winner,
+    bool isTie,
+    Map<String, dynamic> payment,
+  ) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No authentication token found'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Determine winnerID based on selection
+      String? winnerID;
+      if (isTie) {
+        winnerID = null; // Will be handled as tie
+      } else if (winner == 'host') {
+        winnerID = payment['hostTeamID']?.toString();
+      } else if (winner == 'guest') {
+        winnerID = payment['guestTeamID']?.toString();
+      }
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/payments/update-payment/$paymentID'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'matchID': matchID,
+          'winnerID': winnerID,
+          'isTie': isTie,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Payment updated and winner selected successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          await _fetchPendingPayments();
+          await _fetchPaidBookings();
+        }
+      } else {
+        final errorData = jsonDecode(response.body) as Map<String, dynamic>?;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorData?['error']?.toString() ?? 'Failed to update payment'),
               backgroundColor: Colors.red,
             ),
           );
@@ -327,8 +584,14 @@ class _PaymentsPageState extends State<PaymentsPage>
               const SizedBox(width: 12),
               IconButton(
                 icon: const Icon(Icons.check_circle, color: Colors.green),
-                onPressed: () => _markAsPaid(payment['id']),
-                tooltip: 'Mark as paid',
+                onPressed: () => _markAsPaid(
+                  payment['id']?.toString() ?? '',
+                  matchID: payment['matchID']?.toString(),
+                  sport: payment['sport']?.toString(),
+                ),
+                tooltip: payment['type'] == 'match' 
+                    ? 'Select winner & mark paid' 
+                    : 'Mark as paid',
               ),
             ],
           ],
@@ -389,7 +652,7 @@ class _PaymentsPageState extends State<PaymentsPage>
                     ],
                   ),
                 )
-              : pendingPayments.isEmpty
+              : (pendingBookings.isEmpty && pendingMatches.isEmpty)
               ? const Center(
                   child: Text(
                     'No pending payments',
@@ -399,11 +662,40 @@ class _PaymentsPageState extends State<PaymentsPage>
               : RefreshIndicator(
                   onRefresh: _fetchPendingPayments,
                   color: Colors.redAccent,
-                  child: ListView.builder(
-                    itemCount: pendingPayments.length,
-                    itemBuilder: (context, index) {
-                      return buildPaymentCard(pendingPayments[index], false);
-                    },
+                  child: ListView(
+                    children: [
+                      // Bookings Section
+                      if (pendingBookings.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(
+                            'Bookings (Friendly Matches)',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        ...pendingBookings.map((payment) => buildPaymentCard(payment, false)),
+                        const SizedBox(height: 16),
+                      ],
+                      // Matches/Challenges Section
+                      if (pendingMatches.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(
+                            'Challenges (Competitive Matches)',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        ...pendingMatches.map((payment) => buildPaymentCard(payment, false)),
+                      ],
+                    ],
                   ),
                 ),
 

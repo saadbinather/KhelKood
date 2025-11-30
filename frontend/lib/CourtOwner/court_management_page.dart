@@ -391,7 +391,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                   const SizedBox(height: 8),
                   _buildFieldCountCard(
                     'Futsal Fields',
-                    courtData!['numOfPadelFields'] ?? 0,
+                    courtData!['numOfFutsalFields'] ?? 0,
                     Icons.sports_soccer,
                   ),
                   const SizedBox(height: 8),

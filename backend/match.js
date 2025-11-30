@@ -58,7 +58,13 @@ import express from "express";
 import axios from "axios";
 import { db } from "./config/firebase.js";
 import { verifyToken } from "./middleware/verifyToken.js";
-import { sendSuccess, sendError, sendValidationError, sendNotFoundError, sendUnauthorizedError } from "./utils/response.js";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFoundError,
+  sendUnauthorizedError,
+} from "./utils/response.js";
 import { validateRequired } from "./utils/validators.js";
 
 const router = express.Router();
@@ -87,10 +93,10 @@ const MatchRepository = {
     return response.data.data?.challenge || response.data.challenge;
   },
 
-  async createBooking(courtID, startTime, endTime, token) {
+  async createBooking(courtID, startTime, endTime, courtNum, token) {
     const response = await axios.post(
       `${BASE_URL}/booking/book-court`,
-      { courtID, startTime, endTime, skipPayment: true }, // Skip payment creation - match service will create it
+      { courtID, startTime, endTime, courtNum, skipPayment: true }, // Skip payment creation - match service will create it
       { headers: { Authorization: `Bearer ${token}` } }
     );
     return response.data.data?.bookingID || response.data.bookingID;
@@ -123,8 +129,9 @@ const MatchRepository = {
 
 const MatchService = {
   calculatePrice(courtData, sportType, startTime, endTime) {
-    const durationHours = (new Date(endTime) - new Date(startTime)) / (1000 * 60 * 60);
-    
+    const durationHours =
+      (new Date(endTime) - new Date(startTime)) / (1000 * 60 * 60);
+
     let hourlyRate;
     switch (sportType.toLowerCase()) {
       case "cricket":
@@ -155,7 +162,10 @@ const MatchService = {
     }
 
     // Get challenge
-    const challenge = await MatchRepository.getChallengeById(challengeID, token);
+    const challenge = await MatchRepository.getChallengeById(
+      challengeID,
+      token
+    );
     if (!challenge) {
       throw new Error("Challenge not found");
     }
@@ -184,6 +194,7 @@ const MatchService = {
       courtID,
       startTime.toISOString(),
       endTime.toISOString(),
+      challenge.courtNum,
       token
     );
 
@@ -200,6 +211,7 @@ const MatchService = {
       Host_Team_ID: challenge.hostTeamID,
       Guest_Team_ID: teamID,
       Sport: sportType,
+      courtNum: challenge.courtNum ? parseInt(challenge.courtNum) : null,
       StartTime: startTime,
       EndTime: endTime,
       matchType: "competitive",
@@ -229,11 +241,15 @@ const MatchService = {
     };
   },
 
-  async createFriendlyMatch(teamID, { courtID, sport, startTime, endTime, teamName }, token) {
+  async createFriendlyMatch(
+    teamID,
+    { courtID, sport, startTime, endTime, teamName, courtNum },
+    token
+  ) {
     // Validation
     const validation = validateRequired(
-      { courtID, sport, startTime, endTime, teamName },
-      ["courtID", "sport", "startTime", "endTime", "teamName"]
+      { courtID, sport, startTime, endTime, teamName, courtNum },
+      ["courtID", "sport", "startTime", "endTime", "teamName", "courtNum"]
     );
     if (!validation.isValid) {
       throw new Error(validation.error);
@@ -247,13 +263,19 @@ const MatchService = {
 
     const startTimeDate = new Date(startTime);
     const endTimeDate = new Date(endTime);
-    const pricing = this.calculatePrice(court, sport, startTimeDate, endTimeDate);
+    const pricing = this.calculatePrice(
+      court,
+      sport,
+      startTimeDate,
+      endTimeDate
+    );
 
     // Create booking
     const bookingID = await MatchRepository.createBooking(
       courtID,
       startTimeDate.toISOString(),
       endTimeDate.toISOString(),
+      parseInt(courtNum),
       token
     );
 
@@ -269,6 +291,7 @@ const MatchService = {
       Court_ID: courtID,
       Host_Team_ID: teamID,
       Sport: sport,
+      courtNum: parseInt(courtNum),
       StartTime: startTimeDate,
       EndTime: endTimeDate,
       TeamName: teamName,
@@ -303,17 +326,29 @@ const MatchController = {
       const { challengeID } = req.body;
       const token = req.headers.authorization.split(" ")[1];
 
-      const result = await MatchService.createCompetitiveMatch(teamID, challengeID, token);
+      const result = await MatchService.createCompetitiveMatch(
+        teamID,
+        challengeID,
+        token
+      );
 
-      return sendSuccess(res, 201, "Match, booking and payment created successfully ✅", {
-        matchID: result.match.id,
-        bookingID: result.bookingID,
-        paymentID: result.paymentID,
-        match: result.match,
-        pricingDetails: result.pricing,
-      });
+      return sendSuccess(
+        res,
+        201,
+        "Match, booking and payment created successfully ✅",
+        {
+          matchID: result.match.id,
+          bookingID: result.bookingID,
+          paymentID: result.paymentID,
+          match: result.match,
+          pricingDetails: result.pricing,
+        }
+      );
     } catch (error) {
-      if (error.message === "Challenge not found" || error.message === "Court not found") {
+      if (
+        error.message === "Challenge not found" ||
+        error.message === "Court not found"
+      ) {
         return sendNotFoundError(res, error.message.split(" ")[0]);
       }
       if (error.message.includes("Unauthorized")) {
@@ -332,15 +367,24 @@ const MatchController = {
       const teamID = req.user.uid;
       const token = req.headers.authorization.split(" ")[1];
 
-      const result = await MatchService.createFriendlyMatch(teamID, req.body, token);
+      const result = await MatchService.createFriendlyMatch(
+        teamID,
+        req.body,
+        token
+      );
 
-      return sendSuccess(res, 201, "Friendly match, booking and payment created successfully ✅", {
-        matchID: result.match.id,
-        bookingID: result.bookingID,
-        paymentID: result.paymentID,
-        match: result.match,
-        pricingDetails: result.pricing,
-      });
+      return sendSuccess(
+        res,
+        201,
+        "Friendly match, booking and payment created successfully ✅",
+        {
+          matchID: result.match.id,
+          bookingID: result.bookingID,
+          paymentID: result.paymentID,
+          match: result.match,
+          pricingDetails: result.pricing,
+        }
+      );
     } catch (error) {
       if (error.message === "Court not found") {
         return sendNotFoundError(res, "Court");
@@ -356,8 +400,16 @@ const MatchController = {
 
 // ==================== ROUTES ====================
 
-router.post("/create", verifyToken(["team"]), MatchController.createCompetitiveMatch);
+router.post(
+  "/create",
+  verifyToken(["team"]),
+  MatchController.createCompetitiveMatch
+);
 
-router.post("/create-friendly", verifyToken(["team"]), MatchController.createFriendlyMatch);
+router.post(
+  "/create-friendly",
+  verifyToken(["team"]),
+  MatchController.createFriendlyMatch
+);
 
 export default router;

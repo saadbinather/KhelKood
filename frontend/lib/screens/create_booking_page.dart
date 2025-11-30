@@ -17,14 +17,60 @@ class _CreateBookingPageState extends State<CreateBookingPage> {
   String? errorMessage;
   String? selectedCourtId;
   Map<String, dynamic>? selectedCourt;
+  int? selectedCourtNum; // Selected court number (1, 2, 3, etc.)
   int? selectedStartSlot; // Index of selected start slot (dayIndex * 24 + hour)
   int? selectedEndSlot; // Index of selected end slot
   bool isCreatingBooking = false;
+  String? teamSport; // Team's sport type
 
   @override
   void initState() {
     super.initState();
+    _fetchTeamSport();
     _fetchVerifiedCourts();
+  }
+
+  Future<void> _fetchTeamSport() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null) return;
+
+      final response = await http.get(
+        Uri.parse('http://localhost:5000/api/team/profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        // API returns: { data: { team: { sports: "football" } } }
+        final team = data['data']?['team'] ?? data['team'];
+        final sport = team?['sports'] ?? data['data']?['sports'] ?? data['sports'];
+        setState(() {
+          teamSport = sport?.toString().toLowerCase();
+        });
+      }
+    } catch (e) {
+      print('Error fetching team sport: $e');
+    }
+  }
+
+  List<int> _getAvailableCourtNumbers() {
+    if (selectedCourt == null || teamSport == null) return [];
+    
+    int count = 0;
+    if (teamSport == 'cricket') {
+      count = selectedCourt!['numOfCricketFields'] ?? 0;
+    } else if (teamSport == 'futsal' || teamSport == 'football') {
+      count = selectedCourt!['numOfFutsalFields'] ?? 0;
+    } else if (teamSport == 'padel') {
+      count = selectedCourt!['numOfPadelCourts'] ?? 0;
+    }
+    
+    return List.generate(count, (index) => index + 1); // 1, 2, 3, ...
   }
 
   Future<void> _fetchVerifiedCourts() async {
@@ -79,6 +125,7 @@ class _CreateBookingPageState extends State<CreateBookingPage> {
     setState(() {
       selectedCourtId = court['id'];
       selectedCourt = court;
+      selectedCourtNum = null; // Reset court number when switching courts
       selectedStartSlot = null;
       selectedEndSlot = null;
     });
@@ -176,6 +223,16 @@ class _CreateBookingPageState extends State<CreateBookingPage> {
       return;
     }
 
+    if (selectedCourtNum == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a court number'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final startDateTime = _getSelectedStartDateTime();
     final endDateTime = _getSelectedEndDateTime();
 
@@ -230,6 +287,7 @@ class _CreateBookingPageState extends State<CreateBookingPage> {
           'courtID': selectedCourtId!,
           'startTime': startDateTime.toIso8601String(),
           'endTime': endDateTime.toIso8601String(),
+          'courtNum': selectedCourtNum!,
         }),
       );
 
@@ -350,12 +408,87 @@ class _CreateBookingPageState extends State<CreateBookingPage> {
     }
 
     final days = _getNext7Days();
+    final availableCourtNumbers = _getAvailableCourtNumbers();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TimeSlotGrid(
+        // Court Number Selector
+        if (availableCourtNumbers.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          const Text(
+            'Select Court/Field Number',
+            style: TextStyle(
+              color: Colors.redAccent,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Choose which ${teamSport ?? 'field'} you want to book',
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: availableCourtNumbers.map((courtNum) {
+              final isSelected = selectedCourtNum == courtNum;
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    selectedCourtNum = courtNum;
+                    selectedStartSlot = null;
+                    selectedEndSlot = null;
+                  });
+                },
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: isSelected 
+                        ? Colors.redAccent.withOpacity(0.3) 
+                        : Colors.grey[900],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected ? Colors.redAccent : Colors.redAccent.withOpacity(0.3),
+                      width: isSelected ? 2.5 : 1.5,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.sports_soccer,
+                        color: isSelected ? Colors.redAccent : Colors.white70,
+                        size: 28,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${teamSport == 'cricket' ? 'Field' : teamSport == 'padel' ? 'Court' : 'Field'} $courtNum',
+                        style: TextStyle(
+                          color: isSelected ? Colors.redAccent : Colors.white70,
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+        
+        // Show time slot grid only after court number is selected
+        if (selectedCourtNum != null) ...[
+          TimeSlotGrid(
           selectedCourt: selectedCourt,
+          selectedCourtNum: selectedCourtNum,
           selectedStartSlot: selectedStartSlot,
           selectedEndSlot: selectedEndSlot,
           onSlotSelected: _selectTimeSlot,
@@ -368,11 +501,11 @@ class _CreateBookingPageState extends State<CreateBookingPage> {
           days: days,
         ),
         
-        const SizedBox(height: 20),
+          const SizedBox(height: 20),
         
-        // Selected time display
-        if (selectedStartSlot != null && selectedEndSlot != null)
-          Container(
+          // Selected time display
+          if (selectedStartSlot != null && selectedEndSlot != null)
+            Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.redAccent.withOpacity(0.2),
@@ -413,29 +546,30 @@ class _CreateBookingPageState extends State<CreateBookingPage> {
             ),
           ),
         
-        const SizedBox(height: 30),
+          const SizedBox(height: 30),
         
-        // Create Booking Button
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: isCreatingBooking ? null : _createBooking,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            child: isCreatingBooking
-                ? const CircularProgressIndicator(color: Colors.white)
-                : const Text(
-                    'Book Court',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+          // Create Booking Button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: isCreatingBooking ? null : _createBooking,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              child: isCreatingBooking
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text(
+                      'Book Court',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
+            ),
           ),
-        ),
+        ], // Close the if (selectedCourtNum != null) block
       ],
     );
   }

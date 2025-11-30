@@ -17,14 +17,105 @@ class _CreateChallengePageState extends State<CreateChallengePage> {
   String? errorMessage;
   String? selectedCourtId;
   Map<String, dynamic>? selectedCourt;
+  int? selectedCourtNum; // Selected court number (1, 2, 3, etc.)
   int? selectedStartSlot; // Index of selected start slot (dayIndex * 24 + hour)
   int? selectedEndSlot; // Index of selected end slot
   bool isCreatingChallenge = false;
+  String? teamSport; // Team's sport type
 
   @override
   void initState() {
     super.initState();
+    _fetchTeamSport();
     _fetchVerifiedCourts();
+  }
+
+  Future<void> _fetchTeamSport() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null) {
+        print('No auth token found for fetching team sport');
+        return;
+      }
+
+      final response = await http.get(
+        Uri.parse('http://localhost:5000/api/team/profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        // API returns: { data: { team: { sports: "football" } } }
+        final team = data['data']?['team'] ?? data['team'];
+        final sport = team?['sports'] ?? data['data']?['sports'] ?? data['sports'];
+        print('Team sport fetched: $sport (from team: $team)');
+        if (mounted) {
+          setState(() {
+            teamSport = sport?.toString().toLowerCase();
+          });
+        }
+      } else {
+        print('Failed to fetch team sport: ${response.statusCode}');
+        print('Response: ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching team sport: $e');
+    }
+  }
+
+  List<int> _getAvailableCourtNumbers() {
+    if (selectedCourt == null) {
+      print('_getAvailableCourtNumbers: selectedCourt is null');
+      return [];
+    }
+    
+    print('_getAvailableCourtNumbers: teamSport = $teamSport');
+    print('_getAvailableCourtNumbers: court data = ${selectedCourt!['numOfCricketFields']}, ${selectedCourt!['numOfFutsalFields']}, ${selectedCourt!['numOfPadelCourts']}');
+    
+    // If team sport is available, show only courts for that sport
+    if (teamSport != null) {
+      int count = 0;
+      if (teamSport == 'cricket') {
+        count = selectedCourt!['numOfCricketFields'] ?? 0;
+        print('_getAvailableCourtNumbers: cricket count = $count');
+      } else if (teamSport == 'futsal' || teamSport == 'football') {
+        count = selectedCourt!['numOfFutsalFields'] ?? 0;
+        print('_getAvailableCourtNumbers: futsal count = $count');
+      } else if (teamSport == 'padel') {
+        count = selectedCourt!['numOfPadelCourts'] ?? 0;
+        print('_getAvailableCourtNumbers: padel count = $count');
+      }
+      
+      if (count > 0) {
+        final numbers = List.generate(count, (index) => index + 1);
+        print('_getAvailableCourtNumbers: returning $numbers');
+        return numbers;
+      }
+    }
+    
+    // If team sport is not available or no courts found, show all available courts
+    // This is a fallback to ensure something is always shown
+    final cricketCount = selectedCourt!['numOfCricketFields'] ?? 0;
+    final futsalCount = selectedCourt!['numOfFutsalFields'] ?? 0;
+    final padelCount = selectedCourt!['numOfPadelCourts'] ?? 0;
+    
+    print('_getAvailableCourtNumbers: fallback - cricket=$cricketCount, futsal=$futsalCount, padel=$padelCount');
+    
+    // Return the maximum count available (or show all if multiple sports)
+    final maxCount = [cricketCount, futsalCount, padelCount].reduce((a, b) => a > b ? a : b);
+    
+    if (maxCount > 0) {
+      final numbers = List.generate(maxCount, (index) => index + 1);
+      print('_getAvailableCourtNumbers: fallback returning $numbers');
+      return numbers;
+    }
+    
+    print('_getAvailableCourtNumbers: returning empty list');
+    return [];
   }
 
   Future<void> _fetchVerifiedCourts() async {
@@ -79,6 +170,7 @@ class _CreateChallengePageState extends State<CreateChallengePage> {
     setState(() {
       selectedCourtId = court['id'];
       selectedCourt = court;
+      selectedCourtNum = null; // Reset court number when switching courts
       selectedStartSlot = null;
       selectedEndSlot = null;
     });
@@ -179,6 +271,16 @@ class _CreateChallengePageState extends State<CreateChallengePage> {
       return;
     }
 
+    if (selectedCourtNum == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a court number'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final startDateTime = _getSelectedStartDateTime();
     final endDateTime = _getSelectedEndDateTime();
 
@@ -233,6 +335,7 @@ class _CreateChallengePageState extends State<CreateChallengePage> {
           'courtFirebaseUID': selectedCourtId!,
           'stime': startDateTime.toIso8601String(),
           'etime': endDateTime.toIso8601String(),
+          'courtNum': selectedCourtNum!,
         }),
       );
 
@@ -353,12 +456,133 @@ class _CreateChallengePageState extends State<CreateChallengePage> {
     }
 
     final days = _getNext7Days();
+    final availableCourtNumbers = _getAvailableCourtNumbers();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TimeSlotGrid(
+        // Court Number Selector
+        const SizedBox(height: 20),
+        const Text(
+          'Select Court/Field Number',
+          style: TextStyle(
+            color: Colors.redAccent,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        
+        // Show loading if team sport is not yet loaded
+        if (teamSport == null) ...[
+          const Text(
+            'Loading your team sport...',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Center(
+            child: CircularProgressIndicator(
+              color: Colors.redAccent,
+              strokeWidth: 2,
+            ),
+          ),
+        ] else if (availableCourtNumbers.isEmpty) ...[
+          // No courts available for this sport
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.orange,
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'No ${teamSport == 'cricket' ? 'cricket fields' : teamSport == 'padel' ? 'padel courts' : 'futsal fields'} available at this court for your team.',
+                    style: const TextStyle(
+                      color: Colors.orange,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ] else ...[
+          // Show court number selector
+          Text(
+            'Choose which ${teamSport == 'cricket' ? 'cricket field' : teamSport == 'padel' ? 'padel court' : 'futsal field'} you want to book',
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: availableCourtNumbers.map((courtNum) {
+              final isSelected = selectedCourtNum == courtNum;
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    selectedCourtNum = courtNum;
+                    selectedStartSlot = null;
+                    selectedEndSlot = null;
+                  });
+                },
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: isSelected 
+                        ? Colors.redAccent.withOpacity(0.3) 
+                        : Colors.grey[900],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected ? Colors.redAccent : Colors.redAccent.withOpacity(0.3),
+                      width: isSelected ? 2.5 : 1.5,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.sports_soccer,
+                        color: isSelected ? Colors.redAccent : Colors.white70,
+                        size: 28,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${teamSport == 'cricket' ? 'Field' : teamSport == 'padel' ? 'Court' : 'Field'} $courtNum',
+                        style: TextStyle(
+                          color: isSelected ? Colors.redAccent : Colors.white70,
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+        
+        // Show time slot grid only after court number is selected
+        if (selectedCourtNum != null) ...[
+          TimeSlotGrid(
           selectedCourt: selectedCourt,
+          selectedCourtNum: selectedCourtNum,
           selectedStartSlot: selectedStartSlot,
           selectedEndSlot: selectedEndSlot,
           onSlotSelected: _selectTimeSlot,
@@ -371,11 +595,11 @@ class _CreateChallengePageState extends State<CreateChallengePage> {
           days: days,
         ),
         
-        const SizedBox(height: 20),
+          const SizedBox(height: 20),
         
-        // Selected time display
-        if (selectedStartSlot != null && selectedEndSlot != null)
-          Container(
+          // Selected time display
+          if (selectedStartSlot != null && selectedEndSlot != null)
+            Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.redAccent.withOpacity(0.2),
@@ -416,29 +640,30 @@ class _CreateChallengePageState extends State<CreateChallengePage> {
             ),
           ),
         
-        const SizedBox(height: 30),
+          const SizedBox(height: 30),
         
-        // Create Challenge Button
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: isCreatingChallenge ? null : _createChallenge,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            child: isCreatingChallenge
-                ? const CircularProgressIndicator(color: Colors.white)
-                : const Text(
-                    'Create Challenge',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+          // Create Challenge Button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: isCreatingChallenge ? null : _createChallenge,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              child: isCreatingChallenge
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text(
+                      'Create Challenge',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
+            ),
           ),
-        ),
+        ], // Close the if (selectedCourtNum != null) block
       ],
     );
   }

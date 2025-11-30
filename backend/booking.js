@@ -27,11 +27,14 @@ const BookingRepository = {
     return { id: docRef.id, ...bookingData };
   },
 
-  async findByCourtId(courtID) {
-    const bookingsSnapshot = await db
-      .collection("bookings")
-      .where("courtID", "==", courtID)
-      .get();
+  async findByCourtId(courtID, courtNum = null) {
+    let query = db.collection("bookings").where("courtID", "==", courtID);
+
+    if (courtNum !== null) {
+      query = query.where("courtNum", "==", courtNum);
+    }
+
+    const bookingsSnapshot = await query.get();
 
     return bookingsSnapshot.docs.map((doc) => ({
       id: doc.id,
@@ -125,7 +128,7 @@ const BookingRepository = {
   async findMatchesByTeamId(teamID) {
     // Find matches where team is either host or guest
     const matchesSnapshot = await db.collection("matches").get();
-    
+
     const matches = matchesSnapshot.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))
       .filter(
@@ -189,13 +192,16 @@ const BookingService = {
     return response.data.data?.paymentID || response.data.paymentID;
   },
 
-  async createBooking(teamID, { courtID, startTime, endTime, skipPayment }, token) {
+  async createBooking(
+    teamID,
+    { courtID, startTime, endTime, courtNum, skipPayment },
+    token
+  ) {
     // Validation
-    const validation = validateRequired({ courtID, startTime, endTime }, [
-      "courtID",
-      "startTime",
-      "endTime",
-    ]);
+    const validation = validateRequired(
+      { courtID, startTime, endTime, courtNum },
+      ["courtID", "startTime", "endTime", "courtNum"]
+    );
     if (!validation.isValid) {
       throw new Error(validation.error);
     }
@@ -233,6 +239,7 @@ const BookingService = {
     const bookingData = {
       courtID,
       teamID,
+      courtNum: parseInt(courtNum),
       startTime: startTimeDate,
       endTime: endTimeDate,
       createdAt: new Date(),
@@ -260,6 +267,55 @@ const BookingService = {
       booking,
       paymentID,
       pricing,
+    };
+  },
+
+  async markCourtUnavailable(
+    courtOwnerID,
+    { courtID, startTime, endTime, courtNum }
+  ) {
+    // Validation
+    const validation = validateRequired(
+      { courtID, startTime, endTime, courtNum },
+      ["courtID", "startTime", "endTime", "courtNum"]
+    );
+    if (!validation.isValid) {
+      throw new Error(validation.error);
+    }
+
+    const dateValidation = validateDateRange(startTime, endTime);
+    if (!dateValidation.isValid) {
+      throw new Error(dateValidation.error);
+    }
+
+    // Check if court exists and verify ownership
+    const court = await BookingRepository.findCourtById(courtID);
+    if (!court) {
+      throw new Error("Court not found");
+    }
+
+    if (court.courtownerID !== courtOwnerID) {
+      throw new Error("Unauthorized: You do not own this court");
+    }
+
+    // Create unavailable booking data (no teamID, no payment)
+    const startTimeDate = new Date(startTime);
+    const endTimeDate = new Date(endTime);
+
+    const bookingData = {
+      courtID,
+      courtNum: parseInt(courtNum),
+      startTime: startTimeDate,
+      endTime: endTimeDate,
+      isUnavailable: true,
+      createdAt: new Date(),
+    };
+
+    // Save booking (no payment created)
+    const booking = await BookingRepository.create(bookingData);
+
+    return {
+      booking,
     };
   },
 };
@@ -307,12 +363,47 @@ const BookingController = {
   async getCourtBookings(req, res) {
     try {
       const { courtID } = req.params;
-      const bookings = await BookingRepository.findByCourtId(courtID);
+      const courtNum = req.query.courtNum ? parseInt(req.query.courtNum) : null;
+      const bookings = await BookingRepository.findByCourtId(courtID, courtNum);
 
       return sendSuccess(res, 200, "Court bookings fetched successfully ✅", {
         bookings,
-    });
-  } catch (error) {
+      });
+    } catch (error) {
+      return sendError(res, 500, error.message);
+    }
+  },
+
+  async markUnavailable(req, res) {
+    try {
+      const courtOwnerID = req.user.uid;
+      const result = await BookingService.markCourtUnavailable(
+        courtOwnerID,
+        req.body
+      );
+
+      return sendSuccess(
+        res,
+        201,
+        "Court marked as unavailable successfully ✅",
+        {
+          bookingID: result.booking.id,
+          booking: result.booking,
+        }
+      );
+    } catch (error) {
+      if (
+        error.message === "Court not found" ||
+        error.message.includes("Unauthorized")
+      ) {
+        return sendError(res, 403, error.message);
+      }
+      if (
+        error.message.includes("required") ||
+        error.message.includes("Invalid date")
+      ) {
+        return sendValidationError(res, error.message);
+      }
       return sendError(res, 500, error.message);
     }
   },
@@ -368,7 +459,9 @@ const BookingController = {
           // If booking has a matchID, it's a competitive match
           if (booking.matchID) {
             processedMatchIds.add(booking.matchID);
-            const match = await BookingRepository.findMatchById(booking.matchID);
+            const match = await BookingRepository.findMatchById(
+              booking.matchID
+            );
             if (match) {
               // Determine opponent
               if (match.Host_Team_ID === teamID) {
@@ -533,6 +626,11 @@ const BookingController = {
 
 // ==================== ROUTES ====================
 router.post("/book-court", verifyToken(["team"]), BookingController.bookCourt);
+router.post(
+  "/mark-unavailable",
+  verifyToken(["courtowner"]),
+  BookingController.markUnavailable
+);
 router.get(
   "/court/:courtID",
   verifyToken(["team", "courtowner", "admin"]),

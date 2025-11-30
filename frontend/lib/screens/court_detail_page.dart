@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../widgets/time_slot_grid.dart';
+import 'login_page.dart';
 
 class CourtDetailPage extends StatefulWidget {
   final Map<String, dynamic> court;
@@ -29,14 +30,66 @@ class _CourtDetailPageState extends State<CourtDetailPage> {
   
   // Time slot selection
   Map<String, dynamic>? selectedCourt;
+  int? selectedCourtNum; // Selected court number
   int? selectedStartSlot;
   int? selectedEndSlot;
+  String? teamSport; // Team's sport type
+  
+  // Creation states
+  bool isCreatingChallenge = false;
+  bool isCreatingBooking = false;
 
   @override
   void initState() {
     super.initState();
+    _fetchTeamSport();
     _loadCourtData();
     _fetchReviews();
+  }
+
+  Future<void> _fetchTeamSport() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null) return;
+
+      final response = await http.get(
+        Uri.parse('http://localhost:5000/api/team/profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        // API returns: { data: { team: { sports: "football" } } }
+        final team = data['data']?['team'] ?? data['team'];
+        final sport = team?['sports'] ?? data['data']?['sports'] ?? data['sports'];
+        if (mounted) {
+          setState(() {
+            teamSport = sport?.toString().toLowerCase();
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching team sport: $e');
+    }
+  }
+
+  List<int> _getAvailableCourtNumbers() {
+    if (selectedCourt == null || teamSport == null) return [];
+    
+    int count = 0;
+    if (teamSport == 'cricket') {
+      count = selectedCourt!['numOfCricketFields'] ?? 0;
+    } else if (teamSport == 'futsal' || teamSport == 'football') {
+      count = selectedCourt!['numOfFutsalFields'] ?? 0;
+    } else if (teamSport == 'padel') {
+      count = selectedCourt!['numOfPadelCourts'] ?? 0;
+    }
+    
+    return List.generate(count, (index) => index + 1); // 1, 2, 3, ...
   }
 
   @override
@@ -321,6 +374,331 @@ class _CourtDetailPageState extends State<CourtDetailPage> {
     return 0;
   }
 
+  DateTime? _getSelectedStartDateTime() {
+    if (selectedStartSlot == null) return null;
+    final days = _getNext7Days();
+    final dayIndex = selectedStartSlot! ~/ 24;
+    final hour = selectedStartSlot! % 24;
+    if (dayIndex >= days.length) return null;
+    return DateTime(
+      days[dayIndex].year,
+      days[dayIndex].month,
+      days[dayIndex].day,
+      hour,
+    );
+  }
+
+  DateTime? _getSelectedEndDateTime() {
+    if (selectedEndSlot == null) return null;
+    final days = _getNext7Days();
+    final dayIndex = selectedEndSlot! ~/ 24;
+    final hour = selectedEndSlot! % 24;
+    if (dayIndex >= days.length) return null;
+    // End time is the next hour (e.g., if selected 2-3, end is 4)
+    return DateTime(
+      days[dayIndex].year,
+      days[dayIndex].month,
+      days[dayIndex].day,
+      hour + 1,
+    );
+  }
+
+  Future<bool> _checkAuth() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    return token != null;
+  }
+
+  Future<void> _showLoginDialog(Function onLoginSuccess) async {
+    final shouldLogin = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          'Login Required',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'You need to login to continue. Would you like to login now?',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+            ),
+            child: const Text('Login'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogin == true && mounted) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+      );
+      
+      // Check if user logged in after returning
+      if (mounted) {
+        final isAuthenticated = await _checkAuth();
+        if (isAuthenticated) {
+          onLoginSuccess();
+        }
+      }
+    }
+  }
+
+  Future<void> _createChallenge() async {
+    if (selectedCourtNum == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a court number'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (selectedStartSlot == null || selectedEndSlot == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select 2-3 consecutive time slots'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final startDateTime = _getSelectedStartDateTime();
+    final endDateTime = _getSelectedEndDateTime();
+
+    if (startDateTime == null || endDateTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid time selection'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Check authentication
+    final isAuthenticated = await _checkAuth();
+    if (!isAuthenticated) {
+      await _showLoginDialog(_createChallenge);
+      return;
+    }
+
+    setState(() {
+      isCreatingChallenge = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) {
+        setState(() {
+          isCreatingChallenge = false;
+        });
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse('http://localhost:5000/api/challenges/create'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'courtFirebaseUID': widget.court['id'] ?? widget.court['courtId'],
+          'stime': startDateTime.toIso8601String(),
+          'etime': endDateTime.toIso8601String(),
+          'courtNum': selectedCourtNum!,
+        }),
+      );
+
+      setState(() {
+        isCreatingChallenge = false;
+      });
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(data['message'] ?? 'Challenge created successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Clear selection
+          setState(() {
+            selectedCourtNum = null;
+            selectedStartSlot = null;
+            selectedEndSlot = null;
+          });
+          // Refresh grid to show the new challenge
+          if (selectedCourt != null) {
+            // Trigger grid refresh by updating court data
+            _loadCourtData();
+          }
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorData['error'] ?? 'Failed to create challenge'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() {
+        isCreatingChallenge = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _createBooking() async {
+    if (selectedCourtNum == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a court number'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (selectedStartSlot == null || selectedEndSlot == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select 2-3 consecutive time slots'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final startDateTime = _getSelectedStartDateTime();
+    final endDateTime = _getSelectedEndDateTime();
+
+    if (startDateTime == null || endDateTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid time selection'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Check authentication
+    final isAuthenticated = await _checkAuth();
+    if (!isAuthenticated) {
+      await _showLoginDialog(_createBooking);
+      return;
+    }
+
+    setState(() {
+      isCreatingBooking = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) {
+        setState(() {
+          isCreatingBooking = false;
+        });
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse('http://localhost:5000/api/booking/book-court'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'courtID': widget.court['id'] ?? widget.court['courtId'],
+          'startTime': startDateTime.toIso8601String(),
+          'endTime': endDateTime.toIso8601String(),
+          'courtNum': selectedCourtNum!,
+        }),
+      );
+
+      setState(() {
+        isCreatingBooking = false;
+      });
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(data['message'] ?? 'Booking created successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Clear selection
+          setState(() {
+            selectedCourtNum = null;
+            selectedStartSlot = null;
+            selectedEndSlot = null;
+          });
+          // Refresh grid to show the new booking
+          if (selectedCourt != null) {
+            // Trigger grid refresh by updating court data
+            _loadCourtData();
+          }
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorData['error'] ?? 'Failed to create booking'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() {
+        isCreatingBooking = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoadingCourt || courtData == null) {
@@ -467,20 +845,155 @@ class _CourtDetailPageState extends State<CourtDetailPage> {
           ),
           const SizedBox(height: 20),
           
-          // Time Slot Grid
-          TimeSlotGrid(
-            selectedCourt: selectedCourt,
-            selectedStartSlot: selectedStartSlot,
-            selectedEndSlot: selectedEndSlot,
-            onSlotSelected: _selectTimeSlot,
-            onChallengeAccepted: () {
-              setState(() {
-                selectedStartSlot = null;
-                selectedEndSlot = null;
-              });
-            },
-            days: _getNext7Days(),
-          ),
+          // Court Number Selector
+          if (_getAvailableCourtNumbers().isNotEmpty) ...[
+            const Text(
+              'Select Court/Field Number',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Choose which ${teamSport ?? 'field'} you want to select',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: _getAvailableCourtNumbers().map((courtNum) {
+                final isSelected = selectedCourtNum == courtNum;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedCourtNum = courtNum;
+                      selectedStartSlot = null;
+                      selectedEndSlot = null;
+                    });
+                  },
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: isSelected 
+                          ? Colors.redAccent.withOpacity(0.3) 
+                          : Colors.grey[900],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected ? Colors.redAccent : Colors.redAccent.withOpacity(0.3),
+                        width: isSelected ? 2.5 : 1.5,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.sports_soccer,
+                          color: isSelected ? Colors.redAccent : Colors.white70,
+                          size: 28,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '${teamSport == 'cricket' ? 'Field' : teamSport == 'padel' ? 'Court' : 'Field'} $courtNum',
+                          style: TextStyle(
+                            color: isSelected ? Colors.redAccent : Colors.white70,
+                            fontSize: 13,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
+          ],
+          
+          // Time Slot Grid (show only if court number is selected)
+          if (selectedCourtNum != null)
+            TimeSlotGrid(
+              selectedCourt: selectedCourt,
+              selectedCourtNum: selectedCourtNum,
+              selectedStartSlot: selectedStartSlot,
+              selectedEndSlot: selectedEndSlot,
+              onSlotSelected: _selectTimeSlot,
+              onChallengeAccepted: () {
+                setState(() {
+                  selectedCourtNum = null;
+                  selectedStartSlot = null;
+                  selectedEndSlot = null;
+                });
+              },
+              days: _getNext7Days(),
+            ),
+          
+          // Action Buttons (shown when court and slots are selected)
+          if (selectedCourtNum != null && selectedStartSlot != null && selectedEndSlot != null)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  // Create Challenge Button
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onPressed: isCreatingChallenge || isCreatingBooking
+                          ? null
+                          : _createChallenge,
+                      child: isCreatingChallenge
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              "Create Challenge",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Book for Yourself Button
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onPressed: isCreatingChallenge || isCreatingBooking
+                          ? null
+                          : _createBooking,
+                      child: isCreatingBooking
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              "Book for Yourself",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

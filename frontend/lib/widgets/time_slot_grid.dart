@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 class TimeSlotGrid extends StatefulWidget {
   final Map<String, dynamic>? selectedCourt;
+  final int? selectedCourtNum; // Added: Selected court number
   final int? selectedStartSlot;
   final int? selectedEndSlot;
   final Function(int dayIndex, int hour) onSlotSelected;
@@ -14,6 +15,7 @@ class TimeSlotGrid extends StatefulWidget {
   const TimeSlotGrid({
     super.key,
     required this.selectedCourt,
+    this.selectedCourtNum, // Added: Optional court number
     required this.selectedStartSlot,
     required this.selectedEndSlot,
     required this.onSlotSelected,
@@ -42,7 +44,8 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
   void didUpdateWidget(TimeSlotGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.selectedCourt != null && 
-        widget.selectedCourt!['id'] != oldWidget.selectedCourt?['id']) {
+        (widget.selectedCourt!['id'] != oldWidget.selectedCourt?['id'] ||
+         widget.selectedCourtNum != oldWidget.selectedCourtNum)) {
       _fetchConflicts();
     }
   }
@@ -66,10 +69,20 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
       }
 
       final courtID = widget.selectedCourt!['id'];
+      final courtNum = widget.selectedCourtNum;
+
+      // Build URLs with courtNum query parameter if provided
+      final bookingUrl = courtNum != null
+          ? 'http://localhost:5000/api/booking/court/$courtID?courtNum=$courtNum'
+          : 'http://localhost:5000/api/booking/court/$courtID';
+      
+      final challengeUrl = courtNum != null
+          ? 'http://localhost:5000/api/challenges/court/$courtID?courtNum=$courtNum'
+          : 'http://localhost:5000/api/challenges/court/$courtID';
 
       // Fetch bookings and challenges in parallel
       final bookingResponse = await http.get(
-        Uri.parse('http://localhost:5000/api/booking/court/$courtID'),
+        Uri.parse(bookingUrl),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -77,7 +90,7 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
       );
 
       final challengeResponse = await http.get(
-        Uri.parse('http://localhost:5000/api/challenges/court/$courtID'),
+        Uri.parse(challengeUrl),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

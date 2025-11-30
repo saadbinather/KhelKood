@@ -102,11 +102,16 @@ const ChallengeRepository = {
     return { id: teamDoc.id, ...teamDoc.data() };
   },
 
-  async findByCourtId(courtID) {
-    const challengesSnapshot = await db
+  async findByCourtId(courtID, courtNum = null) {
+    let query = db
       .collection("challenges")
-      .where("courtFirebaseUID", "==", courtID)
-      .get();
+      .where("courtFirebaseUID", "==", courtID);
+
+    if (courtNum !== null) {
+      query = query.where("courtNum", "==", courtNum);
+    }
+
+    const challengesSnapshot = await query.get();
 
     return challengesSnapshot.docs.map((doc) => ({
       id: doc.id,
@@ -119,13 +124,15 @@ const ChallengeRepository = {
 // Single Responsibility: Handle challenge business rules
 
 const ChallengeService = {
-  async createChallenge(hostTeamUID, { courtFirebaseUID, stime, etime }) {
+  async createChallenge(
+    hostTeamUID,
+    { courtFirebaseUID, stime, etime, courtNum }
+  ) {
     // Validation
-    const validation = validateRequired({ courtFirebaseUID, stime, etime }, [
-      "courtFirebaseUID",
-      "stime",
-      "etime",
-    ]);
+    const validation = validateRequired(
+      { courtFirebaseUID, stime, etime, courtNum },
+      ["courtFirebaseUID", "stime", "etime", "courtNum"]
+    );
     if (!validation.isValid) {
       throw new Error(validation.error);
     }
@@ -147,6 +154,7 @@ const ChallengeService = {
       teamName: team.teamName,
       sport: team.sports,
       courtFirebaseUID,
+      courtNum: parseInt(courtNum),
       stime,
       etime,
       status: "pending",
@@ -407,8 +415,8 @@ const ChallengeController = {
       return sendSuccess(res, 201, "Challenge created successfully ✅", {
         challengeID: challenge.id,
         challenge,
-    });
-  } catch (error) {
+      });
+    } catch (error) {
       if (
         error.message === "Team not found" ||
         error.message === "Challenge not found"
@@ -426,8 +434,8 @@ const ChallengeController = {
   },
 
   async getChallengeDetails(req, res) {
-  try {
-    const { challengeID } = req.params;
+    try {
+      const { challengeID } = req.params;
       const challenge = await ChallengeService.getChallengeById(challengeID);
 
       return sendSuccess(res, 200, "Challenge fetched successfully ✅", {
@@ -463,7 +471,11 @@ const ChallengeController = {
   async getCourtChallenges(req, res) {
     try {
       const { courtID } = req.params;
-      const challenges = await ChallengeRepository.findByCourtId(courtID);
+      const courtNum = req.query.courtNum ? parseInt(req.query.courtNum) : null;
+      const challenges = await ChallengeRepository.findByCourtId(
+        courtID,
+        courtNum
+      );
 
       // Get all matches to check which challenges are accepted
       const allMatches = await ChallengeRepository.findAllMatches();
@@ -479,8 +491,8 @@ const ChallengeController = {
 
       return sendSuccess(res, 200, "Court challenges fetched successfully ✅", {
         challenges: challengesWithStatus,
-    });
-  } catch (error) {
+      });
+    } catch (error) {
       return sendError(res, 500, error.message);
     }
   },

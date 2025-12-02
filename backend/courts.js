@@ -28,7 +28,7 @@ const CourtsRepository = {
       .where("userId", "==", userId)
       .limit(1)
       .get();
-    
+
     if (teamQuery.empty) return null;
     const teamDoc = teamQuery.docs[0];
     return { id: teamDoc.id, ...teamDoc.data() };
@@ -64,14 +64,20 @@ const CourtsService = {
         ) {
           // Filter by sport if team is requesting
           if (teamSport) {
-            if (teamSport === "cricket" && (!court.numOfCricketFields || court.numOfCricketFields === 0)) {
+            if (
+              teamSport === "cricket" &&
+              (!court.numOfCricketFields || court.numOfCricketFields === 0)
+            ) {
               continue; // Skip if no cricket fields
             } else if (
               (teamSport === "football" || teamSport === "futsal") &&
               (!court.numOfFutsalFields || court.numOfFutsalFields === 0)
             ) {
               continue; // Skip if no futsal fields
-            } else if (teamSport === "padel" && (!court.numOfPadelCourts || court.numOfPadelCourts === 0)) {
+            } else if (
+              teamSport === "padel" &&
+              (!court.numOfPadelCourts || court.numOfPadelCourts === 0)
+            ) {
               continue; // Skip if no padel courts
             }
           }
@@ -80,6 +86,7 @@ const CourtsService = {
             id: court.id,
             name: court.name || "",
             address: court.address || "",
+            location: court.location || "",
             courtownerID: court.courtownerID,
             rating: court.rating || 0,
             cricketRate: court.cricketRate || 0,

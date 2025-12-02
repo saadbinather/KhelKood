@@ -708,11 +708,11 @@ class _ViewCourtDetailsPageState extends State<ViewCourtDetailsPage> {
                       child: CircularProgressIndicator(
                         color: Colors.redAccent,
                       ),
-                    ),
+              ),
                   ],
                 ],
-              ),
             ),
+          ),
         ],
       ),
     );

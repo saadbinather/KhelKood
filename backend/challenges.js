@@ -415,8 +415,8 @@ const ChallengeController = {
       return sendSuccess(res, 201, "Challenge created successfully ✅", {
         challengeID: challenge.id,
         challenge,
-      });
-    } catch (error) {
+    });
+  } catch (error) {
       if (
         error.message === "Team not found" ||
         error.message === "Challenge not found"
@@ -434,8 +434,8 @@ const ChallengeController = {
   },
 
   async getChallengeDetails(req, res) {
-    try {
-      const { challengeID } = req.params;
+  try {
+    const { challengeID } = req.params;
       const challenge = await ChallengeService.getChallengeById(challengeID);
 
       return sendSuccess(res, 200, "Challenge fetched successfully ✅", {
@@ -491,8 +491,8 @@ const ChallengeController = {
 
       return sendSuccess(res, 200, "Court challenges fetched successfully ✅", {
         challenges: challengesWithStatus,
-      });
-    } catch (error) {
+    });
+  } catch (error) {
       return sendError(res, 500, error.message);
     }
   },

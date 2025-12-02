@@ -576,8 +576,8 @@ const PaymentController = {
       return sendSuccess(res, 201, "Payment created successfully ✅", {
         paymentID: payment.id,
         payment,
-      });
-    } catch (error) {
+    });
+  } catch (error) {
       if (error.message === "Booking not found") {
         return sendNotFoundError(res, "Booking");
       }

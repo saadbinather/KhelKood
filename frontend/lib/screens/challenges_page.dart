@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
 import 'view_challenge_page.dart';
-import 'create_challenge_page.dart';
+import 'create_booking_or_challenge_page.dart';
 
 class ChallengesPage extends StatefulWidget {
   const ChallengesPage({super.key});
@@ -223,7 +223,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
                               final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                                  builder: (context) => const CreateChallengePage(),
+                                  builder: (context) => const CreateBookingOrChallengePage(actionType: 'challenge'),
                     ),
                   );
                               if (result == true) {

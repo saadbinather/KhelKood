@@ -192,6 +192,7 @@ const AuthService = {
       const courtData = {
         name: courtTitle || "Default Sports Arena",
         address: courtAddress || "Unknown Location",
+        location: location || "",
         courtownerID: finalFirebaseUid,
         numOfCricketFields: Number(numOfCricketFields) || 0,
         numOfPadelCourts: Number(numOfPadelCourts) || 0,

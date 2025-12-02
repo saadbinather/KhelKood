@@ -288,7 +288,8 @@ const CourtOwnerService = {
 
     const newCourt = {
       name: null,
-      address: "",
+      address: courtData.address || "",
+      location: courtData.location || "",
       courtownerID: ownerID,
       sport: courtData.sport,
       cricketRate: courtData.cricketRate || 0,

@@ -7,7 +7,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../Admin/dashboard.dart';
 import '../CourtOwner/dash_board.dart';
 import 'dashboard_page.dart';
-import 'choose_register_page.dart'; // NEW PAGE
+import 'choose_register_page.dart';
+import '../config/google_auth_config.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -28,8 +29,24 @@ class _LoginPageState extends State<LoginPage> {
     try {
       setState(() => isGoogleLoading = true);
 
-      // Step 1: Sign in with Google
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      // IMPORTANT: You need to get your OAuth Client ID from Google Cloud Console
+      // Steps:
+      // 1. Go to: https://console.cloud.google.com/apis/credentials?project=khelkooddb
+      // 2. Click "Create Credentials" > "OAuth client ID"
+      // 3. Application type: "Web application"
+      // 4. Name: "KhelKood Web Client"
+      // 5. Authorized JavaScript origins: Add "http://localhost:5000" and your domain
+      // 6. Authorized redirect URIs: Add "http://localhost:5000" and your domain
+      // 7. Copy the Client ID (format: 123456789-abc...xyz.apps.googleusercontent.com)
+      // 8. Replace the value below with your actual Client ID
+      
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        scopes: ['email', 'profile'],
+        // Use clientId from config if available, otherwise read from meta tag
+        clientId: GoogleAuthConfig.clientId,
+      );
+      
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
         // User cancelled the sign-in
         setState(() => isGoogleLoading = false);
@@ -38,6 +55,10 @@ class _LoginPageState extends State<LoginPage> {
 
       // Step 2: Get authentication details
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      if (googleAuth.idToken == null) {
+        throw Exception("Failed to get ID token from Google");
+      }
 
       // Step 3: Create Firebase credential
       final credential = GoogleAuthProvider.credential(

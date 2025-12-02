@@ -28,14 +28,12 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
   @override
   void initState() {
     super.initState();
-    // Pre-fill email if from Google login
     if (widget.fromGoogle && widget.email != null) {
       emailCtrl.text = widget.email!;
     }
   }
 
   void goToCourtRegister() {
-    // Validation - password not required for Google sign-in users
     if (nameCtrl.text.isEmpty ||
         emailCtrl.text.isEmpty ||
         phoneCtrl.text.isEmpty ||
@@ -44,7 +42,7 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("All fields are required"),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
         ),
       );
       return;
@@ -54,7 +52,7 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Password is required"),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
         ),
       );
       return;
@@ -64,13 +62,12 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Password must be at least 6 characters"),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
         ),
       );
       return;
     }
 
-    // Pass owner data to court registration page
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -91,43 +88,84 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text("Register Court Owner"),
-        backgroundColor: Colors.redAccent,
+        title: const Text(
+          "Court Owner Details",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: ListView(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            textField("Full Name", nameCtrl),
-            textField("Email", emailCtrl, isEmail: true, readOnly: widget.fromGoogle),
-            if (!widget.fromGoogle)
-              textField(
+            const SizedBox(height: 8),
+            const Text(
+              "Enter your personal information",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+            const SizedBox(height: 32),
+            _buildTextField("Full Name", nameCtrl),
+            const SizedBox(height: 20),
+            _buildTextField(
+              "Email",
+              emailCtrl,
+              isEmail: true,
+              readOnly: widget.fromGoogle,
+            ),
+            if (!widget.fromGoogle) ...[
+              const SizedBox(height: 20),
+              _buildTextField(
                 "Password (min 6 characters)",
                 passwordCtrl,
                 isPassword: true,
               ),
-            textField("Phone Number", phoneCtrl, isNumber: true),
-            textField("CNIC", cnicCtrl, isNumber: true),
-            textField("Location", locationCtrl),
+            ],
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: goToCourtRegister,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-              ),
-              child: const Text(
-                "Next: Register Courts",
-                style: TextStyle(color: Colors.white),
+            _buildTextField("Phone Number", phoneCtrl, isNumber: true),
+            const SizedBox(height: 20),
+            _buildTextField("CNIC", cnicCtrl, isNumber: true),
+            const SizedBox(height: 20),
+            _buildTextField("Location", locationCtrl),
+            const SizedBox(height: 40),
+            Center(
+              child: ElevatedButton(
+                onPressed: goToCourtRegister,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  "Next: Register Courts",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
               ),
             ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
     );
   }
 
-  Widget textField(
+  Widget _buildTextField(
     String label,
     TextEditingController controller, {
     bool isPassword = false,
@@ -135,21 +173,36 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
     bool isNumber = false,
     bool readOnly = false,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
-      child: TextField(
-        controller: controller,
-        obscureText: isPassword,
-        readOnly: readOnly,
-        keyboardType: isEmail
-            ? TextInputType.emailAddress
-            : isNumber
-            ? TextInputType.number
-            : TextInputType.text,
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(),
+    return TextField(
+      controller: controller,
+      obscureText: isPassword,
+      readOnly: readOnly,
+      keyboardType: isEmail
+          ? TextInputType.emailAddress
+          : isNumber
+              ? TextInputType.number
+              : TextInputType.text,
+      style: TextStyle(
+        color: readOnly ? Colors.white54 : Colors.white,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white54),
+        filled: true,
+        fillColor: Colors.grey[900],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
         ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[800]!, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }

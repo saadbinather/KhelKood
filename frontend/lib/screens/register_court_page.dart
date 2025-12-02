@@ -39,16 +39,13 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
   final TextEditingController cricketFieldsCtrl = TextEditingController();
   final TextEditingController padelCourtsCtrl = TextEditingController();
   final TextEditingController futsalFieldsCtrl = TextEditingController();
-  final TextEditingController ratingCtrl = TextEditingController(text: "0");
 
   bool isLoading = false;
-
   String? lastErrorMessage;
 
   Future<bool> registerCourtOwner() async {
     lastErrorMessage = null;
     try {
-      // Validate all fields
       if (courtTitleCtrl.text.trim().isEmpty ||
           addressCtrl.text.trim().isEmpty ||
           openingCtrl.text.trim().isEmpty ||
@@ -76,7 +73,7 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
               : {}),
           "phone": widget.ownerPhone,
           "cnic": widget.ownerCnic,
-          "courtName": widget.ownerLocation, // Using location as courtName
+          "courtName": widget.ownerLocation,
           "location": widget.ownerLocation,
           "courtTitle": courtTitleCtrl.text.trim(),
           "courtAddress": addressCtrl.text.trim(),
@@ -88,29 +85,22 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
           "numOfCricketFields": int.parse(cricketFieldsCtrl.text.trim()),
           "numOfPadelCourts": int.parse(padelCourtsCtrl.text.trim()),
           "numOfFutsalFields": int.parse(futsalFieldsCtrl.text.trim()),
-          "rating": double.parse(ratingCtrl.text.trim()),
         }),
       );
-
-      print("Court Owner Register Response: ${response.body}");
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return true;
       } else {
-        // Extract error message
         try {
           final errorData = jsonDecode(response.body);
           lastErrorMessage = errorData['error'] ?? "Registration failed. Please try again.";
-          print("Court Owner Register Error: $lastErrorMessage");
         } catch (e) {
           lastErrorMessage = "Registration failed. Please try again.";
-          print("Court Owner Register Error: ${response.body}");
         }
         return false;
       }
     } catch (e) {
       lastErrorMessage = "Error: ${e.toString()}";
-      print("Court Owner Register Error: $e");
       return false;
     }
   }
@@ -129,13 +119,12 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("All fields are required"),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
         ),
       );
       return;
     }
 
-    // Validate time range
     final openingTime = int.tryParse(openingCtrl.text.trim());
     final closingTime = int.tryParse(closingCtrl.text.trim());
     if (openingTime == null ||
@@ -148,7 +137,7 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Invalid time range. Opening time must be less than closing time (0-23)"),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
         ),
       );
       return;
@@ -167,14 +156,12 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
             backgroundColor: Colors.green,
           ),
         );
-
-        // Navigate back to login or choose register page
         Navigator.popUntil(context, (route) => route.isFirst);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(lastErrorMessage ?? "Could not register court owner. Please try again."),
-            backgroundColor: Colors.red,
+            backgroundColor: Colors.redAccent,
           ),
         );
       }
@@ -183,7 +170,7 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Error: ${e.toString()}"),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
         ),
       );
     }
@@ -192,64 +179,186 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text("Register Court"),
-        backgroundColor: Colors.redAccent,
+        title: const Text(
+          "Court Details",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: ListView(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            textField("Court Title/Name", courtTitleCtrl),
-            textField("Court Address", addressCtrl),
-            numberField("Opening Time (0–23)", openingCtrl),
-            numberField("Closing Time (0–23)", closingCtrl),
-            numberField("Cricket Rate", cricketRateCtrl),
-            numberField("Futsal Rate", futsalRateCtrl),
-            numberField("Padel Rate", padelRateCtrl),
-            numberField("Number of Cricket Fields", cricketFieldsCtrl),
-            numberField("Number of Padel Courts", padelCourtsCtrl),
-            numberField("Number of Futsal Fields", futsalFieldsCtrl),
-            numberField("Rating (0–10)", ratingCtrl),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: isLoading ? null : handleSubmit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
+            const SizedBox(height: 8),
+            const Text(
+              "Complete your court registration",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+                fontWeight: FontWeight.w300,
               ),
-              child: isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text("Register Court"),
-            )
+            ),
+            const SizedBox(height: 32),
+            _buildTextField("Court Title/Name", courtTitleCtrl),
+            const SizedBox(height: 20),
+            _buildTextField("Court Address", addressCtrl),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildNumberField("Opening Time (0-23)", openingCtrl),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildNumberField("Closing Time (0-23)", closingCtrl),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              "Rates (Rs./hour)",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildNumberField("Cricket", cricketRateCtrl),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildNumberField("Futsal", futsalRateCtrl),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildNumberField("Padel", padelRateCtrl),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              "Field Counts",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildNumberField("Cricket Fields", cricketFieldsCtrl),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildNumberField("Futsal Fields", futsalFieldsCtrl),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildNumberField("Padel Courts", padelCourtsCtrl),
+                ),
+              ],
+            ),
+            const SizedBox(height: 40),
+            Center(
+              child: ElevatedButton(
+                onPressed: isLoading ? null : handleSubmit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
+                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        "Register Court",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
     );
   }
 
-  Widget textField(String label, TextEditingController controller) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
-      child: TextField(
-        controller: controller,
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(),
+  Widget _buildTextField(String label, TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white54),
+        filled: true,
+        fillColor: Colors.grey[900],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
         ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[800]!, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }
 
-  Widget numberField(String label, TextEditingController controller) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
-      child: TextField(
-        controller: controller,
-        keyboardType: TextInputType.number,
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(),
+  Widget _buildNumberField(String label, TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white54, fontSize: 13),
+        filled: true,
+        fillColor: Colors.grey[900],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
         ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[800]!, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
     );
   }

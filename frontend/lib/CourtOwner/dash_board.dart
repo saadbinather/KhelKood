@@ -28,22 +28,23 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
   @override
   void initState() {
     super.initState();
-    
+
     // Fade animation controller
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    
+
     // Slide animation controller
     _slideController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeIn),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeIn));
 
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
@@ -77,9 +78,7 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           'Logout',
           style: TextStyle(
@@ -94,10 +93,7 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.grey),
-            ),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
@@ -149,6 +145,20 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final isTablet = screenWidth > 600;
+    final padding = isSmallScreen
+        ? 12.0
+        : isTablet
+        ? 24.0
+        : 16.0;
+    final titleFontSize = isSmallScreen
+        ? 18.0
+        : isTablet
+        ? 24.0
+        : 20.0;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -158,28 +168,32 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
         title: AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
           child: _showWelcomeMessage
-              ? const Text(
+              ? Text(
                   "Welcome Back!",
-                  key: ValueKey('welcome'),
+                  key: const ValueKey('welcome'),
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: titleFontSize,
                     fontWeight: FontWeight.w600,
                   ),
                 )
-              : const Text(
+              : Text(
                   "Court Owner",
-                  key: ValueKey('courtowner'),
+                  key: const ValueKey('courtowner'),
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: titleFontSize,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
+            icon: Icon(
+              Icons.logout,
+              color: Colors.white,
+              size: isSmallScreen ? 20 : 24,
+            ),
             onPressed: () => _logout(context),
             tooltip: 'Logout',
           ),
@@ -188,14 +202,20 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(padding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Quick stats section
               _buildQuickStats(),
 
-              const SizedBox(height: 16),
+              SizedBox(
+                height: isSmallScreen
+                    ? 12
+                    : isTablet
+                    ? 20
+                    : 16,
+              ),
 
               // Dashboard buttons with staggered animations
               _buildAnimatedButton(
@@ -216,7 +236,13 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
                 },
               ),
 
-              const SizedBox(height: 12),
+              SizedBox(
+                height: isSmallScreen
+                    ? 8
+                    : isTablet
+                    ? 16
+                    : 12,
+              ),
 
               _buildAnimatedButton(
                 index: 1,
@@ -236,7 +262,13 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
                 },
               ),
 
-              const SizedBox(height: 12),
+              SizedBox(
+                height: isSmallScreen
+                    ? 8
+                    : isTablet
+                    ? 16
+                    : 12,
+              ),
 
               _buildAnimatedButton(
                 index: 2,
@@ -256,7 +288,13 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
                 },
               ),
 
-              const SizedBox(height: 12),
+              SizedBox(
+                height: isSmallScreen
+                    ? 8
+                    : isTablet
+                    ? 16
+                    : 12,
+              ),
 
               _buildAnimatedButton(
                 index: 3,
@@ -276,7 +314,13 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
                 },
               ),
 
-              const SizedBox(height: 12),
+              SizedBox(
+                height: isSmallScreen
+                    ? 8
+                    : isTablet
+                    ? 16
+                    : 12,
+              ),
 
               _buildAnimatedButton(
                 index: 4,
@@ -296,7 +340,13 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
                 },
               ),
 
-              const SizedBox(height: 16),
+              SizedBox(
+                height: isSmallScreen
+                    ? 12
+                    : isTablet
+                    ? 20
+                    : 16,
+              ),
             ],
           ),
         ),
@@ -311,10 +361,7 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF2E7D32),
-            Color(0xFF4CAF50),
-          ],
+          colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
@@ -333,11 +380,7 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
               color: Colors.white.withOpacity(0.2),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.person,
-              color: Colors.white,
-              size: 28,
-            ),
+            child: const Icon(Icons.person, color: Colors.white, size: 28),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -369,6 +412,10 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
   }
 
   Widget _buildQuickStats() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final spacing = isSmallScreen ? 8.0 : 12.0;
+
     return Row(
       children: [
         Expanded(
@@ -379,7 +426,7 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
             const Color(0xFF2E7D32),
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: spacing),
         Expanded(
           child: _buildStatCard(
             "Bookings",
@@ -392,9 +439,24 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final isTablet = screenWidth > 600;
+
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(
+        isSmallScreen
+            ? 10
+            : isTablet
+            ? 16
+            : 12,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -410,29 +472,53 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(6),
+            padding: EdgeInsets.all(isSmallScreen ? 5 : 6),
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(
+              icon,
+              color: color,
+              size: isSmallScreen
+                  ? 18
+                  : isTablet
+                  ? 24
+                  : 20,
+            ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(
+            height: isSmallScreen
+                ? 6
+                : isTablet
+                ? 10
+                : 8,
+          ),
           Text(
             value,
             style: TextStyle(
-              fontSize: 20,
+              fontSize: isSmallScreen
+                  ? 18
+                  : isTablet
+                  ? 24
+                  : 20,
               fontWeight: FontWeight.bold,
               color: color,
             ),
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: isSmallScreen ? 1 : 2),
           Text(
             label,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: isSmallScreen
+                  ? 10
+                  : isTablet
+                  ? 13
+                  : 11,
               color: Colors.grey[600],
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -511,6 +597,10 @@ class _DashboardButtonState extends State<_DashboardButton>
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final isTablet = screenWidth > 600;
+
     return GestureDetector(
       onTapDown: (_) {
         setState(() => _isPressed = true);
@@ -548,11 +638,28 @@ class _DashboardButtonState extends State<_DashboardButton>
               onTap: widget.onTap,
               borderRadius: BorderRadius.circular(16),
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                padding: EdgeInsets.symmetric(
+                  vertical: isSmallScreen
+                      ? 12
+                      : isTablet
+                      ? 20
+                      : 16,
+                  horizontal: isSmallScreen
+                      ? 12
+                      : isTablet
+                      ? 20
+                      : 16,
+                ),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: EdgeInsets.all(
+                        isSmallScreen
+                            ? 8
+                            : isTablet
+                            ? 12
+                            : 10,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(10),
@@ -560,31 +667,47 @@ class _DashboardButtonState extends State<_DashboardButton>
                       child: Icon(
                         widget.icon,
                         color: Colors.white,
-                        size: 24,
+                        size: isSmallScreen
+                            ? 20
+                            : isTablet
+                            ? 28
+                            : 24,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: isSmallScreen
+                          ? 10
+                          : isTablet
+                          ? 16
+                          : 12,
+                    ),
                     Expanded(
                       child: Text(
                         widget.title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 16,
+                          fontSize: isSmallScreen
+                              ? 14
+                              : isTablet
+                              ? 18
+                              : 16,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.3,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.all(6),
+                      padding: EdgeInsets.all(isSmallScreen ? 5 : 6),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.arrow_forward_ios,
                         color: Colors.white,
-                        size: 14,
+                        size: isSmallScreen ? 12 : 14,
                       ),
                     ),
                   ],

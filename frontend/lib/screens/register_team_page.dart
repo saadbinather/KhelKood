@@ -26,35 +26,29 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
   final TextEditingController phoneController = TextEditingController();
 
   List<TextEditingController> playerControllers = [];
-
-  String selectedSport = "futsal"; // default sport
-
+  String selectedSport = "futsal";
   bool isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    // Pre-fill email if from Google login
     if (widget.fromGoogle && widget.email != null) {
       emailController.text = widget.email!;
     }
   }
 
-  // ADD PLAYER FIELD
   void addPlayerField() {
     setState(() {
       playerControllers.add(TextEditingController());
     });
   }
 
-  // REMOVE PLAYER FIELD
   void removePlayerField(int index) {
     setState(() {
       playerControllers.removeAt(index);
     });
   }
 
-  // SUBMIT TEAM REGISTRATION
   Future<void> registerTeam() async {
     final name = nameController.text.trim();
     final teamName = teamNameController.text.trim();
@@ -62,13 +56,11 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
     final password = passwordController.text.trim();
     final phone = phoneController.text.trim();
 
-    // players list
     List<String> players = playerControllers
         .where((c) => c.text.trim().isNotEmpty)
         .map((c) => c.text.trim())
         .toList();
 
-    // Validation - password not required for Google sign-in users
     if (name.isEmpty ||
         teamName.isEmpty ||
         email.isEmpty ||
@@ -76,7 +68,7 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Please fill all required fields"),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
         ),
       );
       return;
@@ -86,7 +78,7 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Password is required"),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
         ),
       );
       return;
@@ -96,7 +88,7 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Password must be at least 6 characters"),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
         ),
       );
       return;
@@ -111,7 +103,7 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
         body: jsonEncode({
           "name": name,
           "email": email,
-          "password": widget.fromGoogle ? "" : password, // Empty password for Google users
+          "password": widget.fromGoogle ? "" : password,
           "role": "team",
           "teamName": teamName,
           "phone": phone,
@@ -133,8 +125,6 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
             backgroundColor: Colors.green,
           ),
         );
-
-        // Navigate back to login or choose register page
         Navigator.popUntil(context, (route) => route.isFirst);
       } else {
         final errorData = jsonDecode(response.body);
@@ -142,7 +132,7 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage),
-            backgroundColor: Colors.red,
+            backgroundColor: Colors.redAccent,
           ),
         );
       }
@@ -151,7 +141,7 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Error: ${e.toString()}"),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
         ),
       );
     }
@@ -162,164 +152,200 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.redAccent,
-        title: const Text("Register Team"),
+        title: const Text(
+          "Register Team",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // FULL NAME
-            TextField(
-              controller: nameController,
-              style: const TextStyle(color: Colors.white),
-              decoration: inputStyle("Full Name"),
-            ),
-            const SizedBox(height: 20),
-
-            // TEAM NAME
-            TextField(
-              controller: teamNameController,
-              style: const TextStyle(color: Colors.white),
-              decoration: inputStyle("Team Name"),
-            ),
-            const SizedBox(height: 20),
-
-            // EMAIL
-            TextField(
-              controller: emailController,
-              keyboardType: TextInputType.emailAddress,
-              readOnly: widget.fromGoogle, // Disable editing if from Google
-              style: const TextStyle(color: Colors.white),
-              decoration: inputStyle("Email"),
-            ),
-            const SizedBox(height: 20),
-
-            // PASSWORD (hidden for Google sign-in users)
-            if (!widget.fromGoogle) ...[
-              TextField(
-                controller: passwordController,
-                obscureText: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: inputStyle("Password (min 6 characters)"),
+            const SizedBox(height: 8),
+            const Text(
+              "Create your team profile",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+                fontWeight: FontWeight.w300,
               ),
+            ),
+            const SizedBox(height: 32),
+            _buildTextField("Full Name", nameController),
+            const SizedBox(height: 20),
+            _buildTextField("Team Name", teamNameController),
+            const SizedBox(height: 20),
+            _buildTextField(
+              "Email",
+              emailController,
+              isEmail: true,
+              readOnly: widget.fromGoogle,
+            ),
+            if (!widget.fromGoogle) ...[
               const SizedBox(height: 20),
+              _buildTextField(
+                "Password (min 6 characters)",
+                passwordController,
+                isPassword: true,
+              ),
             ],
             const SizedBox(height: 20),
-
-            // PHONE
-            TextField(
-              controller: phoneController,
-              keyboardType: TextInputType.phone,
-              style: const TextStyle(color: Colors.white),
-              decoration: inputStyle("Phone Number"),
-            ),
+            _buildTextField("Phone Number", phoneController, isPhone: true),
             const SizedBox(height: 20),
-
-            // SPORTS DROPDOWN
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 15),
-              decoration: BoxDecoration(
-                color: Colors.grey[900],
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white24),
-              ),
-              child: DropdownButton<String>(
-                value: selectedSport,
-                dropdownColor: Colors.grey[900],
-                underline: Container(),
-                isExpanded: true,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                items: [
-                  "futsal",
-                  "cricket",
-                  "padel",
-                ]
-                    .map((sport) => DropdownMenuItem(
-                          value: sport,
-                          child: Text(sport.toUpperCase()),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() => selectedSport = value!);
-                },
-              ),
-            ),
-
-            const SizedBox(height: 30),
-
-            // PLAYERS LABEL
+            _buildSportDropdown(),
+            const SizedBox(height: 32),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
                   "Players",
-                  style: TextStyle(color: Colors.white, fontSize: 18),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
                 ),
                 IconButton(
                   onPressed: addPlayerField,
-                  icon: const Icon(Icons.add, color: Colors.redAccent),
-                )
+                  icon: const Icon(Icons.add_circle_outline, color: Colors.redAccent),
+                  tooltip: 'Add Player',
+                ),
               ],
             ),
-
-            // PLAYER INPUT FIELDS
-            Column(
-              children: List.generate(
-                playerControllers.length,
-                (index) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: playerControllers[index],
-                          style: const TextStyle(color: Colors.white),
-                          decoration: inputStyle("Player Name"),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.redAccent),
-                        onPressed: () => removePlayerField(index),
-                      )
-                    ],
-                  ),
+            const SizedBox(height: 12),
+            ...List.generate(
+              playerControllers.length,
+              (index) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildTextField("Player Name", playerControllers[index]),
+                    ),
+                    const SizedBox(width: 12),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.redAccent),
+                      onPressed: () => removePlayerField(index),
+                      tooltip: 'Remove',
+                    ),
+                  ],
                 ),
               ),
             ),
-
             const SizedBox(height: 40),
-
-            // SUBMIT BUTTON
-            SizedBox(
-              width: double.infinity,
-              height: 48,
+            Center(
               child: ElevatedButton(
+                onPressed: isLoading ? null : registerTeam,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.redAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
                 ),
-                onPressed: isLoading ? null : registerTeam,
                 child: isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                     : const Text(
-                        "REGISTER TEAM",
-                        style: TextStyle(fontSize: 18, color: Colors.white),
+                        "Register Team",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
                       ),
               ),
-            )
+            ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
     );
   }
 
-  InputDecoration inputStyle(String label) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: const TextStyle(color: Colors.white54),
-      filled: true,
-      fillColor: Colors.grey[900],
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    bool isPassword = false,
+    bool isEmail = false,
+    bool isPhone = false,
+    bool readOnly = false,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: isPassword,
+      readOnly: readOnly,
+      keyboardType: isEmail
+          ? TextInputType.emailAddress
+          : isPhone
+              ? TextInputType.phone
+              : TextInputType.text,
+      style: TextStyle(
+        color: readOnly ? Colors.white54 : Colors.white,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white54),
+        filled: true,
+        fillColor: Colors.grey[900],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[800]!, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
+    );
+  }
+
+  Widget _buildSportDropdown() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[800]!, width: 1),
+      ),
+      child: DropdownButton<String>(
+        value: selectedSport,
+        dropdownColor: Colors.grey[900],
+        underline: Container(),
+        isExpanded: true,
+        style: const TextStyle(color: Colors.white, fontSize: 16),
+        icon: const Icon(Icons.arrow_drop_down, color: Colors.redAccent),
+        items: ["futsal", "cricket", "padel"]
+            .map((sport) => DropdownMenuItem(
+                  value: sport,
+                  child: Text(
+                    sport.toUpperCase(),
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ))
+            .toList(),
+        onChanged: (value) {
+          setState(() => selectedSport = value!);
+        },
+      ),
     );
   }
 }

@@ -396,8 +396,18 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
   // Widgets
   // -----------------------------
   Widget buildIncomingBookingCard(Map<String, dynamic> booking) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final padding = isSmallScreen ? 12.0 : 16.0;
+    final fontSize = isSmallScreen ? 14.0 : 16.0;
+    final smallFontSize = isSmallScreen ? 12.0 : 14.0;
+    final iconSize = isSmallScreen ? 18.0 : 20.0;
+    
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      margin: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 4 : 8,
+        vertical: isSmallScreen ? 4 : 6,
+      ),
       color: Colors.white,
       elevation: 3,
       shape: RoundedRectangleBorder(
@@ -408,117 +418,150 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(padding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
                   decoration: BoxDecoration(
                     color: const Color(0xFF2E7D32).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.schedule,
-                    color: Color(0xFF2E7D32),
-                    size: 20,
+                    color: const Color(0xFF2E7D32),
+                    size: iconSize,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: isSmallScreen ? 8 : 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         "${booking['court']} - ${booking['sport']}",
-                        style: const TextStyle(
-                          color: Color(0xFF2E7D32),
+                        style: TextStyle(
+                          color: const Color(0xFF2E7D32),
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontSize: fontSize,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: isSmallScreen ? 2 : 4),
                       Text(
                         booking['team'],
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.grey,
-                          fontSize: 14,
+                          fontSize: smallFontSize,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Row(
+            SizedBox(height: isSmallScreen ? 8 : 12),
+            Wrap(
+              spacing: isSmallScreen ? 8 : 12,
+              runSpacing: isSmallScreen ? 4 : 6,
               children: [
-                const Icon(
-                  Icons.calendar_today,
-                  size: 16,
-                  color: Colors.grey,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      size: isSmallScreen ? 14 : 16,
+                      color: Colors.grey,
+                    ),
+                    SizedBox(width: isSmallScreen ? 4 : 6),
+                    Text(
+                      booking['date'],
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: isSmallScreen ? 11 : 13,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  booking['date'],
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Icon(
-                  Icons.access_time,
-                  size: 16,
-                  color: Colors.grey,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  "${booking['time']} - ${booking['endTime']}",
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 13,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.access_time,
+                      size: isSmallScreen ? 14 : 16,
+                      color: Colors.grey,
+                    ),
+                    SizedBox(width: isSmallScreen ? 4 : 6),
+                    Flexible(
+                      child: Text(
+                        "${booking['time']} - ${booking['endTime']}",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: isSmallScreen ? 11 : 13,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: isSmallScreen ? 12 : 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                ElevatedButton(
-                  onPressed: () => rejectBooking(booking),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red, width: 1.5),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                Flexible(
+                  child: ElevatedButton(
+                    onPressed: () => rejectBooking(booking),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red, width: 1.5),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isSmallScreen ? 12 : 20,
+                        vertical: isSmallScreen ? 8 : 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                  ),
-                  child: const Text(
-                    "Reject",
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    child: Text(
+                      "Reject",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: isSmallScreen ? 12 : 14,
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: () => acceptBooking(booking),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4CAF50),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                SizedBox(width: isSmallScreen ? 6 : 10),
+                Flexible(
+                  child: ElevatedButton(
+                    onPressed: () => acceptBooking(booking),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4CAF50),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isSmallScreen ? 12 : 20,
+                        vertical: isSmallScreen ? 8 : 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                  ),
-                  child: const Text(
-                    "Accept",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                    child: Text(
+                      "Accept",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: isSmallScreen ? 12 : 14,
+                      ),
                     ),
                   ),
                 ),
@@ -535,9 +578,18 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
   // ----------------------------------
   Widget buildBookingCard(Map<String, dynamic> booking, {bool isUpcoming = true}) {
     final isConfirmed = booking['status'] == 'Confirmed';
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final padding = isSmallScreen ? 12.0 : 16.0;
+    final fontSize = isSmallScreen ? 14.0 : 16.0;
+    final smallFontSize = isSmallScreen ? 12.0 : 14.0;
+    final iconSize = isSmallScreen ? 18.0 : 20.0;
     
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      margin: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 4 : 8,
+        vertical: isSmallScreen ? 4 : 6,
+      ),
       color: Colors.white,
       elevation: 3,
       shape: RoundedRectangleBorder(
@@ -548,14 +600,14 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(padding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
                   decoration: BoxDecoration(
                     color: (isConfirmed 
                         ? const Color(0xFF4CAF50) 
@@ -565,35 +617,42 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                   child: Icon(
                     isUpcoming ? Icons.event : Icons.history,
                     color: isConfirmed ? const Color(0xFF4CAF50) : Colors.orange,
-                    size: 20,
+                    size: iconSize,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: isSmallScreen ? 8 : 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         "${booking['court']} - ${booking['sport']}",
-                        style: const TextStyle(
-                          color: Color(0xFF2E7D32),
+                        style: TextStyle(
+                          color: const Color(0xFF2E7D32),
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontSize: fontSize,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: isSmallScreen ? 2 : 4),
                       Text(
                         booking['team'],
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.grey,
-                          fontSize: 14,
+                          fontSize: smallFontSize,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 6 : 10,
+                    vertical: isSmallScreen ? 4 : 6,
+                  ),
                   decoration: BoxDecoration(
                     color: (isConfirmed 
                         ? const Color(0xFF4CAF50) 
@@ -613,45 +672,60 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                           ? const Color(0xFF4CAF50) 
                           : Colors.orange,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                      fontSize: isSmallScreen ? 10 : 12,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Row(
+            SizedBox(height: isSmallScreen ? 8 : 12),
+            Wrap(
+              spacing: isSmallScreen ? 8 : 12,
+              runSpacing: isSmallScreen ? 4 : 6,
               children: [
-                const Icon(
-                  Icons.calendar_today,
-                  size: 16,
-                  color: Colors.grey,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      size: isSmallScreen ? 14 : 16,
+                      color: Colors.grey,
+                    ),
+                    SizedBox(width: isSmallScreen ? 4 : 6),
+                    Text(
+                      booking['date'],
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: isSmallScreen ? 11 : 13,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  booking['date'],
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Icon(
-                  Icons.access_time,
-                  size: 16,
-                  color: Colors.grey,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  "${booking['time']} - ${booking['endTime']}",
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 13,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.access_time,
+                      size: isSmallScreen ? 14 : 16,
+                      color: Colors.grey,
+                    ),
+                    SizedBox(width: isSmallScreen ? 4 : 6),
+                    Flexible(
+                      child: Text(
+                        "${booking['time']} - ${booking['endTime']}",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: isSmallScreen ? 11 : 13,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: isSmallScreen ? 12 : 16),
             Align(
               alignment: Alignment.centerRight,
               child: ElevatedButton(
@@ -664,7 +738,10 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isUpcoming ? Colors.red : const Color(0xFF4CAF50),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 16 : 24,
+                    vertical: isSmallScreen ? 10 : 12,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -672,9 +749,10 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                 ),
                 child: Text(
                   isUpcoming ? "Cancel" : "Add Result",
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
+                    fontSize: isSmallScreen ? 12 : 14,
                   ),
                 ),
               ),
@@ -690,18 +768,30 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
   // ----------------------------------
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final titleFontSize = isSmallScreen ? 18.0 : 20.0;
+    final padding = isSmallScreen ? 8.0 : 12.0;
+    
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           "Manage Bookings",
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: isSmallScreen ? 18 : 20,
+          ),
         ),
         backgroundColor: const Color(0xFF4CAF50),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
+            icon: Icon(
+              Icons.refresh,
+              color: Colors.white,
+              size: isSmallScreen ? 20 : 24,
+            ),
             onPressed: _fetchBookings,
             tooltip: 'Refresh',
           ),
@@ -713,52 +803,68 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
             )
           : errorMessage != null
               ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        errorMessage!,
-                        style: const TextStyle(color: Color(0xFF2E7D32)),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _fetchBookings,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4CAF50),
+                  child: Padding(
+                    padding: EdgeInsets.all(padding * 2),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          errorMessage!,
+                          style: TextStyle(
+                            color: const Color(0xFF2E7D32),
+                            fontSize: isSmallScreen ? 14 : 16,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        child: const Text(
-                          'Retry',
-                          style: TextStyle(color: Colors.white),
+                        SizedBox(height: isSmallScreen ? 12 : 16),
+                        ElevatedButton(
+                          onPressed: _fetchBookings,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF4CAF50),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isSmallScreen ? 16 : 24,
+                              vertical: isSmallScreen ? 10 : 12,
+                            ),
+                          ),
+                          child: Text(
+                            'Retry',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: isSmallScreen ? 14 : 16,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 )
               : SingleChildScrollView(
                   child: Padding(
-                    padding: const EdgeInsets.all(12),
+                    padding: EdgeInsets.all(padding),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // -----------------------------
                         // Incoming Bookings
                         // -----------------------------
-                        const Text(
+                        Text(
                           "Incoming Bookings",
                           style: TextStyle(
-                            fontSize: 20,
+                            fontSize: titleFontSize,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF2E7D32),
+                            color: const Color(0xFF2E7D32),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: isSmallScreen ? 6 : 8),
                         incomingBookings.isEmpty
-                            ? const Padding(
-                                padding: EdgeInsets.all(16.0),
+                            ? Padding(
+                                padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
                                 child: Text(
                                   'No incoming bookings',
-                                  style: TextStyle(color: Colors.grey),
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: isSmallScreen ? 14 : 16,
+                                  ),
                                 ),
                               )
                             : Column(
@@ -766,25 +872,28 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                                     .map((booking) => buildIncomingBookingCard(booking))
                                     .toList(),
                               ),
-                        const SizedBox(height: 20),
+                        SizedBox(height: isSmallScreen ? 16 : 20),
                         // -----------------------------
                         // Upcoming Bookings
                         // -----------------------------
-                        const Text(
+                        Text(
                           "Upcoming Bookings",
                           style: TextStyle(
-                            fontSize: 20,
+                            fontSize: titleFontSize,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF2E7D32),
+                            color: const Color(0xFF2E7D32),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: isSmallScreen ? 6 : 8),
                         upcomingBookings.isEmpty
-                            ? const Padding(
-                                padding: EdgeInsets.all(16.0),
+                            ? Padding(
+                                padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
                                 child: Text(
                                   'No upcoming bookings',
-                                  style: TextStyle(color: Colors.grey),
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: isSmallScreen ? 14 : 16,
+                                  ),
                                 ),
                               )
                             : Column(
@@ -792,25 +901,28 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                                     .map((booking) => buildBookingCard(booking, isUpcoming: true))
                                     .toList(),
                               ),
-                        const SizedBox(height: 20),
+                        SizedBox(height: isSmallScreen ? 16 : 20),
                         // -----------------------------
                         // Past Bookings
                         // -----------------------------
-                        const Text(
+                        Text(
                           "Past Bookings",
                           style: TextStyle(
-                            fontSize: 20,
+                            fontSize: titleFontSize,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF2E7D32),
+                            color: const Color(0xFF2E7D32),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: isSmallScreen ? 6 : 8),
                         pastBookings.isEmpty
-                            ? const Padding(
-                                padding: EdgeInsets.all(16.0),
+                            ? Padding(
+                                padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
                                 child: Text(
                                   'No past bookings',
-                                  style: TextStyle(color: Colors.grey),
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: isSmallScreen ? 14 : 16,
+                                  ),
                                 ),
                               )
                             : Column(

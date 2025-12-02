@@ -2,7 +2,16 @@ import 'package:flutter/material.dart';
 import 'register_court_page.dart';
 
 class RegisterCourtOwnerPage extends StatefulWidget {
-  const RegisterCourtOwnerPage({super.key});
+  final String? firebaseUid;
+  final String? email;
+  final bool fromGoogle;
+
+  const RegisterCourtOwnerPage({
+    super.key,
+    this.firebaseUid,
+    this.email,
+    this.fromGoogle = false,
+  });
 
   @override
   State<RegisterCourtOwnerPage> createState() => _RegisterCourtOwnerPageState();
@@ -16,10 +25,19 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
   final TextEditingController cnicCtrl = TextEditingController();
   final TextEditingController locationCtrl = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill email if from Google login
+    if (widget.fromGoogle && widget.email != null) {
+      emailCtrl.text = widget.email!;
+    }
+  }
+
   void goToCourtRegister() {
+    // Validation - password not required for Google sign-in users
     if (nameCtrl.text.isEmpty ||
         emailCtrl.text.isEmpty ||
-        passwordCtrl.text.isEmpty ||
         phoneCtrl.text.isEmpty ||
         cnicCtrl.text.isEmpty ||
         locationCtrl.text.isEmpty) {
@@ -32,7 +50,17 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
       return;
     }
 
-    if (passwordCtrl.text.length < 6) {
+    if (!widget.fromGoogle && passwordCtrl.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Password is required"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (!widget.fromGoogle && passwordCtrl.text.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Password must be at least 6 characters"),
@@ -49,10 +77,12 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
         builder: (_) => RegisterCourtPage(
           ownerName: nameCtrl.text.trim(),
           ownerEmail: emailCtrl.text.trim(),
-          ownerPassword: passwordCtrl.text.trim(),
+          ownerPassword: widget.fromGoogle ? "" : passwordCtrl.text.trim(),
           ownerPhone: phoneCtrl.text,
           ownerCnic: cnicCtrl.text,
           ownerLocation: locationCtrl.text.trim(),
+          firebaseUid: widget.firebaseUid,
+          fromGoogle: widget.fromGoogle,
         ),
       ),
     );
@@ -70,12 +100,13 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
         child: ListView(
           children: [
             textField("Full Name", nameCtrl),
-            textField("Email", emailCtrl, isEmail: true),
-            textField(
-              "Password (min 6 characters)",
-              passwordCtrl,
-              isPassword: true,
-            ),
+            textField("Email", emailCtrl, isEmail: true, readOnly: widget.fromGoogle),
+            if (!widget.fromGoogle)
+              textField(
+                "Password (min 6 characters)",
+                passwordCtrl,
+                isPassword: true,
+              ),
             textField("Phone Number", phoneCtrl, isNumber: true),
             textField("CNIC", cnicCtrl, isNumber: true),
             textField("Location", locationCtrl),
@@ -102,12 +133,14 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
     bool isPassword = false,
     bool isEmail = false,
     bool isNumber = false,
+    bool readOnly = false,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: TextField(
         controller: controller,
         obscureText: isPassword,
+        readOnly: readOnly,
         keyboardType: isEmail
             ? TextInputType.emailAddress
             : isNumber

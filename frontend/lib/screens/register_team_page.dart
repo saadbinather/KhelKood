@@ -3,7 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class RegisterTeamPage extends StatefulWidget {
-  const RegisterTeamPage({super.key});
+  final String? firebaseUid;
+  final String? email;
+  final bool fromGoogle;
+
+  const RegisterTeamPage({
+    super.key,
+    this.firebaseUid,
+    this.email,
+    this.fromGoogle = false,
+  });
 
   @override
   State<RegisterTeamPage> createState() => _RegisterTeamPageState();
@@ -21,6 +30,15 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
   String selectedSport = "futsal"; // default sport
 
   bool isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill email if from Google login
+    if (widget.fromGoogle && widget.email != null) {
+      emailController.text = widget.email!;
+    }
+  }
 
   // ADD PLAYER FIELD
   void addPlayerField() {
@@ -50,10 +68,10 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
         .map((c) => c.text.trim())
         .toList();
 
+    // Validation - password not required for Google sign-in users
     if (name.isEmpty ||
         teamName.isEmpty ||
         email.isEmpty ||
-        password.isEmpty ||
         phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -64,7 +82,17 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
       return;
     }
 
-    if (password.length < 6) {
+    if (!widget.fromGoogle && password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Password is required"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (!widget.fromGoogle && password.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Password must be at least 6 characters"),
@@ -83,12 +111,15 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
         body: jsonEncode({
           "name": name,
           "email": email,
-          "password": password,
+          "password": widget.fromGoogle ? "" : password, // Empty password for Google users
           "role": "team",
           "teamName": teamName,
           "phone": phone,
           "sports": selectedSport,
           "players": players,
+          ...(widget.fromGoogle && widget.firebaseUid != null
+              ? {"firebase_uid": widget.firebaseUid}
+              : {}),
         }),
       );
 
@@ -158,18 +189,22 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
             TextField(
               controller: emailController,
               keyboardType: TextInputType.emailAddress,
+              readOnly: widget.fromGoogle, // Disable editing if from Google
               style: const TextStyle(color: Colors.white),
               decoration: inputStyle("Email"),
             ),
             const SizedBox(height: 20),
 
-            // PASSWORD
-            TextField(
-              controller: passwordController,
-              obscureText: true,
-              style: const TextStyle(color: Colors.white),
-              decoration: inputStyle("Password (min 6 characters)"),
-            ),
+            // PASSWORD (hidden for Google sign-in users)
+            if (!widget.fromGoogle) ...[
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: inputStyle("Password (min 6 characters)"),
+              ),
+              const SizedBox(height: 20),
+            ],
             const SizedBox(height: 20),
 
             // PHONE

@@ -1,6 +1,6 @@
 import express from "express";
 import axios from "axios";
-import { db } from "./config/firebase.js";
+import { admin, db } from "./config/firebase.js";
 import {
   sendSuccess,
   sendError,
@@ -76,6 +76,11 @@ const AuthRepository = {
     return !adminSnap.empty;
   },
 
+  async findAdminByEmailDoc(email) {
+    const adminDoc = await db.collection("admins").doc(email).get();
+    return adminDoc.exists;
+  },
+
   async loginFirebaseUser(email, password) {
     const response = await axios.post(
       `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_WEB_API_KEY}`,
@@ -116,15 +121,18 @@ const AuthService = {
       futsalRate,
       openingTime,
       closingTime,
+      firebase_uid, // Optional: for Google sign-in users who already have Firebase account
     } = signupData;
 
-    // Validation
-    const validation = validateRequired({ email, password, name, role }, [
-      "email",
-      "password",
-      "name",
-      "role",
-    ]);
+    // Validation - password not required if firebase_uid is provided (Google sign-in)
+    const requiredFields = firebase_uid 
+      ? { email, name, role }
+      : { email, password, name, role };
+    const requiredFieldNames = firebase_uid
+      ? ["email", "name", "role"]
+      : ["email", "password", "name", "role"];
+    
+    const validation = validateRequired(requiredFields, requiredFieldNames);
     if (!validation.isValid) {
       throw new Error(validation.error);
     }
@@ -144,11 +152,14 @@ const AuthService = {
       }
     }
 
-    // Create Firebase Auth user
-    const firebase_uid = await AuthRepository.createFirebaseUser(
-      email,
-      password
-    );
+    // Create Firebase Auth user (skip if firebase_uid provided - Google sign-in)
+    let finalFirebaseUid = firebase_uid;
+    if (!finalFirebaseUid) {
+      finalFirebaseUid = await AuthRepository.createFirebaseUser(
+        email,
+        password
+      );
+    }
 
     // Create base user record
     const userData = {
@@ -158,7 +169,7 @@ const AuthService = {
       verificationStatus: "pending",
       createdAt: new Date(),
     };
-    await AuthRepository.createUser(firebase_uid, userData);
+    await AuthRepository.createUser(finalFirebaseUid, userData);
 
     // Role-specific handling
     if (role === "courtowner") {
@@ -176,12 +187,12 @@ const AuthService = {
         location: location || "",
         createdAt: new Date(),
       };
-      await AuthRepository.createCourtowner(firebase_uid, courtownerData);
+      await AuthRepository.createCourtowner(finalFirebaseUid, courtownerData);
 
       const courtData = {
         name: courtTitle || "Default Sports Arena",
         address: courtAddress || "Unknown Location",
-        courtownerID: firebase_uid,
+        courtownerID: finalFirebaseUid,
         numOfCricketFields: Number(numOfCricketFields) || 0,
         numOfPadelCourts: Number(numOfPadelCourts) || 0,
         numOfFutsalFields: Number(numOfFutsalFields) || 0,
@@ -205,11 +216,11 @@ const AuthService = {
         createdAt: new Date(),
         points: 0,
       };
-      await AuthRepository.createTeam(firebase_uid, teamData);
-      await AuthRepository.createPlayers(players, firebase_uid);
+      await AuthRepository.createTeam(finalFirebaseUid, teamData);
+      await AuthRepository.createPlayers(players, finalFirebaseUid);
     }
 
-    return { firebase_uid, role };
+    return { firebase_uid: finalFirebaseUid, role };
   },
 
   async login(email, password) {
@@ -251,6 +262,52 @@ const AuthService = {
     }
 
     return { idToken, firebase_uid, role };
+  },
+
+  async googleLogin(token) {
+    // Validation
+    const validation = validateRequired({ token }, ["token"]);
+    if (!validation.isValid) {
+      throw new Error(validation.error);
+    }
+
+    // Verify Firebase ID token
+    const decoded = await admin.auth().verifyIdToken(token);
+    const uid = decoded.uid;
+    const email = decoded.email;
+
+    if (!email) {
+      throw new Error("Email not found in token");
+    }
+
+    // Check if admin exists (by email as doc ID)
+    const isAdmin = await AuthRepository.findAdminByEmailDoc(email);
+    if (isAdmin) {
+      return { role: "admin", status: "ok", firebase_uid: uid };
+    }
+
+    // Check if user exists in users collection
+    const user = await AuthRepository.findUserByUid(uid);
+    if (!user) {
+      // User doesn't exist - need to choose role and complete registration
+      return { status: "choose_role", firebase_uid: uid, email };
+    }
+
+    // User exists - check verification status
+    const status = (user.verificationStatus || "pending").toLowerCase();
+    if (status !== "verified") {
+      if (status === "rejected") {
+        return { status: "blocked", message: "Account rejected by admin" };
+      }
+      return { status: "blocked", message: "Account pending verification" };
+    }
+
+    // User is verified - return role and success
+    return {
+      role: user.role,
+      status: "ok",
+      firebase_uid: uid,
+    };
   },
 };
 
@@ -311,6 +368,44 @@ const AuthController = {
       return sendError(res, 500, error.message);
     }
   },
+
+  async googleLogin(req, res) {
+    try {
+      const result = await AuthService.googleLogin(req.body.token);
+      
+      // Handle different response statuses
+      // Return responses at root level to match Flutter expectations (data["status"])
+      if (result.status === "choose_role") {
+        return res.status(200).json({
+          status: "choose_role",
+          firebase_uid: result.firebase_uid,
+          email: result.email,
+        });
+      }
+      
+      if (result.status === "blocked") {
+        return res.status(200).json({
+          status: "blocked",
+        });
+      }
+      
+      // Success - verified user
+      return res.status(200).json({
+        status: "ok",
+        role: result.role,
+        firebase_uid: result.firebase_uid,
+      });
+    } catch (error) {
+      const errorMessage = error.message;
+      if (errorMessage.includes("Invalid") || errorMessage.includes("token")) {
+        return sendError(res, 401, "Invalid or expired token");
+      }
+      if (errorMessage.includes("required") || errorMessage.includes("Missing")) {
+        return sendValidationError(res, errorMessage);
+      }
+      return sendError(res, 500, errorMessage);
+    }
+  },
 };
 
 // ==================== ROUTES ====================
@@ -319,5 +414,7 @@ router.post("/signup", AuthController.signup);
 router.post("/login", AuthController.login);
 
 router.post("/logout", AuthController.logout);
+
+router.post("/google-login", AuthController.googleLogin);
 
 export default router;

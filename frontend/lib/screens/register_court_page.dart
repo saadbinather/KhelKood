@@ -9,6 +9,8 @@ class RegisterCourtPage extends StatefulWidget {
   final String ownerPhone;
   final String ownerCnic;
   final String ownerLocation;
+  final String? firebaseUid;
+  final bool fromGoogle;
 
   const RegisterCourtPage({
     super.key,
@@ -18,6 +20,8 @@ class RegisterCourtPage extends StatefulWidget {
     required this.ownerPhone,
     required this.ownerCnic,
     required this.ownerLocation,
+    this.firebaseUid,
+    this.fromGoogle = false,
   });
 
   @override
@@ -61,8 +65,11 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
         body: jsonEncode({
           "name": widget.ownerName,
           "email": widget.ownerEmail,
-          "password": widget.ownerPassword,
+          "password": widget.fromGoogle ? "" : widget.ownerPassword,
           "role": "courtowner",
+          ...(widget.fromGoogle && widget.firebaseUid != null
+              ? {"firebase_uid": widget.firebaseUid}
+              : {}),
           "phone": widget.ownerPhone,
           "cnic": widget.ownerCnic,
           "courtName": widget.ownerLocation, // Using location as courtName

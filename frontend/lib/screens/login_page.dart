@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../Admin/dashboard.dart';
 import '../CourtOwner/dash_board.dart';
 import 'dashboard_page.dart';
@@ -19,6 +21,138 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController passwordController = TextEditingController();
 
   bool isLoading = false;
+  bool isGoogleLoading = false;
+
+  // GOOGLE SIGN-IN
+  Future<void> googleLogin() async {
+    try {
+      setState(() => isGoogleLoading = true);
+
+      // Step 1: Sign in with Google
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        // User cancelled the sign-in
+        setState(() => isGoogleLoading = false);
+        return;
+      }
+
+      // Step 2: Get authentication details
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      // Step 3: Create Firebase credential
+      final credential = GoogleAuthProvider.credential(
+        idToken: googleAuth.idToken,
+        accessToken: googleAuth.accessToken,
+      );
+
+      // Step 4: Sign in to Firebase
+      final UserCredential userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+
+      // Step 5: Get Firebase ID token
+      final token = await userCredential.user!.getIdToken();
+      
+      if (token == null) {
+        setState(() => isGoogleLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Failed to get authentication token"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Step 6: Send token to backend
+      final response = await http.post(
+        Uri.parse("http://localhost:5000/api/auth/google-login"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"token": token}),
+      );
+
+      setState(() => isGoogleLoading = false);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+
+        // Handle different response statuses
+        if (data["status"] == "choose_role") {
+          // User needs to choose role and complete registration
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ChooseRegisterPage(
+                  firebaseUid: data["firebase_uid"],
+                  email: data["email"],
+                  fromGoogle: true,
+                ),
+              ),
+            );
+          }
+        } else if (data["status"] == "blocked") {
+          // Account not verified or rejected
+          if (mounted) {
+            _showVerificationDialog(
+              title: 'Account Not Verified',
+              message: 'Your account is not verified. Please wait for admin approval.',
+              icon: Icons.block,
+              color: Colors.red,
+            );
+          }
+        } else if (data["status"] == "ok") {
+          // Verified user - save token and redirect
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('auth_token', token);
+
+          final role = data["role"];
+          if (mounted) {
+            if (role == "courtowner") {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const CourtOwnerDashboard()),
+              );
+            } else if (role == "player" || role == "team") {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const DashboardPage()),
+              );
+            } else if (role == "admin") {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => AdminDashboard()),
+              );
+            }
+          }
+        }
+      } else {
+        // Handle error response
+        final errorData = jsonDecode(response.body);
+        final errorMessage = errorData['error'] ?? 'Google login failed';
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() => isGoogleLoading = false);
+      print("Google Login Error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Google sign-in failed. Please try again."),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   // REAL BACKEND AUTHENTICATION
   Future<Map<String, dynamic>> authenticateUser(String email, String password) async {
@@ -205,6 +339,56 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 40),
 
+            // GOOGLE SIGN-IN BUTTON
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.white70),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: isGoogleLoading ? null : googleLogin,
+                icon: isGoogleLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.g_mobiledata, color: Colors.white70),
+                label: isGoogleLoading
+                    ? const Text(
+                        "Signing in...",
+                        style: TextStyle(color: Colors.white70),
+                      )
+                    : const Text(
+                        "Continue with Google",
+                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                      ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // DIVIDER
+            Row(
+              children: [
+                Expanded(child: Divider(color: Colors.grey[700])),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    "OR",
+                    style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                  ),
+                ),
+                Expanded(child: Divider(color: Colors.grey[700])),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
             // EMAIL FIELD
             TextField(
               controller: emailController,
@@ -251,7 +435,7 @@ class _LoginPageState extends State<LoginPage> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                onPressed: isLoading ? null : handleLogin,
+                onPressed: (isLoading || isGoogleLoading) ? null : handleLogin,
                 child: isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text(

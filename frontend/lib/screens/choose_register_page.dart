@@ -3,7 +3,16 @@ import 'register_team_page.dart';
 import 'register_court_owner_page.dart';
 
 class ChooseRegisterPage extends StatelessWidget {
-  const ChooseRegisterPage({super.key});
+  final String? firebaseUid;
+  final String? email;
+  final bool fromGoogle;
+
+  const ChooseRegisterPage({
+    super.key,
+    this.firebaseUid,
+    this.email,
+    this.fromGoogle = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +48,13 @@ class ChooseRegisterPage extends StatelessWidget {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const RegisterTeamPage()),
+                    MaterialPageRoute(
+                      builder: (_) => RegisterTeamPage(
+                        firebaseUid: firebaseUid,
+                        email: email,
+                        fromGoogle: fromGoogle,
+                      ),
+                    ),
                   );
                 },
                 child: const Text(
@@ -63,7 +78,12 @@ class ChooseRegisterPage extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => const RegisterCourtOwnerPage()),
+                      builder: (_) => RegisterCourtOwnerPage(
+                        firebaseUid: firebaseUid,
+                        email: email,
+                        fromGoogle: fromGoogle,
+                      ),
+                    ),
                   );
                 },
                 child: const Text(

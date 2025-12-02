@@ -154,7 +154,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Accepting booking...'),
-        backgroundColor: Colors.blue,
+        backgroundColor: Color(0xFF4CAF50),
       ),
     );
 
@@ -193,7 +193,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Booking accepted successfully'),
-            backgroundColor: Colors.green,
+            backgroundColor: Color(0xFF4CAF50),
           ),
         );
       } else {
@@ -222,20 +222,35 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text('Reject Booking', style: TextStyle(color: Colors.white)),
-        content: Text(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          'Reject Booking',
+          style: TextStyle(
+            color: Color(0xFF2E7D32),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: const Text(
           'Are you sure you want to reject this booking?',
-          style: const TextStyle(color: Colors.white70),
+          style: TextStyle(color: Colors.grey),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Reject', style: TextStyle(color: Colors.redAccent)),
+            child: const Text(
+              'Reject',
+              style: TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -246,7 +261,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Rejecting booking...'),
-        backgroundColor: Colors.blue,
+        backgroundColor: Colors.orange,
       ),
     );
 
@@ -316,21 +331,46 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text("Add Result for ${booking['sport']}"),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Text(
+          "Add Result for ${booking['sport']}",
+          style: const TextStyle(
+            color: Color(0xFF2E7D32),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         content: TextField(
           controller: resultController,
+          style: const TextStyle(color: Color(0xFF2E7D32)),
           decoration: InputDecoration(
             labelText: booking['sport'] == "Cricket"
                 ? "Runs scored / Winner"
                 : booking['sport'] == "Football"
                     ? "Score (Team A - Team B)"
                     : "Padel Result",
+            labelStyle: const TextStyle(color: Colors.grey),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+            ),
+            filled: true,
+            fillColor: Colors.white,
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
+            child: const Text(
+              "Cancel",
+              style: TextStyle(color: Colors.grey),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -339,7 +379,13 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                   "Result for booking ${booking['id']}: ${resultController.text}");
               Navigator.pop(context);
             },
-            child: const Text("Submit"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4CAF50),
+            ),
+            child: const Text(
+              "Submit",
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -351,24 +397,132 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
   // -----------------------------
   Widget buildIncomingBookingCard(Map<String, dynamic> booking) {
     return Card(
-      margin: const EdgeInsets.all(8),
-      child: ListTile(
-        title: Text("${booking['court']} - ${booking['sport']}"),
-        subtitle: Text(
-            "${booking['team']} | ${booking['date']} at ${booking['time']} - ${booking['endTime']}"),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      color: Colors.white,
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: const Color(0xFF2E7D32).withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ElevatedButton(
-              onPressed: () => acceptBooking(booking),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-              child: const Text("Accept"),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2E7D32).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.schedule,
+                    color: Color(0xFF2E7D32),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "${booking['court']} - ${booking['sport']}",
+                        style: const TextStyle(
+                          color: Color(0xFF2E7D32),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        booking['team'],
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              onPressed: () => rejectBooking(booking),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-              child: const Text("Reject"),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(
+                  Icons.calendar_today,
+                  size: 16,
+                  color: Colors.grey,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  booking['date'],
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                const Icon(
+                  Icons.access_time,
+                  size: 16,
+                  color: Colors.grey,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  "${booking['time']} - ${booking['endTime']}",
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                ElevatedButton(
+                  onPressed: () => rejectBooking(booking),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red, width: 1.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    "Reject",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: () => acceptBooking(booking),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4CAF50),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    "Accept",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -380,38 +534,152 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
   // Build Booking Card
   // ----------------------------------
   Widget buildBookingCard(Map<String, dynamic> booking, {bool isUpcoming = true}) {
+    final isConfirmed = booking['status'] == 'Confirmed';
+    
     return Card(
-      margin: const EdgeInsets.all(8),
-      child: ListTile(
-        title: Text("${booking['court']} - ${booking['sport']}"),
-        subtitle: Column(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      color: Colors.white,
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: (isConfirmed ? const Color(0xFF4CAF50) : Colors.orange).withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("${booking['team']}"),
-            Text("${booking['date']} at ${booking['time']} - ${booking['endTime']}"),
-            Text(
-              "Status: ${booking['status']}",
-              style: TextStyle(
-                color: booking['status'] == 'Confirmed'
-                    ? Colors.green
-                    : Colors.orange,
-                fontWeight: FontWeight.bold,
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: (isConfirmed 
+                        ? const Color(0xFF4CAF50) 
+                        : Colors.orange).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    isUpcoming ? Icons.event : Icons.history,
+                    color: isConfirmed ? const Color(0xFF4CAF50) : Colors.orange,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "${booking['court']} - ${booking['sport']}",
+                        style: const TextStyle(
+                          color: Color(0xFF2E7D32),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        booking['team'],
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: (isConfirmed 
+                        ? const Color(0xFF4CAF50) 
+                        : Colors.orange).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isConfirmed 
+                          ? const Color(0xFF4CAF50) 
+                          : Colors.orange,
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    booking['status'],
+                    style: TextStyle(
+                      color: isConfirmed 
+                          ? const Color(0xFF4CAF50) 
+                          : Colors.orange,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(
+                  Icons.calendar_today,
+                  size: 16,
+                  color: Colors.grey,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  booking['date'],
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                const Icon(
+                  Icons.access_time,
+                  size: 16,
+                  color: Colors.grey,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  "${booking['time']} - ${booking['endTime']}",
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: () {
+                  if (isUpcoming) {
+                    cancelBooking(booking['id']);
+                  } else {
+                    addResult(booking);
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isUpcoming ? Colors.red : const Color(0xFF4CAF50),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 2,
+                ),
+                child: Text(
+                  isUpcoming ? "Cancel" : "Add Result",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
           ],
-        ),
-        trailing: ElevatedButton(
-          onPressed: () {
-            if (isUpcoming) {
-              cancelBooking(booking['id']);
-            } else {
-              addResult(booking);
-            }
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: isUpcoming ? Colors.redAccent : Colors.green,
-          ),
-          child: Text(isUpcoming ? "Cancel" : "Add Result"),
         ),
       ),
     );
@@ -423,9 +691,14 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        title: const Text("Manage Bookings"),
-        backgroundColor: Colors.redAccent,
+        title: const Text(
+          "Manage Bookings",
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: const Color(0xFF4CAF50),
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
@@ -436,7 +709,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
       ),
       body: isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Colors.redAccent),
+              child: CircularProgressIndicator(color: Color(0xFF4CAF50)),
             )
           : errorMessage != null
               ? Center(
@@ -445,16 +718,19 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                     children: [
                       Text(
                         errorMessage!,
-                        style: const TextStyle(color: Colors.redAccent),
+                        style: const TextStyle(color: Color(0xFF2E7D32)),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _fetchBookings,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
+                          backgroundColor: const Color(0xFF4CAF50),
                         ),
-                        child: const Text('Retry'),
+                        child: const Text(
+                          'Retry',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ],
                   ),
@@ -470,13 +746,20 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                         // -----------------------------
                         const Text(
                           "Incoming Bookings",
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2E7D32),
+                          ),
                         ),
                         const SizedBox(height: 8),
                         incomingBookings.isEmpty
                             ? const Padding(
                                 padding: EdgeInsets.all(16.0),
-                                child: Text('No incoming bookings'),
+                                child: Text(
+                                  'No incoming bookings',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
                               )
                             : Column(
                                 children: incomingBookings
@@ -489,13 +772,20 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                         // -----------------------------
                         const Text(
                           "Upcoming Bookings",
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2E7D32),
+                          ),
                         ),
                         const SizedBox(height: 8),
                         upcomingBookings.isEmpty
                             ? const Padding(
                                 padding: EdgeInsets.all(16.0),
-                                child: Text('No upcoming bookings'),
+                                child: Text(
+                                  'No upcoming bookings',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
                               )
                             : Column(
                                 children: upcomingBookings
@@ -508,13 +798,20 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                         // -----------------------------
                         const Text(
                           "Past Bookings",
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2E7D32),
+                          ),
                         ),
                         const SizedBox(height: 8),
                         pastBookings.isEmpty
                             ? const Padding(
                                 padding: EdgeInsets.all(16.0),
-                                child: Text('No past bookings'),
+                                child: Text(
+                                  'No past bookings',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
                               )
                             : Column(
                                 children: pastBookings

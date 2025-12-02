@@ -34,6 +34,11 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
   final TextEditingController _futsalRateController = TextEditingController();
   final TextEditingController _padelRateController = TextEditingController();
 
+  // Store original rates for validation
+  int _originalCricketRate = 0;
+  int _originalFutsalRate = 0;
+  int _originalPadelRate = 0;
+
   String _selectedSport = "Cricket";
 
   // Unavailable slots
@@ -86,9 +91,12 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
 
         setState(() {
           courtData = court;
-          _cricketRateController.text = (court['cricketRate'] ?? 0).toString();
-          _futsalRateController.text = (court['futsalRate'] ?? 0).toString();
-          _padelRateController.text = (court['padelRate'] ?? 0).toString();
+          _originalCricketRate = court['cricketRate'] ?? 0;
+          _originalFutsalRate = court['futsalRate'] ?? 0;
+          _originalPadelRate = court['padelRate'] ?? 0;
+          _cricketRateController.text = _originalCricketRate.toString();
+          _futsalRateController.text = _originalFutsalRate.toString();
+          _padelRateController.text = _originalPadelRate.toString();
           isLoading = false;
         });
       } else {
@@ -122,10 +130,58 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
         return;
       }
 
+      final cricketRate = int.tryParse(_cricketRateController.text.trim()) ?? 0;
+      final futsalRate = int.tryParse(_futsalRateController.text.trim()) ?? 0;
+      final padelRate = int.tryParse(_padelRateController.text.trim()) ?? 0;
+
+      // Validate that all rates are greater than 0, revert invalid ones to original
+      List<String> revertedFields = [];
+      bool hasInvalidRate = false;
+      int finalCricketRate = cricketRate;
+      int finalFutsalRate = futsalRate;
+      int finalPadelRate = padelRate;
+
+      if (cricketRate <= 0) {
+        _cricketRateController.text = _originalCricketRate.toString();
+        finalCricketRate = _originalCricketRate;
+        revertedFields.add('Cricket');
+        hasInvalidRate = true;
+      }
+      if (futsalRate <= 0) {
+        _futsalRateController.text = _originalFutsalRate.toString();
+        finalFutsalRate = _originalFutsalRate;
+        revertedFields.add('Futsal');
+        hasInvalidRate = true;
+      }
+      if (padelRate <= 0) {
+        _padelRateController.text = _originalPadelRate.toString();
+        finalPadelRate = _originalPadelRate;
+        revertedFields.add('Padel');
+        hasInvalidRate = true;
+      }
+
+      if (hasInvalidRate) {
+        setState(() {
+          isSaving = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '${revertedFields.join(', ')} rate(s) must be greater than 0. Reverted to original value(s).',
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+
       final updateData = {
-        'cricketRate': int.tryParse(_cricketRateController.text.trim()) ?? 0,
-        'futsalRate': int.tryParse(_futsalRateController.text.trim()) ?? 0,
-        'padelRate': int.tryParse(_padelRateController.text.trim()) ?? 0,
+        'cricketRate': finalCricketRate,
+        'futsalRate': finalFutsalRate,
+        'padelRate': finalPadelRate,
       };
 
       final response = await http.put(
@@ -257,15 +313,24 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text("Add Field", style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          "Add Field",
+          style: TextStyle(
+            color: Color(0xFF2E7D32),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
               value: _selectedSport,
-              dropdownColor: Colors.grey[900],
-              style: const TextStyle(color: Colors.white),
+              dropdownColor: Colors.white,
+              style: const TextStyle(color: Color(0xFF2E7D32)),
               items: ["Cricket", "Football", "Padel"]
                   .map(
                     (sport) =>
@@ -279,11 +344,14 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                   });
                 }
               },
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: "Sport Type",
-                labelStyle: TextStyle(color: Colors.white70),
+                labelStyle: const TextStyle(color: Colors.grey),
                 enabledBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white70),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                focusedBorder: const UnderlineInputBorder(
+                  borderSide: BorderSide(color: Color(0xFF2E7D32), width: 2),
                 ),
               ),
             ),
@@ -294,12 +362,12 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
             onPressed: () => Navigator.pop(context),
             child: const Text(
               "Cancel",
-              style: TextStyle(color: Colors.white70),
+              style: TextStyle(color: Colors.grey),
             ),
           ),
           ElevatedButton(
             onPressed: isSaving ? null : _addField,
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CAF50)),
             child: isSaving
                 ? const SizedBox(
                     height: 16,
@@ -322,10 +390,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
     return List.generate(7, (index) => today.add(Duration(days: index)));
   }
 
-  // Encode court numbers uniquely across sports:
-  // Cricket: 1, 2, 3, ...
-  // Futsal: 1000 + 1, 1000 + 2, ...
-  // Padel: 2000 + 1, 2000 + 2, ...
+
   Map<String, List<Map<String, dynamic>>> _getAllCourtNumbers() {
     if (courtData == null) return {};
     
@@ -572,7 +637,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
           const Text(
             'Cricket Fields',
             style: TextStyle(
-              color: Colors.redAccent,
+              color: Color(0xFF2E7D32),
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -599,7 +664,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
           const Text(
             'Futsal Fields',
             style: TextStyle(
-              color: Colors.redAccent,
+              color: Color(0xFF2E7D32),
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -626,7 +691,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
           const Text(
             'Padel Courts',
             style: TextStyle(
-              color: Colors.redAccent,
+              color: Color(0xFF2E7D32),
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -664,18 +729,33 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected 
-              ? Colors.redAccent.withOpacity(0.3) 
-              : Colors.grey[800],
+              ? const Color(0xFF2E7D32).withOpacity(0.1) 
+              : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? Colors.redAccent : Colors.white24,
+            color: isSelected ? const Color(0xFF2E7D32) : Colors.grey[300]!,
             width: isSelected ? 2.5 : 1,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF2E7D32).withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.redAccent : Colors.white70,
+            color: isSelected ? const Color(0xFF2E7D32) : Colors.grey[700],
             fontSize: 14,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
@@ -689,13 +769,14 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: const Color(0xFFF5F5F5),
         appBar: AppBar(
           title: const Text(
             "Court Management",
             style: TextStyle(color: Colors.white),
           ),
-          backgroundColor: Colors.redAccent,
+          backgroundColor: const Color(0xFF4CAF50),
+          centerTitle: true,
           bottom: const TabBar(
             indicatorColor: Colors.white,
             labelColor: Colors.white,
@@ -708,7 +789,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
         ),
         body: isLoading
             ? const Center(
-                child: CircularProgressIndicator(color: Colors.redAccent),
+                child: CircularProgressIndicator(color: Color(0xFF4CAF50)),
               )
             : errorMessage != null
             ? Center(
@@ -717,14 +798,14 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                   children: [
                     Text(
                       errorMessage!,
-                      style: const TextStyle(color: Colors.redAccent),
+                      style: const TextStyle(color: Color(0xFF2E7D32)),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: _fetchCourtData,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent,
+                        backgroundColor: const Color(0xFF4CAF50),
                       ),
                       child: const Text('Retry'),
                     ),
@@ -733,9 +814,9 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
               )
             : courtData == null
             ? const Center(
-                child: Text(
+                child: const Text(
                   'No court data found',
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: Colors.grey),
                 ),
               )
             : TabBarView(
@@ -750,7 +831,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                         Text(
                           courtData!['name'] ?? 'Court',
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: Color(0xFF2E7D32),
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
@@ -758,7 +839,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                         const SizedBox(height: 8),
                         Text(
                           courtData!['address'] ?? 'No address',
-                          style: const TextStyle(color: Colors.white70, fontSize: 16),
+                          style: const TextStyle(color: Colors.grey, fontSize: 16),
                         ),
                         const SizedBox(height: 24),
 
@@ -766,7 +847,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                         const Text(
                           'Field Counts',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Color(0xFF2E7D32),
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
@@ -795,34 +876,31 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                         const Text(
                           'Per Hour Rates',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Color(0xFF2E7D32),
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(height: 12),
                         _buildRateField(
-                          'Cricket Rate (Rs/hour)',
+                          'Cricket Rate (Rs./hour)',
                           _cricketRateController,
-                          Icons.currency_rupee,
                         ),
                         const SizedBox(height: 12),
                         _buildRateField(
-                          'Futsal Rate (Rs/hour)',
+                          'Futsal Rate (Rs./hour)',
                           _futsalRateController,
-                          Icons.currency_rupee,
                         ),
                         const SizedBox(height: 12),
                         _buildRateField(
-                          'Padel Rate (Rs/hour)',
+                          'Padel Rate (Rs./hour)',
                           _padelRateController,
-                          Icons.currency_rupee,
                         ),
                         const SizedBox(height: 24),
                         ElevatedButton(
                           onPressed: isSaving ? null : _updateRates,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.redAccent,
+                            backgroundColor: const Color(0xFF4CAF50),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             minimumSize: const Size(double.infinity, 50),
                           ),
@@ -857,12 +935,19 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.grey[900],
+                            color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: Colors.redAccent.withOpacity(0.3),
+                              color: const Color(0xFF2E7D32).withOpacity(0.3),
                               width: 1.5,
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -870,7 +955,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                               const Text(
                                 'Mark Time Slots as Unavailable',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: Color(0xFF2E7D32),
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -879,7 +964,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                               const Text(
                                 'Select 2-3 consecutive time slots on the same day to mark them as unavailable. These slots will be blocked for all bookings and challenges.',
                                 style: TextStyle(
-                                  color: Colors.white70,
+                                  color: Colors.grey,
                                   fontSize: 14,
                                 ),
                               ),
@@ -893,7 +978,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                           const Text(
                             'Select Court/Field Number',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: Color(0xFF2E7D32),
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
@@ -902,7 +987,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                           const Text(
                             'Choose which court/field to mark as unavailable',
                             style: TextStyle(
-                              color: Colors.white70,
+                              color: Colors.grey,
                               fontSize: 14,
                             ),
                           ),
@@ -911,16 +996,36 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                         ],
                         
                         // Time Slot Grid (show only after court number is selected)
-                        if (courtData != null && selectedCourtNum != null)
-                          TimeSlotGrid(
-                            selectedCourt: courtData,
-                            selectedCourtNum: _decodeCourtNum(selectedCourtNum!),
-                            selectedStartSlot: selectedStartSlot,
-                            selectedEndSlot: selectedEndSlot,
-                            onSlotSelected: _selectTimeSlot,
-                            onChallengeAccepted: null, // Not needed for court owner
-                            days: _getNext7Days(),
+                        if (courtData != null && selectedCourtNum != null) ...[
+                          const SizedBox(height: 20),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFF2E7D32).withOpacity(0.2),
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.grey.withOpacity(0.1),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: TimeSlotGrid(
+                              selectedCourt: courtData,
+                              selectedCourtNum: _decodeCourtNum(selectedCourtNum!),
+                              selectedStartSlot: selectedStartSlot,
+                              selectedEndSlot: selectedEndSlot,
+                              onSlotSelected: _selectTimeSlot,
+                              onChallengeAccepted: null, // Not needed for court owner
+                              days: _getNext7Days(),
+                            ),
                           ),
+                        ],
                         
                         // Mark Unavailable Button
                         if (selectedCourtNum != null && selectedStartSlot != null && selectedEndSlot != null)
@@ -931,7 +1036,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                               child: ElevatedButton(
                                 onPressed: isMarkingUnavailable ? null : _markUnavailable,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.redAccent,
+                                  backgroundColor: const Color(0xFF4CAF50),
                                   padding: const EdgeInsets.symmetric(vertical: 16),
                                   minimumSize: const Size(double.infinity, 50),
                                 ),
@@ -962,7 +1067,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
               ),
         floatingActionButton: FloatingActionButton(
           onPressed: showAddFieldDialog,
-          backgroundColor: Colors.redAccent,
+          backgroundColor: const Color(0xFF4CAF50),
           child: const Icon(Icons.add, color: Colors.white),
         ),
       ),
@@ -971,14 +1076,25 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
 
   Widget _buildFieldCountCard(String label, int count, IconData icon) {
     return Card(
-      color: Colors.grey[900],
+      color: Colors.white,
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: ListTile(
-        leading: Icon(icon, color: Colors.redAccent),
-        title: Text(label, style: const TextStyle(color: Colors.white)),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2E7D32).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: const Color(0xFF2E7D32)),
+        ),
+        title: Text(label, style: const TextStyle(color: Color(0xFF2E7D32))),
         trailing: Text(
           count.toString(),
           style: const TextStyle(
-            color: Colors.redAccent,
+            color: Color(0xFF2E7D32),
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
@@ -990,29 +1106,33 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
   Widget _buildRateField(
     String label,
     TextEditingController controller,
-    IconData icon,
   ) {
     return TextField(
       controller: controller,
       keyboardType: TextInputType.number,
-      style: const TextStyle(color: Colors.white),
+      style: const TextStyle(color: Color(0xFF2E7D32)),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.white70),
-        prefixIcon: Icon(icon, color: Colors.redAccent),
+        labelStyle: const TextStyle(color: Colors.grey),
+        prefixText: 'Rs. ',
+        prefixStyle: const TextStyle(
+          color: Color(0xFF2E7D32),
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
         filled: true,
-        fillColor: Colors.grey[900],
+        fillColor: Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[700]!),
+          borderSide: BorderSide(color: Colors.grey[300]!),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[700]!),
+          borderSide: BorderSide(color: Colors.grey[300]!),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+          borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
         ),
       ),
     );

@@ -251,7 +251,7 @@ class _PaymentsPageState extends State<PaymentsPage>
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Payment marked as paid successfully!'),
-              backgroundColor: Colors.green,
+              backgroundColor: Color(0xFF4CAF50),
             ),
           );
           await _fetchPendingPayments();
@@ -297,27 +297,45 @@ class _PaymentsPageState extends State<PaymentsPage>
 
     showDialog(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext) => StatefulBuilder(
         builder: (buildContext, setDialogState) => AlertDialog(
-          backgroundColor: Colors.grey[900],
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: const Text(
             'Select Match Winner',
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(
+              color: Color(0xFF2E7D32),
+              fontWeight: FontWeight.bold,
+            ),
           ),
           content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    payment['team']?.toString() ?? 'Match',
-                    style: const TextStyle(color: Colors.white70, fontSize: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2E7D32).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      payment['team']?.toString() ?? 'Match',
+                      style: const TextStyle(
+                        color: Color(0xFF2E7D32),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   if (sport.toLowerCase() == 'futsal' || sport.toLowerCase() == 'football') ...[
                     RadioListTile<String>(
-                      title: Text('$hostTeamName (Host)', style: const TextStyle(color: Colors.white)),
+                      title: Text('$hostTeamName (Host)', style: const TextStyle(color: Color(0xFF2E7D32))),
                       value: 'host',
                       groupValue: isTie ? null : (selectedWinner ?? ''),
+                      activeColor: const Color(0xFF4CAF50),
                       onChanged: (value) {
                         setDialogState(() {
                           selectedWinner = value ?? '';
@@ -326,9 +344,10 @@ class _PaymentsPageState extends State<PaymentsPage>
                       },
                     ),
                     RadioListTile<String>(
-                      title: Text('$guestTeamName (Guest)', style: const TextStyle(color: Colors.white)),
+                      title: Text('$guestTeamName (Guest)', style: const TextStyle(color: Color(0xFF2E7D32))),
                       value: 'guest',
                       groupValue: isTie ? null : (selectedWinner ?? ''),
+                      activeColor: const Color(0xFF4CAF50),
                       onChanged: (value) {
                         setDialogState(() {
                           selectedWinner = value ?? '';
@@ -337,8 +356,9 @@ class _PaymentsPageState extends State<PaymentsPage>
                       },
                     ),
                     CheckboxListTile(
-                      title: const Text('Tie', style: TextStyle(color: Colors.white)),
+                      title: const Text('Tie', style: TextStyle(color: Color(0xFF2E7D32))),
                       value: isTie,
+                      activeColor: const Color(0xFF4CAF50),
                       onChanged: (value) {
                         setDialogState(() {
                           isTie = value ?? false;
@@ -348,9 +368,10 @@ class _PaymentsPageState extends State<PaymentsPage>
                     ),
                   ] else ...[
                     RadioListTile<String>(
-                      title: Text('$hostTeamName (Host)', style: const TextStyle(color: Colors.white)),
+                      title: Text('$hostTeamName (Host)', style: const TextStyle(color: Color(0xFF2E7D32))),
                       value: 'host',
                       groupValue: selectedWinner ?? '',
+                      activeColor: const Color(0xFF4CAF50),
                       onChanged: (value) {
                         setDialogState(() {
                           selectedWinner = value ?? '';
@@ -359,9 +380,10 @@ class _PaymentsPageState extends State<PaymentsPage>
                       },
                     ),
                     RadioListTile<String>(
-                      title: Text('$guestTeamName (Guest)', style: const TextStyle(color: Colors.white)),
+                      title: Text('$guestTeamName (Guest)', style: const TextStyle(color: Color(0xFF2E7D32))),
                       value: 'guest',
                       groupValue: selectedWinner ?? '',
+                      activeColor: const Color(0xFF4CAF50),
                       onChanged: (value) {
                         setDialogState(() {
                           selectedWinner = value ?? '';
@@ -376,7 +398,10 @@ class _PaymentsPageState extends State<PaymentsPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey),
+              ),
             ),
             ElevatedButton(
               onPressed: (selectedWinner == null && !isTie)
@@ -393,8 +418,13 @@ class _PaymentsPageState extends State<PaymentsPage>
                         Navigator.pop(dialogContext);
                       }
                     },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-              child: const Text('Confirm', style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4CAF50),
+              ),
+              child: const Text(
+                'Confirm',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -451,7 +481,7 @@ class _PaymentsPageState extends State<PaymentsPage>
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Payment updated and winner selected successfully!'),
-              backgroundColor: Colors.green,
+              backgroundColor: Color(0xFF4CAF50),
             ),
           );
           await _fetchPendingPayments();
@@ -538,62 +568,197 @@ class _PaymentsPageState extends State<PaymentsPage>
   Widget buildPaymentCard(Map<String, dynamic> payment, bool isPaid) {
     final date = _formatDate(payment['endTime'] ?? payment['startTime']);
     final time = _formatTime(payment['endTime'] ?? payment['startTime']);
+    final isMatch = payment['type'] == 'match';
+    final amount = payment['amount'] ?? 0;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      color: Colors.grey[900],
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: ListTile(
-        title: Text(
-          payment['team'] ?? 'Unknown Team',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+      color: Colors.white,
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: (isPaid 
+              ? const Color(0xFF4CAF50) 
+              : Colors.orange).withOpacity(0.2),
+          width: 1,
         ),
-        subtitle: Text(
-          "${payment['court'] ?? 'Unknown Court'} | $date at $time",
-          style: const TextStyle(color: Colors.white70),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Row(
               children: [
-                Text(
-                  "₹${payment['amount'] ?? 0}",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
-                    fontSize: 16,
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: (isPaid 
+                        ? const Color(0xFF4CAF50) 
+                        : Colors.orange).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    isMatch ? Icons.sports_soccer : Icons.event,
+                    color: isPaid 
+                        ? const Color(0xFF4CAF50) 
+                        : Colors.orange,
+                    size: 24,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  isPaid ? "Paid" : "Pending",
-                  style: TextStyle(
-                    color: isPaid ? Colors.green : Colors.orange,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        payment['team'] ?? 'Unknown Team',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2E7D32),
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on,
+                            size: 14,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            payment['court'] ?? 'Unknown Court',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: (isPaid 
+                        ? const Color(0xFF4CAF50) 
+                        : Colors.orange).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isPaid 
+                          ? const Color(0xFF4CAF50) 
+                          : Colors.orange,
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    isPaid ? "Paid" : "Pending",
+                    style: TextStyle(
+                      color: isPaid 
+                          ? const Color(0xFF4CAF50) 
+                          : Colors.orange,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ],
             ),
-            if (!isPaid) ...[
-              const SizedBox(width: 12),
-              IconButton(
-                icon: const Icon(Icons.check_circle, color: Colors.green),
-                onPressed: () => _markAsPaid(
-                  payment['id']?.toString() ?? '',
-                  matchID: payment['matchID']?.toString(),
-                  sport: payment['sport']?.toString(),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(
+                  Icons.calendar_today,
+                  size: 16,
+                  color: Colors.grey,
                 ),
-                tooltip: payment['type'] == 'match' 
-                    ? 'Select winner & mark paid' 
-                    : 'Mark as paid',
-              ),
-            ],
+                const SizedBox(width: 6),
+                Text(
+                  date,
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                const Icon(
+                  Icons.access_time,
+                  size: 16,
+                  color: Colors.grey,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  time,
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2E7D32).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFF2E7D32).withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Rs. ',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2E7D32),
+                          fontSize: 18,
+                        ),
+                      ),
+                      Text(
+                        amount.toString(),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2E7D32),
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!isPaid)
+                  ElevatedButton.icon(
+                    onPressed: () => _markAsPaid(
+                      payment['id']?.toString() ?? '',
+                      matchID: payment['matchID']?.toString(),
+                      sport: payment['sport']?.toString(),
+                    ),
+                    icon: const Icon(Icons.check_circle, size: 18),
+                    label: Text(
+                      isMatch ? 'Mark Paid' : 'Mark Paid',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4CAF50),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
@@ -606,10 +771,14 @@ class _PaymentsPageState extends State<PaymentsPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        backgroundColor: Colors.redAccent,
-        title: const Text("Payments", style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFF4CAF50),
+        title: const Text(
+          "Payments",
+          style: TextStyle(color: Colors.white),
+        ),
+        centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
@@ -629,7 +798,7 @@ class _PaymentsPageState extends State<PaymentsPage>
           // -------------------------
           isLoadingPending
               ? const Center(
-                  child: CircularProgressIndicator(color: Colors.redAccent),
+                  child: CircularProgressIndicator(color: Color(0xFF4CAF50)),
                 )
               : errorMessagePending != null
               ? Center(
@@ -638,16 +807,19 @@ class _PaymentsPageState extends State<PaymentsPage>
                     children: [
                       Text(
                         errorMessagePending!,
-                        style: const TextStyle(color: Colors.redAccent),
+                        style: const TextStyle(color: Color(0xFF2E7D32)),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _fetchPendingPayments,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
+                          backgroundColor: const Color(0xFF4CAF50),
                         ),
-                        child: const Text('Retry'),
+                        child: const Text(
+                          'Retry',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ],
                   ),
@@ -656,39 +828,40 @@ class _PaymentsPageState extends State<PaymentsPage>
               ? const Center(
                   child: Text(
                     'No pending payments',
-                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
                   ),
                 )
               : RefreshIndicator(
                   onRefresh: _fetchPendingPayments,
-                  color: Colors.redAccent,
+                  color: const Color(0xFF4CAF50),
                   child: ListView(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                     children: [
                       // Bookings Section
                       if (pendingBookings.isNotEmpty) ...[
                         Padding(
-                          padding: const EdgeInsets.all(16.0),
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                           child: Text(
                             'Bookings (Friendly Matches)',
                             style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
+                              color: Color(0xFF2E7D32),
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
                         ...pendingBookings.map((payment) => buildPaymentCard(payment, false)),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 8),
                       ],
                       // Matches/Challenges Section
                       if (pendingMatches.isNotEmpty) ...[
                         Padding(
-                          padding: const EdgeInsets.all(16.0),
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                           child: Text(
                             'Challenges (Competitive Matches)',
                             style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
+                              color: Color(0xFF2E7D32),
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -704,7 +877,7 @@ class _PaymentsPageState extends State<PaymentsPage>
           // -------------------------
           isLoadingPaid
               ? const Center(
-                  child: CircularProgressIndicator(color: Colors.redAccent),
+                  child: CircularProgressIndicator(color: Color(0xFF4CAF50)),
                 )
               : errorMessagePaid != null
               ? Center(
@@ -713,16 +886,19 @@ class _PaymentsPageState extends State<PaymentsPage>
                     children: [
                       Text(
                         errorMessagePaid!,
-                        style: const TextStyle(color: Colors.redAccent),
+                        style: const TextStyle(color: Color(0xFF2E7D32)),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _fetchPaidBookings,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
+                          backgroundColor: const Color(0xFF4CAF50),
                         ),
-                        child: const Text('Retry'),
+                        child: const Text(
+                          'Retry',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ],
                   ),
@@ -731,13 +907,14 @@ class _PaymentsPageState extends State<PaymentsPage>
               ? const Center(
                   child: Text(
                     'No paid bookings',
-                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
                   ),
                 )
               : RefreshIndicator(
                   onRefresh: _fetchPaidBookings,
-                  color: Colors.redAccent,
+                  color: const Color(0xFF4CAF50),
                   child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: paidBookings.length,
                     itemBuilder: (context, index) {
                       return buildPaymentCard(paidBookings[index], true);

@@ -4,11 +4,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../screens/login_page.dart';
 
-/// ADMIN PAGES (single-file demo)
+/// ADMIN PAGES
 /// - AdminDashboard
 /// - PendingRegistrationsPage (+ UserDetailPage)
-/// - PendingCourtsPage (+ CourtDetailPage)
-/// - ManageBlocksPage
 
 const String baseUrl = 'http://localhost:5000/api';
 
@@ -45,6 +43,11 @@ class AdminDashboardEntry extends StatelessWidget {
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
 
+  // Pink color theme
+  static const Color pinkColor = Color(0xFFFF69B4); // Hot pink
+  static const Color lightPink = Color(0xFFFFB6C1); // Light pink
+  static const Color whiteColor = Colors.white;
+
   Future<void> _logout(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -62,7 +65,7 @@ class AdminDashboard extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
+            child: const Text('Logout', style: TextStyle(color: pinkColor)),
           ),
         ],
       ),
@@ -103,136 +106,162 @@ class AdminDashboard extends StatelessWidget {
     }
   }
 
+  Widget _buildEmojiBackground() {
+    return Stack(
+      children: List.generate(30, (index) {
+        final emojis = ['💕', '💖', '💗', '💓', '💝', '💞', '💟', '❤️', '🧡', '💛'];
+        final emoji = emojis[index % emojis.length];
+        return Positioned(
+          left: (index * 37.0) % 400,
+          top: (index * 43.0) % 800,
+          child: Opacity(
+            opacity: 0.1,
+            child: Text(
+              emoji,
+              style: TextStyle(fontSize: 30 + (index % 3) * 10),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: whiteColor,
       appBar: AppBar(
-        backgroundColor: Colors.redAccent,
+        backgroundColor: pinkColor,
+        elevation: 0,
         title: const Text(
-          'Admin Dashboard',
-          style: TextStyle(color: Colors.white),
+          'Welcome, Pitah Jee 💕',
+          style: TextStyle(
+            color: whiteColor,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
+            icon: const Icon(Icons.logout, color: whiteColor),
             onPressed: () => _logout(context),
             tooltip: 'Logout',
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            const SizedBox(height: 8),
-            const Text(
-              'Welcome, Admin',
-              style: TextStyle(
-                color: Colors.redAccent,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 18),
-
-            // Cards/Quick actions
-            _actionCard(
-              context,
-              title: 'Pending Registrations',
-              subtitle: 'Approve players & court owners',
-              icon: Icons.person_add,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const PendingRegistrationsPage(),
+      body: Stack(
+        children: [
+          // Emoji background
+          _buildEmojiBackground(),
+          // Main content
+          Center(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Pending Registrations Card
+                    _buildActionCard(
+                      context,
+                      title: 'Pending Registrations 💖',
+                      subtitle: 'Approve players & court owners ✨',
+                      icon: Icons.person_add,
+                      emoji: '💕',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const PendingRegistrationsPage(),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-
-            _actionCard(
-              context,
-              title: 'Pending Courts',
-              subtitle: 'Approve newly created courts',
-              icon: Icons.sports_soccer,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const PendingCourtsPage()),
-              ),
-            ),
-
-            _actionCard(
-              context,
-              title: 'Manage Blocks',
-              subtitle: 'Block / Unblock teams and court owners',
-              icon: Icons.block,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ManageBlocksPage()),
-              ),
-            ),
-
-            const Spacer(),
-
-            // small footer
-            const Text(
-              'KhelKood Admin Panel',
-              style: TextStyle(color: Colors.white54),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _actionCard(
+  Widget _buildActionCard(
     BuildContext context, {
     required String title,
     required String subtitle,
     required IconData icon,
+    required String emoji,
     required VoidCallback onTap,
   }) {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 14),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.grey[900],
-          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        onPressed: onTap,
-        child: Row(
-          children: [
-            Icon(icon, color: Colors.redAccent, size: 28),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(subtitle, style: const TextStyle(color: Colors.white70)),
-                ],
+      constraints: const BoxConstraints(maxWidth: 400),
+      margin: const EdgeInsets.symmetric(vertical: 16),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [pinkColor, lightPink],
               ),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: pinkColor.withOpacity(0.4),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
-            const Icon(
-              Icons.arrow_forward_ios,
-              color: Colors.white70,
-              size: 16,
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: whiteColor.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(icon, color: whiteColor, size: 36),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: whiteColor,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: whiteColor.withOpacity(0.9),
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  color: whiteColor,
+                  size: 24,
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -257,11 +286,21 @@ class _PendingRegistrationsPageState extends State<PendingRegistrationsPage>
   List<Map<String, dynamic>> pendingPlayers = [];
   List<Map<String, dynamic>> pendingOwners = [];
 
+  static const Color pinkColor = Color(0xFFFF69B4);
+  static const Color lightPink = Color(0xFFFFB6C1);
+  static const Color whiteColor = Colors.white;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _fetchUnverifiedUsers();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchUnverifiedUsers() async {
@@ -383,9 +422,9 @@ class _PendingRegistrationsPageState extends State<PendingRegistrationsPage>
     final id = user['id'];
     
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Approving...'),
-        backgroundColor: Colors.blue,
+      SnackBar(
+        content: const Text('Approving... 💕'),
+        backgroundColor: pinkColor,
       ),
     );
 
@@ -424,7 +463,7 @@ class _PendingRegistrationsPageState extends State<PendingRegistrationsPage>
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('User ${user['name']} verified successfully'),
+            content: Text('User ${user['name']} verified successfully! 💖'),
             backgroundColor: Colors.green,
           ),
         );
@@ -456,28 +495,29 @@ class _PendingRegistrationsPageState extends State<PendingRegistrationsPage>
     final rejectionReason = await showDialog<String?>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text('Reject User', style: TextStyle(color: Colors.white)),
+        backgroundColor: whiteColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Reject User 💔', style: TextStyle(color: pinkColor)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Are you sure you want to reject ${user['name']}?',
-              style: const TextStyle(color: Colors.white70),
+              style: const TextStyle(color: Colors.black87),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: reasonController,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
+              style: const TextStyle(color: Colors.black),
+              decoration: InputDecoration(
                 hintText: 'Optional reason (e.g., incomplete documents)',
-                hintStyle: TextStyle(color: Colors.white54),
+                hintStyle: const TextStyle(color: Colors.grey),
                 enabledBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white24),
+                  borderSide: BorderSide(color: pinkColor.withOpacity(0.3)),
                 ),
                 focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.redAccent),
+                  borderSide: const BorderSide(color: pinkColor),
                 ),
               ),
             ),
@@ -486,13 +526,12 @@ class _PendingRegistrationsPageState extends State<PendingRegistrationsPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, null),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () =>
                 Navigator.pop(context, reasonController.text.trim()),
-            child:
-                const Text('Reject', style: TextStyle(color: Colors.redAccent)),
+            child: const Text('Reject', style: TextStyle(color: pinkColor)),
           ),
         ],
       ),
@@ -507,8 +546,8 @@ class _PendingRegistrationsPageState extends State<PendingRegistrationsPage>
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Rejecting...'),
-        backgroundColor: Colors.blue,
+        content: Text('Rejecting... 💔'),
+        backgroundColor: pinkColor,
       ),
     );
 
@@ -547,7 +586,7 @@ class _PendingRegistrationsPageState extends State<PendingRegistrationsPage>
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Rejected ${user['name']}'),
+            content: Text('Rejected ${user['name']} 💔'),
             backgroundColor: Colors.red,
           ),
         );
@@ -584,110 +623,195 @@ class _PendingRegistrationsPageState extends State<PendingRegistrationsPage>
     );
   }
 
+  Widget _buildEmojiBackground() {
+    return Stack(
+      children: List.generate(25, (index) {
+        final emojis = ['💕', '💖', '💗', '💓', '💝', '💞', '💟', '❤️', '🧡', '💛', '✨', '🌟'];
+        final emoji = emojis[index % emojis.length];
+        return Positioned(
+          left: (index * 47.0) % 400,
+          top: (index * 53.0) % 800,
+          child: Opacity(
+            opacity: 0.08,
+            child: Text(
+              emoji,
+              style: TextStyle(fontSize: 25 + (index % 4) * 8),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: whiteColor,
       appBar: AppBar(
-        backgroundColor: Colors.redAccent,
+        backgroundColor: pinkColor,
+        elevation: 0,
         title: const Text(
-          'Pending Registrations',
-          style: TextStyle(color: Colors.white),
+          'Pending Registrations 💕',
+          style: TextStyle(
+            color: whiteColor,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
+            icon: const Icon(Icons.refresh, color: whiteColor),
             onPressed: _fetchUnverifiedUsers,
             tooltip: 'Refresh',
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.white,
+          indicatorColor: whiteColor,
+          labelColor: whiteColor,
+          unselectedLabelColor: whiteColor.withOpacity(0.7),
           tabs: const [
-            Tab(text: 'Players'),
-            Tab(text: 'Court Owners'),
+            Tab(text: 'Players 👥'),
+            Tab(text: 'Court Owners 🏢'),
           ],
         ),
       ),
-      body: isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Colors.redAccent),
-            )
-          : errorMessage != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        errorMessage!,
-                        style: const TextStyle(color: Colors.redAccent),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _fetchUnverifiedUsers,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                        ),
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
+      body: Stack(
+        children: [
+          _buildEmojiBackground(),
+          isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(color: pinkColor),
                 )
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildList(pendingPlayers, 'No pending players'),
-                    _buildList(pendingOwners, 'No pending court owners'),
-                  ],
-                ),
+              : errorMessage != null
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            errorMessage!,
+                            style: const TextStyle(color: pinkColor),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _fetchUnverifiedUsers,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: pinkColor,
+                            ),
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildList(pendingPlayers, 'No pending players 💕'),
+                        _buildList(pendingOwners, 'No pending court owners 💕'),
+                      ],
+                    ),
+        ],
+      ),
     );
   }
 
   Widget _buildList(List<Map<String, dynamic>> data, String emptyMessage) {
     if (data.isEmpty) {
       return Center(
-        child: Text(
-          emptyMessage,
-          style: const TextStyle(color: Colors.white70),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              '💕',
+              style: TextStyle(fontSize: 60),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              emptyMessage,
+              style: const TextStyle(
+                color: pinkColor,
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       itemCount: data.length,
       itemBuilder: (_, i) {
         final user = data[i];
-        return Card(
-          color: Colors.grey[900],
-          margin: const EdgeInsets.symmetric(vertical: 8),
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [pinkColor.withOpacity(0.1), lightPink.withOpacity(0.1)],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: pinkColor.withOpacity(0.3),
+              width: 1.5,
+            ),
+          ),
           child: ListTile(
-            contentPadding: const EdgeInsets.all(12),
+            contentPadding: const EdgeInsets.all(16),
+            leading: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: pinkColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.person, color: pinkColor, size: 28),
+            ),
             title: Text(
               user['name'],
               style: const TextStyle(
-                color: Colors.white,
+                color: Colors.black87,
                 fontWeight: FontWeight.bold,
+                fontSize: 18,
               ),
             ),
-            subtitle: Text(
-              '${user['email']} • ${user['registeredAt']}',
-              style: const TextStyle(color: Colors.white70),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '${user['email']} • ${user['registeredAt']}',
+                style: TextStyle(
+                  color: Colors.black.withOpacity(0.6),
+                  fontSize: 14,
+                ),
+              ),
             ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.check, color: Colors.green),
-                  onPressed: () => _approveUser(user),
-                  tooltip: 'Approve',
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.check, color: whiteColor),
+                    onPressed: () => _approveUser(user),
+                    tooltip: 'Approve',
+                  ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.redAccent),
-                  onPressed: () => _rejectUser(user),
-                  tooltip: 'Reject',
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.close, color: whiteColor),
+                    onPressed: () => _rejectUser(user),
+                    tooltip: 'Reject',
+                  ),
                 ),
               ],
             ),
@@ -704,6 +828,10 @@ class UserDetailPage extends StatelessWidget {
   final VoidCallback onApprove;
   final VoidCallback onReject;
 
+  static const Color pinkColor = Color(0xFFFF69B4);
+  static const Color lightPink = Color(0xFFFFB6C1);
+  static const Color whiteColor = Colors.white;
+
   const UserDetailPage({
     super.key,
     required this.user,
@@ -719,409 +847,147 @@ class UserDetailPage extends StatelessWidget {
     final role = user['role'];
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: whiteColor,
       appBar: AppBar(
-        backgroundColor: Colors.redAccent,
-        title: const Text('User Detail'),
+        backgroundColor: pinkColor,
+        elevation: 0,
+        title: const Text(
+          'User Detail 💕',
+          style: TextStyle(color: whiteColor),
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              name,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text('ID: $id', style: const TextStyle(color: Colors.white70)),
-            const SizedBox(height: 4),
-            Text(
-              'Email: $email',
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Role: ${role.toString()}',
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 18),
-            // TODO: show additional details (CNIC, phone, uploaded docs)
-            const Spacer(),
-            Row(
+      body: Stack(
+        children: [
+          // Emoji background
+          Stack(
+            children: List.generate(15, (index) {
+              final emojis = ['💕', '💖', '💗', '💓', '💝'];
+              final emoji = emojis[index % emojis.length];
+              return Positioned(
+                left: (index * 50.0) % 400,
+                top: (index * 60.0) % 800,
+                child: Opacity(
+                  opacity: 0.05,
+                  child: Text(
+                    emoji,
+                    style: TextStyle(fontSize: 40 + (index % 3) * 15),
+                  ),
+                ),
+              );
+            }),
+          ),
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: onApprove,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [pinkColor, lightPink],
                     ),
-                    child: const Text('Approve'),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          color: whiteColor,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildDetailRow('ID', id),
+                      const SizedBox(height: 8),
+                      _buildDetailRow('Email', email),
+                      const SizedBox(height: 8),
+                      _buildDetailRow('Role', role.toString()),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: onReject,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                    ),
-                    child: const Text('Reject'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// --------------------- PENDING COURTS ---------------------
-class PendingCourtsPage extends StatefulWidget {
-  const PendingCourtsPage({super.key});
-
-  @override
-  State<PendingCourtsPage> createState() => _PendingCourtsPageState();
-}
-
-class _PendingCourtsPageState extends State<PendingCourtsPage> {
-  // Dummy data - replace with API
-  List<Map<String, dynamic>> pendingCourts = [
-    {
-      "id": "C100",
-      "name": "Zee Sports Complex",
-      "location": "Model Town",
-      "sport": "futsal",
-      "rate": 2000,
-      "ownerName": "Zee Sports",
-      "createdAt": "2025-11-23",
-    },
-    {
-      "id": "C101",
-      "name": "Urban Arena",
-      "location": "Downtown",
-      "sport": "basketball",
-      "rate": 1500,
-      "ownerName": "Urban Owner",
-      "createdAt": "2025-11-22",
-    },
-  ];
-
-  Future<void> _approveCourt(Map<String, dynamic> court) async {
-    final id = court['id'];
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Approving court...')));
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-    setState(() => pendingCourts.removeWhere((c) => c['id'] == id));
-    // TODO: call api.approveCourt(courtId: id);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Approved $id'), backgroundColor: Colors.green),
-    );
-  }
-
-  Future<void> _rejectCourt(Map<String, dynamic> court) async {
-    final id = court['id'];
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Rejecting court...')));
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-    setState(() => pendingCourts.removeWhere((c) => c['id'] == id));
-    // TODO: call api.rejectCourt(courtId: id);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Rejected $id'), backgroundColor: Colors.red),
-    );
-  }
-
-  void _openCourtDetail(Map<String, dynamic> court) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CourtDetailPage(
-          court: court,
-          onApprove: () => _approveCourt(court),
-          onReject: () => _rejectCourt(court),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.redAccent,
-        title: const Text('Pending Courts'),
-      ),
-      body: pendingCourts.isEmpty
-          ? const Center(
-              child: Text(
-                'No courts pending approval',
-                style: TextStyle(color: Colors.white70),
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: pendingCourts.length,
-              itemBuilder: (_, i) {
-                final court = pendingCourts[i];
-                return Card(
-                  color: Colors.grey[900],
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  child: ListTile(
-                    title: Text(
-                      court['name'],
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                const SizedBox(height: 24),
+                const Spacer(),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: onApprove,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Approve 💖',
+                          style: TextStyle(
+                            color: whiteColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
-                    subtitle: Text(
-                      '${court['location']} • ${court['sport']} • Rs ${court['rate']}',
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.check, color: Colors.green),
-                          onPressed: () => _approveCourt(court),
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.close,
-                            color: Colors.redAccent,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: onReject,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          onPressed: () => _rejectCourt(court),
                         ),
-                      ],
+                        child: const Text(
+                          'Reject 💔',
+                          style: TextStyle(
+                            color: whiteColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                     ),
-                    onTap: () => _openCourtDetail(court),
-                  ),
-                );
-              },
-            ),
-    );
-  }
-}
-
-class CourtDetailPage extends StatelessWidget {
-  final Map<String, dynamic> court;
-  final VoidCallback onApprove;
-  final VoidCallback onReject;
-
-  const CourtDetailPage({
-    super.key,
-    required this.court,
-    required this.onApprove,
-    required this.onReject,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.redAccent,
-        title: const Text('Court Detail'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              court['name'],
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Location: ${court['location']}',
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Sport: ${court['sport']}',
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Rate: Rs ${court['rate']}',
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Owner: ${court['ownerName']}',
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 16),
-            // TODO: Show images, facilities, documents etc.
-            const Spacer(),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: onApprove,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                    ),
-                    child: const Text('Approve'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: onReject,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                    ),
-                    child: const Text('Reject'),
-                  ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// --------------------- MANAGE BLOCKS ---------------------
-class ManageBlocksPage extends StatefulWidget {
-  const ManageBlocksPage({super.key});
-
-  @override
-  State<ManageBlocksPage> createState() => _ManageBlocksPageState();
-}
-
-class _ManageBlocksPageState extends State<ManageBlocksPage> {
-  // Dummy data: teams and owners (status: active/blocked)
-  List<Map<String, dynamic>> teams = [
-    {"id": "T100", "name": "Red Tigers", "status": "active"},
-    {"id": "T101", "name": "Blue Sharks", "status": "blocked"},
-  ];
-
-  List<Map<String, dynamic>> owners = [
-    {"id": "O200", "name": "Zee Sports", "status": "active"},
-    {"id": "O201", "name": "Urban Owner", "status": "active"},
-  ];
-
-  Future<void> _toggleBlock(Map<String, dynamic> item, bool isTeam) async {
-    final id = item['id'];
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Updating...')));
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
-
-    setState(() {
-      final list = isTeam ? teams : owners;
-      final idx = list.indexWhere((x) => x['id'] == id);
-      if (idx != -1) {
-        list[idx]['status'] = list[idx]['status'] == 'active'
-            ? 'blocked'
-            : 'active';
-      }
-    });
-
-    // TODO: call api.blockUser(id) or api.unblockUser(id)
-    final newStatus = item['status'] == 'active' ? 'blocked' : 'active';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$id is now $newStatus'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
-  Widget _buildList(List<Map<String, dynamic>> list, bool isTeam) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: list.length,
-      itemBuilder: (_, i) {
-        final item = list[i];
-        final blocked = item['status'] == 'blocked';
-        return Card(
-          color: Colors.grey[900],
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          child: ListTile(
-            title: Text(
-              item['name'],
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            subtitle: Text(
-              'ID: ${item['id']}',
-              style: const TextStyle(color: Colors.white70),
-            ),
-            trailing: ElevatedButton(
-              onPressed: () => _toggleBlock(item, isTeam),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: blocked ? Colors.green : Colors.redAccent,
-              ),
-              child: Text(blocked ? 'Unblock' : 'Block'),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  int _currentTab = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.redAccent,
-        title: const Text('Manage Blocks'),
-      ),
-      body: Column(
-        children: [
-          const SizedBox(height: 12),
-          ToggleButtons(
-            borderRadius: BorderRadius.circular(10),
-            isSelected: [_currentTab == 0, _currentTab == 1],
-            onPressed: (idx) => setState(() => _currentTab = idx),
-            color: Colors.white70,
-            selectedColor: Colors.white,
-            fillColor: Colors.redAccent.withOpacity(0.2),
-            children: const [
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                child: Text('Teams'),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                child: Text('Court Owners'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: _currentTab == 0
-                ? _buildList(teams, true)
-                : _buildList(owners, false),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Row(
+      children: [
+        Text(
+          '$label: ',
+          style: TextStyle(
+            color: whiteColor.withOpacity(0.8),
+            fontSize: 16,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: whiteColor,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

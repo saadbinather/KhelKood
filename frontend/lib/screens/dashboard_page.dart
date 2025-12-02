@@ -6,7 +6,6 @@ import 'login_page.dart';
 import 'profile_page.dart';
 import 'leaderboard_page.dart';
 import 'challenges_page.dart';
-import 'available_courts_page.dart';
 import 'create_booking_or_challenge_page.dart';
 import 'all_courts_page.dart';
 

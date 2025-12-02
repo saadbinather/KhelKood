@@ -161,37 +161,68 @@ const AuthService = {
       );
     }
 
-    // Create base user record
+    // Create base user record with signup data for later use
     const userData = {
       name,
       email,
       role,
       verificationStatus: "pending",
       createdAt: new Date(),
+      // Store signup data for courtowner/team creation during approval if needed
+      signupData: role === "courtowner" ? {
+        phone: phone || "",
+        cnic: cnic || "",
+        courtName: courtName || "",
+        location: location || "",
+        courtTitle: courtTitle || "",
+        courtAddress: courtAddress || "",
+        numOfCricketFields: Number(numOfCricketFields) || 0,
+        numOfPadelCourts: Number(numOfPadelCourts) || 0,
+        numOfFutsalFields: Number(numOfFutsalFields) || 0,
+        cricketRate: Number(cricketRate) || 0,
+        futsalRate: Number(futsalRate) || 0,
+        padelRate: Number(padelRate) || 0,
+        rating: Number(rating) || 0,
+        openingTime: Number(openingTime) || 8,
+        closingTime: Number(closingTime) || 23,
+      } : role === "team" ? {
+        teamName: teamName || "",
+        sports: sports || "",
+        phone: phone || "",
+        players: Array.isArray(players) ? players : [],
+      } : null,
     };
     await AuthRepository.createUser(finalFirebaseUid, userData);
 
     // Role-specific handling
     if (role === "courtowner") {
       // Clean phone and CNIC (remove formatting)
-      const cleanedPhone = phone;
-      const cleanedCNIC = cnic;
+      const cleanedPhone = (phone || "").trim();
+      const cleanedCNIC = (cnic || "").trim();
 
+      // Always create courtowner document (even if some fields are missing)
       const courtownerData = {
-        userId: firebase_uid,
-        name,
-        email,
+        userId: finalFirebaseUid,
+        name: name || "",
+        email: email || "",
         phone: cleanedPhone,
         cnic: cleanedCNIC,
         courtName: courtName || "",
         location: location || "",
         createdAt: new Date(),
       };
-      await AuthRepository.createCourtowner(finalFirebaseUid, courtownerData);
+      
+      try {
+        await AuthRepository.createCourtowner(finalFirebaseUid, courtownerData);
+      } catch (error) {
+        console.error("Error creating courtowner:", error);
+        // Continue anyway - will be recreated during approval if needed
+      }
 
+      // Always create court document (even if some fields are missing)
       const courtData = {
-        name: courtTitle || "Default Sports Arena",
-        address: courtAddress || "Unknown Location",
+        name: (courtTitle || "Default Sports Arena").trim(),
+        address: (courtAddress || "Unknown Location").trim(),
         location: location || "",
         courtownerID: finalFirebaseUid,
         numOfCricketFields: Number(numOfCricketFields) || 0,
@@ -205,20 +236,42 @@ const AuthService = {
         closingTime: Number(closingTime) || 23,
         createdAt: new Date(),
       };
-      await AuthRepository.createCourt(courtData);
+      
+      try {
+        await AuthRepository.createCourt(courtData);
+      } catch (error) {
+        console.error("Error creating court:", error);
+        // Continue anyway - will be recreated during approval if needed
+      }
     } else if (role === "team") {
+      // Validate required team fields
+      if (!teamName || teamName.trim() === "") {
+        throw new Error("Team name is required");
+      }
+      if (!sports || sports.trim() === "") {
+        throw new Error("Sport is required");
+      }
+      // Validate sport is one of: futsal, cricket, padel
+      const validSports = ["futsal", "cricket", "padel"];
+      if (!validSports.includes(sports.toLowerCase())) {
+        throw new Error("Sport must be one of: futsal, cricket, or padel");
+      }
+
       const teamData = {
-        userId: firebase_uid,
-        email,
+        userId: finalFirebaseUid, // Use finalFirebaseUid, not firebase_uid
+        email: email || "",
         phone: phone || "",
-        teamName: teamName || name,
-        sports: sports || "",
-        players: players || [],
+        teamName: teamName.trim(),
+        sports: sports.toLowerCase(), // Normalize to lowercase
+        players: Array.isArray(players) ? players.filter(p => p && p.trim() !== "") : [],
         createdAt: new Date(),
         points: 0,
       };
       await AuthRepository.createTeam(finalFirebaseUid, teamData);
-      await AuthRepository.createPlayers(players, finalFirebaseUid);
+      // Only create players if array is not empty
+      if (Array.isArray(players) && players.length > 0) {
+        await AuthRepository.createPlayers(players.filter(p => p && p.trim() !== ""), finalFirebaseUid);
+      }
     }
 
     return { firebase_uid: finalFirebaseUid, role };
@@ -319,12 +372,13 @@ const AuthController = {
   async signup(req, res) {
     try {
       const result = await AuthService.signup(req.body);
-      return sendSuccess(res, 201, `Signup successful as ${result.role}`, {
+      return sendSuccess(res, 201, `Signup successful as ${result.role}. Please wait for admin verification.`, {
         uid: result.firebase_uid,
       });
     } catch (error) {
       const errorMessage =
         error.response?.data?.error?.message || error.message;
+      console.error("Signup error:", errorMessage);
       if (
         errorMessage.includes("required") ||
         errorMessage.includes("Invalid")

@@ -240,6 +240,7 @@ const BookingService = {
       courtID,
       teamID,
       courtNum: parseInt(courtNum),
+      sportType,
       startTime: startTimeDate,
       endTime: endTimeDate,
       createdAt: new Date(),

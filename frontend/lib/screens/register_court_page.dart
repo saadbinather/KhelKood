@@ -43,7 +43,10 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
 
   bool isLoading = false;
 
+  String? lastErrorMessage;
+
   Future<bool> registerCourtOwner() async {
+    lastErrorMessage = null;
     try {
       // Validate all fields
       if (courtTitleCtrl.text.trim().isEmpty ||
@@ -56,6 +59,7 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
           cricketFieldsCtrl.text.trim().isEmpty ||
           padelCourtsCtrl.text.trim().isEmpty ||
           futsalFieldsCtrl.text.trim().isEmpty) {
+        lastErrorMessage = "All fields are required";
         return false;
       }
 
@@ -90,8 +94,22 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
 
       print("Court Owner Register Response: ${response.body}");
 
-      return response.statusCode >= 200 && response.statusCode < 300;
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return true;
+      } else {
+        // Extract error message
+        try {
+          final errorData = jsonDecode(response.body);
+          lastErrorMessage = errorData['error'] ?? "Registration failed. Please try again.";
+          print("Court Owner Register Error: $lastErrorMessage");
+        } catch (e) {
+          lastErrorMessage = "Registration failed. Please try again.";
+          print("Court Owner Register Error: ${response.body}");
+        }
+        return false;
+      }
     } catch (e) {
+      lastErrorMessage = "Error: ${e.toString()}";
       print("Court Owner Register Error: $e");
       return false;
     }
@@ -154,8 +172,8 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
         Navigator.popUntil(context, (route) => route.isFirst);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Could not register court owner. Please try again."),
+          SnackBar(
+            content: Text(lastErrorMessage ?? "Could not register court owner. Please try again."),
             backgroundColor: Colors.red,
           ),
         );

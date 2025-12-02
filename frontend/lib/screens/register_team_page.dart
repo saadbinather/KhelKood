@@ -233,9 +233,7 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
                 items: [
                   "futsal",
                   "cricket",
-                  "football",
-                  "badminton",
-                  "volleyball",
+                  "padel",
                 ]
                     .map((sport) => DropdownMenuItem(
                           value: sport,

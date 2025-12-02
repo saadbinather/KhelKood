@@ -18,11 +18,61 @@ class _AllCourtsPageState extends State<AllCourtsPage> {
   List<Map<String, dynamic>> _allCourts = [];
   bool isLoading = true;
   String? errorMessage;
+  String? teamSport; // Team's sport type
 
   @override
   void initState() {
     super.initState();
+    _fetchTeamSport();
     _fetchVerifiedCourts();
+  }
+
+  Future<void> _fetchTeamSport() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null) return;
+
+      final response = await http.get(
+        Uri.parse('http://localhost:5000/api/team/profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        final team = data['data']?['team'] ?? data['team'];
+        final sport = team?['sports'] ?? data['data']?['sports'] ?? data['sports'];
+        setState(() {
+          teamSport = sport?.toString().toLowerCase();
+        });
+        // Re-filter courts after getting sport
+        _filterCourtsBySport();
+      }
+    } catch (e) {
+      print('Error fetching team sport: $e');
+    }
+  }
+
+  void _filterCourtsBySport() {
+    if (teamSport == null) return;
+    
+    setState(() {
+      _courts = _allCourts.where((court) {
+        // Filter courts that have fields/courts for the team's sport
+        if (teamSport == 'cricket') {
+          return (court['numOfCricketFields'] ?? 0) > 0;
+        } else if (teamSport == 'futsal' || teamSport == 'football') {
+          return (court['numOfFutsalFields'] ?? 0) > 0;
+        } else if (teamSport == 'padel') {
+          return (court['numOfPadelCourts'] ?? 0) > 0;
+        }
+        return true; // Show all if sport not recognized
+      }).toList();
+      _applyFilters();
+    });
   }
 
   Future<void> _fetchVerifiedCourts() async {
@@ -58,6 +108,7 @@ class _AllCourtsPageState extends State<AllCourtsPage> {
             data['data']?['courts'] ?? data['courts'] ?? [],
           );
           _courts = List.from(_allCourts);
+          _filterCourtsBySport(); // Filter by sport if available
           _applyFilters();
           isLoading = false;
         });

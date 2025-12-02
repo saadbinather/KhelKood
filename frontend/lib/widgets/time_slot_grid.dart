@@ -11,6 +11,7 @@ class TimeSlotGrid extends StatefulWidget {
   final Function(int dayIndex, int hour) onSlotSelected;
   final VoidCallback? onChallengeAccepted; // Callback to clear selection after accepting challenge
   final List<DateTime> days;
+  final String? sportType; // Sport type for showing appropriate icons
 
   const TimeSlotGrid({
     super.key,
@@ -21,6 +22,7 @@ class TimeSlotGrid extends StatefulWidget {
     required this.onSlotSelected,
     this.onChallengeAccepted,
     required this.days,
+    this.sportType,
   });
 
   @override
@@ -100,21 +102,53 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
       setState(() {
         if (bookingResponse.statusCode >= 200 && bookingResponse.statusCode < 300) {
           final bookingData = jsonDecode(bookingResponse.body);
-          bookings = List<Map<String, dynamic>>.from(
+          final allBookings = List<Map<String, dynamic>>.from(
             bookingData['data']?['bookings'] ?? bookingData['bookings'] ?? [],
           );
-          // Debug: print bookings to see what we're getting
-          print('Loaded ${bookings.length} bookings for court $courtID');
-          for (var booking in bookings) {
-            print('Booking: startTime=${booking['startTime']}, endTime=${booking['endTime']}');
+          
+          // Filter bookings by sport type if sportType is provided
+          if (widget.sportType != null) {
+            final normalizedSport = widget.sportType!.toLowerCase();
+            bookings = allBookings.where((booking) {
+              // Show unavailable bookings (no sportType) - they block slots for everyone
+              if (booking['isUnavailable'] == true || booking['sportType'] == null) {
+                return true;
+              }
+              
+              final bookingSport = (booking['sportType'] ?? '').toString().toLowerCase();
+              // Handle football/futsal mapping
+              if ((normalizedSport == 'futsal' || normalizedSport == 'football') &&
+                  (bookingSport == 'futsal' || bookingSport == 'football')) {
+                return true;
+              }
+              return bookingSport == normalizedSport;
+            }).toList();
+          } else {
+            bookings = allBookings;
           }
         }
 
         if (challengeResponse.statusCode >= 200 && challengeResponse.statusCode < 300) {
           final challengeData = jsonDecode(challengeResponse.body);
-          challenges = List<Map<String, dynamic>>.from(
+          final allChallenges = List<Map<String, dynamic>>.from(
             challengeData['data']?['challenges'] ?? challengeData['challenges'] ?? [],
           );
+          
+          // Filter challenges by sport type if sportType is provided
+          if (widget.sportType != null) {
+            final normalizedSport = widget.sportType!.toLowerCase();
+            challenges = allChallenges.where((challenge) {
+              final challengeSport = (challenge['sport'] ?? '').toString().toLowerCase();
+              // Handle football/futsal mapping
+              if ((normalizedSport == 'futsal' || normalizedSport == 'football') &&
+                  (challengeSport == 'futsal' || challengeSport == 'football')) {
+                return true;
+              }
+              return challengeSport == normalizedSport;
+            }).toList();
+          } else {
+            challenges = allChallenges;
+          }
         }
 
         isLoadingConflicts = false;
@@ -178,7 +212,8 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
         
         if (overlaps) {
           // Debug: print when we find a match
-          print('BOOKED: Slot hour $slotHour is within booking $bookingStartHour-$bookingEndHour');
+       
+       
           return true;
         }
       }
@@ -237,6 +272,21 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
   bool _isChallengeOpen(Map<String, dynamic> challenge) {
     // Backend now includes isOpen flag
     return challenge['isOpen'] ?? true; // Default to open if flag not present
+  }
+
+  IconData _getSportIcon() {
+    final sport = (widget.sportType ?? '').toLowerCase();
+    switch (sport) {
+      case 'padel':
+        return Icons.sports_tennis;
+      case 'cricket':
+        return Icons.sports_cricket;
+      case 'futsal':
+      case 'football':
+        return Icons.sports_soccer;
+      default:
+        return Icons.sports_soccer;
+    }
   }
 
   DateTime? _parseTimestamp(dynamic timestamp) {
@@ -852,7 +902,8 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
                   children: availableHours.map((hour) {
                     final isSelected = _isSlotSelected(dayIndex, hour);
                     final isBooked = _isSlotBooked(dayIndex, hour);
-                    final challenge = _getChallengeForSlot(dayIndex, hour);
+                    // Only show challenges if onChallengeAccepted callback is provided (i.e., for teams, not court owners)
+                    final challenge = widget.onChallengeAccepted != null ? _getChallengeForSlot(dayIndex, hour) : null;
                     final hasChallenge = challenge != null;
                     final isChallengeOpen = hasChallenge ? _isChallengeOpen(challenge!) : false;
                     final isInRange = _isSlotInRange(dayIndex, hour);
@@ -973,15 +1024,15 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
                               const SizedBox(height: 2),
                               if (hasChallenge)
                                 Icon(
-                                  Icons.sports_soccer,
+                                  _getSportIcon(),
                                   size: 14,
-                                  color: isChallengeOpen ? Colors.green.shade300 : Colors.red.shade300,
+                                  color: isChallengeOpen ? Colors.green : Colors.red,
                                 )
                               else if (isBooked)
                                 Icon(
-                                  Icons.block,
+                                  _getSportIcon(),
                                   size: 14,
-                                  color: Colors.red.shade300,
+                                  color: Colors.yellow,
                                 )
                               else if (isInPast)
                                 Icon(

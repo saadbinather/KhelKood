@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'court_detail_page.dart';
+import 'create_booking_or_challenge_page.dart';
 
 class AllCourtsPage extends StatefulWidget {
   const AllCourtsPage({super.key});
@@ -105,7 +105,10 @@ class _AllCourtsPageState extends State<AllCourtsPage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => CourtDetailPage(court: court),
+            builder: (context) => CreateBookingOrChallengePage(
+              actionType: 'both',
+              preSelectedCourt: court,
+            ),
           ),
         );
       },

@@ -5,11 +5,13 @@ import 'package:http/http.dart' as http;
 import '../widgets/time_slot_grid.dart';
 
 class CreateBookingOrChallengePage extends StatefulWidget {
-  final String actionType; // "booking" or "challenge"
+  final String actionType; // "booking", "challenge", or "both"
+  final Map<String, dynamic>? preSelectedCourt; // Pre-selected court from all_courts_page
   
   const CreateBookingOrChallengePage({
     super.key,
     required this.actionType,
+    this.preSelectedCourt,
   });
 
   @override
@@ -26,16 +28,180 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
   int? selectedStartSlot; // Index of selected start slot (dayIndex * 24 + hour)
   int? selectedEndSlot; // Index of selected end slot
   bool isCreating = false;
+  bool isCreatingBooking = false;
+  bool isCreatingChallenge = false;
   String? teamSport; // Team's sport type
+  
+  // Review functionality
+  List<Map<String, dynamic>> reviews = [];
+  bool isLoadingReviews = false;
+  bool isSubmittingReview = false;
+  final TextEditingController _reviewController = TextEditingController();
+  int _selectedRating = 0;
 
   bool get isBooking => widget.actionType == "booking";
   bool get isChallenge => widget.actionType == "challenge";
+  bool get isBoth => widget.actionType == "both";
 
   @override
   void initState() {
     super.initState();
     _fetchTeamSport();
-    _fetchVerifiedCourts();
+    if (widget.preSelectedCourt != null) {
+      // Pre-select the court if provided
+      selectedCourt = widget.preSelectedCourt;
+      selectedCourtId = widget.preSelectedCourt!['id'];
+      isLoadingCourts = false; // No need to load courts
+      if (isBoth) {
+        _fetchReviews();
+      }
+    } else {
+      _fetchVerifiedCourts();
+    }
+  }
+
+  @override
+  void dispose() {
+    _reviewController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchReviews() async {
+    if (selectedCourtId == null) return;
+    
+    setState(() {
+      isLoadingReviews = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null) return;
+
+      final response = await http.get(
+        Uri.parse('http://localhost:5000/api/reviews/court/$selectedCourtId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          reviews = List<Map<String, dynamic>>.from(
+            data['data']?['reviews'] ?? data['reviews'] ?? [],
+          );
+          isLoadingReviews = false;
+        });
+      } else {
+        setState(() {
+          isLoadingReviews = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        isLoadingReviews = false;
+      });
+    }
+  }
+
+  Future<void> _submitReview() async {
+    if (_selectedRating == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a rating'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (selectedCourtId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No court selected'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      isSubmittingReview = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No authentication token found'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() {
+          isSubmittingReview = false;
+        });
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse('http://localhost:5000/api/reviews'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'courtID': selectedCourtId!,
+          'rating': _selectedRating,
+          'comment': _reviewController.text.trim(),
+        }),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(data['message'] ?? 'Review added successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // Clear form
+        _reviewController.clear();
+        _selectedRating = 0;
+        
+        // Close dialog
+        if (mounted) {
+          Navigator.pop(context);
+        }
+        
+        // Refresh reviews
+        await _fetchReviews();
+      } else {
+        final errorData = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorData['error'] ?? 'Failed to add review'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        isSubmittingReview = false;
+      });
+    }
   }
 
   Future<void> _fetchTeamSport() async {
@@ -137,6 +303,10 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
       selectedStartSlot = null;
       selectedEndSlot = null;
     });
+    // Fetch reviews if actionType is "both"
+    if (isBoth) {
+      _fetchReviews();
+    }
   }
 
   List<DateTime> _getNext7Days() {
@@ -207,7 +377,7 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
     return '${dateTime.day} ${months[dateTime.month - 1]}, ${dateTime.year} at ${dateTime.hour.toString().padLeft(2, '0')}:00';
   }
 
-  Future<void> _submit() async {
+  Future<void> _createBooking() async {
     if (selectedCourtId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -252,7 +422,7 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
     }
 
     setState(() {
-      isCreating = true;
+      isCreatingBooking = true;
     });
 
     try {
@@ -267,59 +437,50 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
           ),
         );
         setState(() {
-          isCreating = false;
+          isCreatingBooking = false;
         });
         return;
       }
 
       final response = await http.post(
-        Uri.parse(isBooking 
-          ? 'http://localhost:5000/api/booking/book-court'
-          : 'http://localhost:5000/api/challenges/create'),
+        Uri.parse('http://localhost:5000/api/booking/book-court'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode(isBooking
-          ? {
-              'courtID': selectedCourtId!,
-              'startTime': startDateTime.toIso8601String(),
-              'endTime': endDateTime.toIso8601String(),
-              'courtNum': selectedCourtNum!,
-            }
-          : {
-              'courtFirebaseUID': selectedCourtId!,
-              'stime': startDateTime.toIso8601String(),
-              'etime': endDateTime.toIso8601String(),
-              'courtNum': selectedCourtNum!,
-            }),
+        body: jsonEncode({
+          'courtID': selectedCourtId!,
+          'startTime': startDateTime.toIso8601String(),
+          'endTime': endDateTime.toIso8601String(),
+          'courtNum': selectedCourtNum!,
+        }),
       );
 
       setState(() {
-        isCreating = false;
+        isCreatingBooking = false;
       });
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(data['message'] ?? (isBooking ? 'Booking created successfully!' : 'Challenge created successfully!')),
+            content: Text(data['message'] ?? 'Booking created successfully!'),
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context, true); // Return true to indicate success
+        Navigator.pop(context, true);
       } else {
         final errorData = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorData['error'] ?? (isBooking ? 'Failed to create booking' : 'Failed to create challenge')),
+            content: Text(errorData['error'] ?? 'Failed to create booking'),
             backgroundColor: Colors.red,
           ),
         );
       }
     } catch (e) {
       setState(() {
-        isCreating = false;
+        isCreatingBooking = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -327,6 +488,173 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  Future<void> _createChallenge() async {
+    if (selectedCourtId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a court'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (selectedCourtNum == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a court number'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final startDateTime = _getSelectedStartDateTime();
+    final endDateTime = _getSelectedEndDateTime();
+
+    if (startDateTime == null || endDateTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select 2-3 consecutive time slots'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (endDateTime.isBefore(startDateTime) || endDateTime.isAtSameMomentAs(startDateTime)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid time selection'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      isCreatingChallenge = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Authentication token not found'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() {
+          isCreatingChallenge = false;
+        });
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse('http://localhost:5000/api/challenges/create'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'courtFirebaseUID': selectedCourtId!,
+          'stime': startDateTime.toIso8601String(),
+          'etime': endDateTime.toIso8601String(),
+          'courtNum': selectedCourtNum!,
+        }),
+      );
+
+      setState(() {
+        isCreatingChallenge = false;
+      });
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(data['message'] ?? 'Challenge created successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true);
+      } else {
+        final errorData = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorData['error'] ?? 'Failed to create challenge'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        isCreatingChallenge = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _submit() async {
+    if (selectedCourtId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a court'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (selectedCourtNum == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a court number'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final startDateTime = _getSelectedStartDateTime();
+    final endDateTime = _getSelectedEndDateTime();
+
+    if (startDateTime == null || endDateTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select 2-3 consecutive time slots'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (endDateTime.isBefore(startDateTime) || endDateTime.isAtSameMomentAs(startDateTime)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid time selection'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // This method is only used for single action types (booking or challenge)
+    // For "both" actionType, use _createBooking() or _createChallenge() directly
+    if (isBooking) {
+      await _createBooking();
+    } else if (isChallenge) {
+      await _createChallenge();
     }
   }
 
@@ -552,29 +880,173 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
           
           const SizedBox(height: 30),
           
-          // Submit Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: isCreating ? null : _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: isCreating
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : Text(
-                      isBooking ? 'Create Booking' : 'Create Challenge',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+          // Submit Buttons
+          if (isBoth) ...[
+            // Two buttons for "both" actionType
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: isCreatingBooking ? null : _createBooking,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: isCreatingBooking
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        'Create Booking',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
+              ),
             ),
-          ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: isCreatingChallenge ? null : _createChallenge,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: isCreatingChallenge
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        'Create Challenge',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+              ),
+            ),
+          ] else ...[
+            // Single button for "booking" or "challenge" actionType
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: (isCreating || isCreatingBooking || isCreatingChallenge) ? null : _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: (isCreating || isCreatingBooking || isCreatingChallenge)
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : Text(
+                        isBooking ? 'Create Booking' : 'Create Challenge',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+              ),
+            ),
+          ],
         ], // Close the if (selectedCourtNum != null) block
       ],
+    );
+  }
+
+  Widget _buildReviewDialog() {
+    return StatefulBuilder(
+      builder: (BuildContext dialogContext, StateSetter setDialogState) {
+        return AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: const Text(
+            'Add Your Review',
+            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Rating Stars (out of 10)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 4,
+                      children: List.generate(10, (index) {
+                        return GestureDetector(
+                          onTap: () {
+                            setDialogState(() {
+                              _selectedRating = index + 1;
+                            });
+                          },
+                          child: Icon(
+                            index < _selectedRating ? Icons.star : Icons.star_border,
+                            color: Colors.amber,
+                            size: 32,
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _selectedRating > 0 ? 'Rating: $_selectedRating/10' : 'Select rating (1-10)',
+                      style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Comment Field
+                TextField(
+                  controller: _reviewController,
+                  maxLines: 3,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Write your review (optional)...',
+                    hintStyle: const TextStyle(color: Colors.white54),
+                    filled: true,
+                    fillColor: Colors.grey[800],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _reviewController.clear();
+                setState(() {
+                  _selectedRating = 0;
+                });
+              },
+              child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            ),
+            ElevatedButton(
+              onPressed: isSubmittingReview ? null : _submitReview,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+              ),
+              child: isSubmittingReview
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Submit Review',
+                      style: TextStyle(color: Colors.white),
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -585,13 +1057,31 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
       appBar: AppBar(
         backgroundColor: Colors.redAccent,
         title: Text(
-          isBooking ? 'Book a Court' : 'Create Challenge',
+          isBoth 
+            ? (selectedCourt?['name'] as String? ?? 'Court Details')
+            : (isBooking 
+              ? 'Book a Court' 
+              : 'Create Challenge'),
           style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: isBoth && selectedCourtId != null
+          ? [
+              IconButton(
+                icon: const Icon(Icons.reviews, color: Colors.white),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => _buildReviewDialog(),
+                  );
+                },
+                tooltip: 'Add Review',
+              ),
+            ]
+          : null,
       ),
       body: isLoadingCourts
           ? const Center(
@@ -623,41 +1113,116 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        isBooking ? 'Select a Court' : 'Select Court',
-                        style: const TextStyle(
-                          color: Colors.redAccent,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        isBooking 
-                          ? 'Choose a court for your friendly match'
-                          : 'Choose a verified court for your challenge',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      if (verifiedCourts.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[900],
-                            borderRadius: BorderRadius.circular(12),
+                      // Show court selection only if not pre-selected
+                      if (!isBoth || widget.preSelectedCourt == null) ...[
+                        Text(
+                          isBooking ? 'Select a Court' : 'Select Court',
+                          style: const TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
                           ),
-                          child: Center(
-                            child: Text(
-                              isBooking ? 'No courts available' : 'No verified courts available',
-                              style: const TextStyle(color: Colors.white70),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          isBooking 
+                            ? 'Choose a court for your friendly match'
+                            : isBoth
+                              ? 'Select a court to book or challenge'
+                              : 'Choose a verified court for your challenge',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        if (verifiedCourts.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[900],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: Text(
+                                isBooking ? 'No courts available' : 'No verified courts available',
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                            ),
+                          )
+                        else
+                          ...verifiedCourts.map((court) => _buildCourtCard(court)),
+                      ] else if (isBoth && widget.preSelectedCourt != null) ...[
+                        // Show pre-selected court info
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.redAccent,
+                              width: 2,
                             ),
                           ),
-                        )
-                      else
-                        ...verifiedCourts.map((court) => _buildCourtCard(court)),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.redAccent.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.sports_soccer,
+                                  color: Colors.redAccent,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      selectedCourt?['name'] ?? 'Unknown Court',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      selectedCourt?['address'] ?? 'Unknown Address',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Icon(Icons.star, color: Colors.amber, size: 16),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${selectedCourt?['rating'] ?? 0}',
+                                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.check_circle,
+                                color: Colors.redAccent,
+                                size: 28,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
                       _buildTimeSlotGrid(),
                     ],
                   ),

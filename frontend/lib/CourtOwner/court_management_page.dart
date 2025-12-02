@@ -431,6 +431,17 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
     }
   }
 
+  // Get sport type from encoded court number
+  String? _getSportTypeFromCourtNum(int encodedNum) {
+    if (encodedNum < 1000) {
+      return 'cricket';
+    } else if (encodedNum < 2000) {
+      return 'futsal';
+    } else {
+      return 'padel';
+    }
+  }
+
   void _selectTimeSlot(int dayIndex, int hour) {
     final slotIndex = dayIndex * 24 + hour;
 
@@ -1023,6 +1034,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                               onSlotSelected: _selectTimeSlot,
                               onChallengeAccepted: null, // Not needed for court owner
                               days: _getNext7Days(),
+                              sportType: _getSportTypeFromCourtNum(selectedCourtNum!),
                             ),
                           ),
                         ],

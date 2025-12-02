@@ -247,6 +247,21 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
     return List.generate(count, (index) => index + 1); // 1, 2, 3, ...
   }
 
+  IconData _getSportIcon() {
+    final sport = (teamSport ?? '').toLowerCase();
+    switch (sport) {
+      case 'padel':
+        return Icons.sports_tennis;
+      case 'cricket':
+        return Icons.sports_cricket;
+      case 'futsal':
+      case 'football':
+        return Icons.sports_soccer;
+      default:
+        return Icons.sports_soccer;
+    }
+  }
+
   Future<void> _fetchVerifiedCourts() async {
     setState(() {
       isLoadingCourts = true;
@@ -275,10 +290,23 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
+        final allCourts = List<Map<String, dynamic>>.from(
+          data['data']?['courts'] ?? data['courts'] ?? [],
+        );
+        // Filter courts by team sport
         setState(() {
-          verifiedCourts = List<Map<String, dynamic>>.from(
-            data['data']?['courts'] ?? data['courts'] ?? [],
-          );
+          verifiedCourts = allCourts.where((court) {
+            if (teamSport == null) return true;
+            // Filter courts that have fields/courts for the team's sport
+            if (teamSport == 'cricket') {
+              return (court['numOfCricketFields'] ?? 0) > 0;
+            } else if (teamSport == 'futsal' || teamSport == 'football') {
+              return (court['numOfFutsalFields'] ?? 0) > 0;
+            } else if (teamSport == 'padel') {
+              return (court['numOfPadelCourts'] ?? 0) > 0;
+            }
+            return true; // Show all if sport not recognized
+          }).toList();
           isLoadingCourts = false;
         });
       } else {
@@ -795,7 +823,7 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        Icons.sports_soccer,
+                        _getSportIcon(),
                         color: isSelected ? Colors.redAccent : Colors.white70,
                         size: 28,
                       ),
@@ -831,6 +859,7 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
               });
             },
             days: days,
+            sportType: teamSport,
           ),
           
           const SizedBox(height: 20),

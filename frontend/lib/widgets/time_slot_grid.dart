@@ -367,6 +367,148 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
     return days[date.weekday - 1];
   }
 
+  void _showBookedSlotDialog(int dayIndex, int hour) {
+    final days = widget.days;
+    if (dayIndex >= days.length) return;
+    
+    final slotDate = days[dayIndex];
+    final dateStr = '${slotDate.day}/${slotDate.month}/${slotDate.year}';
+    final timeStr = '${hour.toString().padLeft(2, '0')}:00';
+    
+    // Find the booking for this slot
+    Map<String, dynamic>? booking;
+    for (final b in bookings) {
+      final startTime = _parseTimestamp(b['startTime']);
+      final endTime = _parseTimestamp(b['endTime']);
+      
+      if (startTime != null && endTime != null) {
+        final bookingStart = DateTime(startTime.year, startTime.month, startTime.day, startTime.hour);
+        final bookingEnd = DateTime(endTime.year, endTime.month, endTime.day, endTime.hour);
+        final slotStart = DateTime(slotDate.year, slotDate.month, slotDate.day, hour);
+        
+        if (slotStart.year == bookingStart.year &&
+            slotStart.month == bookingStart.month &&
+            slotStart.day == bookingStart.day &&
+            hour >= bookingStart.hour &&
+            hour < bookingEnd.hour) {
+          booking = b;
+          break;
+        }
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.block, color: Colors.red.shade300, size: 24),
+            const SizedBox(width: 8),
+            const Text(
+              'Slot Booked',
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 20),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.withOpacity(0.5)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.calendar_today, color: Colors.red.shade300, size: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Date: $dateStr',
+                        style: const TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.access_time, color: Colors.red.shade300, size: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Time: $timeStr',
+                        style: const TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.red, size: 20),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'This time slot is already booked and unavailable.',
+                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (booking != null) ...[
+              const SizedBox(height: 16),
+              const Divider(color: Colors.white24),
+              const SizedBox(height: 8),
+              Text(
+                'Booking Details:',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              const SizedBox(height: 8),
+              if (booking['teamName'] != null)
+                Text(
+                  'Team: ${booking['teamName']}',
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+            ],
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'Close',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showChallengeDetails(Map<String, dynamic> challenge, int dayIndex, int hour) {
     final startTime = _parseTimestamp(challenge['stime']);
     final endTime = _parseTimestamp(challenge['etime']);
@@ -537,34 +679,89 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 30),
-        const Divider(color: Colors.white24),
-        const SizedBox(height: 20),
-        Row(
-          children: [
-            const Text(
-              'Select Time Slot',
-              style: TextStyle(
-                color: Colors.redAccent,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.redAccent.withOpacity(0.2), Colors.redAccent.withOpacity(0.05)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            const Spacer(),
-            Text(
-              '${openingTime}:00 - ${closingTime}:00',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.redAccent.withOpacity(0.3),
+              width: 1.5,
             ),
-          ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.access_time,
+                  color: Colors.redAccent,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Select Time Slot',
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.schedule, color: Colors.white70, size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${openingTime}:00 - ${closingTime}:00',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
-        const Text(
-          'Select 2-3 consecutive hours on the same day',
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.white70, size: 16),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Select 2-3 consecutive hours on the same day',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         if (isLoadingConflicts) ...[
@@ -586,31 +783,72 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
           final dateStr = '${day.day}/${day.month}';
           
           return Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 20),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.grey[900],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.redAccent.withOpacity(0.3),
-                width: 1,
+              gradient: LinearGradient(
+                colors: [Colors.grey[900]!, Colors.grey[800]!],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.redAccent.withOpacity(0.4),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '$dayName, $dateStr',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.redAccent.withOpacity(0.3), Colors.redAccent.withOpacity(0.1)],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.redAccent.withOpacity(0.5),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.calendar_today,
+                            color: Colors.redAccent,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '$dayName, $dateStr',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 10,
+                  runSpacing: 10,
                   children: availableHours.map((hour) {
                     final isSelected = _isSlotSelected(dayIndex, hour);
                     final isBooked = _isSlotBooked(dayIndex, hour);
@@ -621,43 +859,89 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
                     final isInPast = _isSlotInPast(dayIndex, hour);
                     
                     return GestureDetector(
-                      onTap: hasChallenge && isChallengeOpen
-                          ? () => _showChallengeDetails(challenge!, dayIndex, hour)
-                          : (isInRange && !isBooked && !hasChallenge && !isInPast)
-                              ? () => widget.onSlotSelected(dayIndex, hour)
-                              : null,
-                      child: Container(
+                      onTap: isBooked
+                          ? () => _showBookedSlotDialog(dayIndex, hour)
+                          : hasChallenge && isChallengeOpen
+                              ? () => _showChallengeDetails(challenge!, dayIndex, hour)
+                              : (isInRange && !isBooked && !hasChallenge && !isInPast)
+                                  ? () => widget.onSlotSelected(dayIndex, hour)
+                                  : null,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeInOut,
                         width: 60,
                         height: 50,
                         decoration: BoxDecoration(
-                          color: hasChallenge
+                          gradient: hasChallenge
                               ? (isChallengeOpen
-                                  ? Colors.green.withOpacity(0.3) // Open challenge - green
-                                  : Colors.red.withOpacity(0.3)) // Closed challenge - red
+                                  ? LinearGradient(
+                                      colors: [Colors.green.withOpacity(0.4), Colors.green.withOpacity(0.2)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    )
+                                  : LinearGradient(
+                                      colors: [Colors.red.withOpacity(0.4), Colors.red.withOpacity(0.2)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ))
                               : isBooked
-                                  ? Colors.grey[700] // Booked slots - darker grey
+                                  ? LinearGradient(
+                                      colors: [Colors.red.withOpacity(0.3), Colors.red.withOpacity(0.15)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    )
                                   : isInPast
-                                      ? Colors.black.withOpacity(0.5) // Past slots - very dark
+                                      ? null
                                       : isSelected
-                                          ? Colors.redAccent
+                                          ? LinearGradient(
+                                              colors: [Colors.redAccent, Colors.redAccent.withOpacity(0.8)],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            )
                                           : isInRange
-                                              ? Colors.grey[800]
-                                              : Colors.grey[900],
-                          borderRadius: BorderRadius.circular(8),
+                                              ? LinearGradient(
+                                                  colors: [Colors.grey[800]!, Colors.grey[900]!],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                )
+                                              : null,
+                          color: isInPast
+                              ? Colors.black.withOpacity(0.5)
+                              : (hasChallenge || isBooked || isSelected || isInRange)
+                                  ? null
+                                  : Colors.grey[900],
+                          borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color: hasChallenge
                                 ? (isChallengeOpen
-                                    ? Colors.green // Open challenge - green border
-                                    : Colors.red) // Closed challenge - red border
+                                    ? Colors.green.withOpacity(0.8)
+                                    : Colors.red.withOpacity(0.8))
                                 : isBooked
-                                    ? Colors.orange.withOpacity(0.5) // Booked slots - orange border
+                                    ? Colors.red.withOpacity(0.7)
                                     : isInPast
-                                        ? Colors.grey[600]!.withOpacity(0.3) // Past slots - very dim border
+                                        ? Colors.grey[600]!.withOpacity(0.3)
                                         : isSelected
                                             ? Colors.redAccent
                                             : Colors.white24,
-                            width: isSelected || isBooked || hasChallenge ? 2 : 1,
+                            width: isSelected || isBooked || hasChallenge ? 2.5 : 1.5,
                           ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.redAccent.withOpacity(0.5),
+                                    blurRadius: 8,
+                                    spreadRadius: 1,
+                                  ),
+                                ]
+                              : isBooked || hasChallenge
+                                  ? [
+                                      BoxShadow(
+                                        color: (isBooked ? Colors.red : (isChallengeOpen ? Colors.green : Colors.red)).withOpacity(0.3),
+                                        blurRadius: 4,
+                                        spreadRadius: 0.5,
+                                      ),
+                                    ]
+                                  : null,
                         ),
                         child: Center(
                           child: Column(
@@ -668,12 +952,12 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
                                 style: TextStyle(
                                   color: hasChallenge
                                       ? (isChallengeOpen
-                                          ? Colors.green // Open challenge text - green
-                                          : Colors.red) // Closed challenge text - red
+                                          ? Colors.green.shade300
+                                          : Colors.red.shade300)
                                       : isBooked
-                                          ? Colors.orange // Booked text - orange
+                                          ? Colors.red.shade300
                                           : isInPast
-                                              ? Colors.grey[600] // Past text - dim grey
+                                              ? Colors.grey[600]
                                               : isSelected
                                                   ? Colors.white
                                                   : isInRange
@@ -682,20 +966,22 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
                                   fontSize: 12,
                                   fontWeight: isSelected || isBooked || hasChallenge
                                       ? FontWeight.bold
-                                      : FontWeight.normal,
+                                      : FontWeight.w500,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
+                              const SizedBox(height: 2),
                               if (hasChallenge)
                                 Icon(
                                   Icons.sports_soccer,
-                                  size: 12,
-                                  color: isChallengeOpen ? Colors.green : Colors.red,
+                                  size: 14,
+                                  color: isChallengeOpen ? Colors.green.shade300 : Colors.red.shade300,
                                 )
                               else if (isBooked)
-                                const Icon(
+                                Icon(
                                   Icons.block,
-                                  size: 12,
-                                  color: Colors.orange,
+                                  size: 14,
+                                  color: Colors.red.shade300,
                                 )
                               else if (isInPast)
                                 Icon(

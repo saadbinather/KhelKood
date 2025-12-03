@@ -43,7 +43,9 @@ class _TeamDetailsPageState extends State<TeamDetailsPage> {
       }
 
       final response = await http.get(
-        Uri.parse('http://localhost:5000/api/team/team-details/${widget.teamId}'),
+        Uri.parse(
+          'http://localhost:5000/api/team/team-details/${widget.teamId}',
+        ),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -80,21 +82,37 @@ class _TeamDetailsPageState extends State<TeamDetailsPage> {
       if (dateValue is String) {
         date = DateTime.parse(dateValue);
       } else if (dateValue is Map && dateValue['_seconds'] != null) {
-        date = DateTime.fromMillisecondsSinceEpoch(dateValue['_seconds'] * 1000);
+        date = DateTime.fromMillisecondsSinceEpoch(
+          dateValue['_seconds'] * 1000,
+        );
       } else {
         return 'N/A';
       }
-      
+
       // Format: "Jan 15, 2024 - 03:30 PM"
-      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      final months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
       final month = months[date.month - 1];
       final day = date.day.toString().padLeft(2, '0');
       final year = date.year;
-      final hour = date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
+      final hour = date.hour > 12
+          ? date.hour - 12
+          : (date.hour == 0 ? 12 : date.hour);
       final minute = date.minute.toString().padLeft(2, '0');
       final period = date.hour >= 12 ? 'PM' : 'AM';
-      
+
       return '$month $day, $year - $hour:$minute $period';
     } catch (e) {
       return 'N/A';
@@ -109,10 +127,7 @@ class _TeamDetailsPageState extends State<TeamDetailsPage> {
         backgroundColor: Colors.redAccent,
         title: const Text(
           'Team Details',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -129,49 +144,49 @@ class _TeamDetailsPageState extends State<TeamDetailsPage> {
               child: CircularProgressIndicator(color: Colors.redAccent),
             )
           : errorMessage != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.error_outline,
-                        color: Colors.redAccent,
-                        size: 60,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        errorMessage!,
-                        style: const TextStyle(color: Colors.white70),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _fetchTeamDetails,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                        ),
-                        child: const Text('Retry'),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    color: Colors.redAccent,
+                    size: 60,
                   ),
-                )
-              : RefreshIndicator(
-                  color: Colors.redAccent,
-                  onRefresh: _fetchTeamDetails,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildTeamInfoCard(),
-                        const SizedBox(height: 24),
-                        _buildPlayersSection(),
-                        const SizedBox(height: 24),
-                        _buildMatchHistorySection(),
-                      ],
+                  const SizedBox(height: 16),
+                  Text(
+                    errorMessage!,
+                    style: const TextStyle(color: Colors.white70),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _fetchTeamDetails,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
                     ),
+                    child: const Text('Retry'),
                   ),
+                ],
+              ),
+            )
+          : RefreshIndicator(
+              color: Colors.redAccent,
+              onRefresh: _fetchTeamDetails,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildTeamInfoCard(),
+                    const SizedBox(height: 24),
+                    _buildPlayersSection(),
+                    const SizedBox(height: 24),
+                    _buildMatchHistorySection(),
+                  ],
                 ),
+              ),
+            ),
     );
   }
 
@@ -246,10 +261,7 @@ class _TeamDetailsPageState extends State<TeamDetailsPage> {
                 const SizedBox(width: 12),
                 const Text(
                   'Points: ',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
                 ),
                 Text(
                   '${teamData!['points'] ?? 0}',
@@ -275,10 +287,7 @@ class _TeamDetailsPageState extends State<TeamDetailsPage> {
         Expanded(
           child: RichText(
             text: TextSpan(
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
               children: [
                 TextSpan(
                   text: '$label: ',
@@ -332,20 +341,18 @@ class _TeamDetailsPageState extends State<TeamDetailsPage> {
             runSpacing: 8,
             children: players.map((player) {
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.redAccent.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.redAccent.withOpacity(0.3),
-                  ),
+                  border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
                 ),
                 child: Text(
                   player,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
                 ),
               );
             }).toList(),
@@ -382,7 +389,7 @@ class _TeamDetailsPageState extends State<TeamDetailsPage> {
             ),
           )
         else
-          ...matchHistory.map((match) => _buildMatchCard(match)).toList(),
+          ...matchHistory.map((match) => _buildMatchCard(match)),
       ],
     );
   }
@@ -404,8 +411,8 @@ class _TeamDetailsPageState extends State<TeamDetailsPage> {
           color: isWinner
               ? Colors.green.withOpacity(0.3)
               : winner != null
-                  ? Colors.red.withOpacity(0.3)
-                  : Colors.redAccent.withOpacity(0.3),
+              ? Colors.red.withOpacity(0.3)
+              : Colors.redAccent.withOpacity(0.3),
           width: 1.5,
         ),
       ),
@@ -418,7 +425,10 @@ class _TeamDetailsPageState extends State<TeamDetailsPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: matchType == 'competitive'
                         ? Colors.orange.withOpacity(0.2)
@@ -438,7 +448,10 @@ class _TeamDetailsPageState extends State<TeamDetailsPage> {
                 ),
                 if (winner != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: isWinner
                           ? Colors.green.withOpacity(0.2)
@@ -456,7 +469,10 @@ class _TeamDetailsPageState extends State<TeamDetailsPage> {
                   )
                 else
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.grey.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(20),
@@ -495,16 +511,14 @@ class _TeamDetailsPageState extends State<TeamDetailsPage> {
                 Expanded(
                   child: Text(
                     _formatDate(match['StartTime']),
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                    ),
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 ),
               ],
             ),
             // Show opponent team for competitive matches
-            if (matchType == 'competitive' && match['opponentTeamName'] != null) ...[
+            if (matchType == 'competitive' &&
+                match['opponentTeamName'] != null) ...[
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -529,4 +543,3 @@ class _TeamDetailsPageState extends State<TeamDetailsPage> {
     );
   }
 }
-

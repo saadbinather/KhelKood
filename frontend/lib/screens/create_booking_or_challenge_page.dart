@@ -786,7 +786,9 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
           ),
           const SizedBox(height: 8),
           Text(
-            'Choose which ${teamSport ?? 'field'} you want to ${isBooking ? 'book' : 'challenge'}',
+            isChallenge
+                ? 'Choose on what ${teamSport ?? 'field'} field you want to challenge'
+                : 'Choose which ${teamSport ?? 'field'} field you want to book',
             style: const TextStyle(
               color: Colors.white70,
               fontSize: 14,

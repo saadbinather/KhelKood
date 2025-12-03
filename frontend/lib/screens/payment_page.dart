@@ -60,16 +60,24 @@ class _PaymentPageState extends State<PaymentPage> {
         print('Bookings: $bookingsList');
         print('Matches: $matchesList');
         print('===================');
-        
+
         setState(() {
           bookingPayments = bookingsList != null && bookingsList is List
               ? List<Map<String, dynamic>>.from(
-                  bookingsList.map((item) => item is Map ? Map<String, dynamic>.from(item) : <String, dynamic>{})
+                  bookingsList.map(
+                    (item) => item is Map
+                        ? Map<String, dynamic>.from(item)
+                        : <String, dynamic>{},
+                  ),
                 )
               : <Map<String, dynamic>>[];
           matchPayments = matchesList != null && matchesList is List
               ? List<Map<String, dynamic>>.from(
-                  matchesList.map((item) => item is Map ? Map<String, dynamic>.from(item) : <String, dynamic>{})
+                  matchesList.map(
+                    (item) => item is Map
+                        ? Map<String, dynamic>.from(item)
+                        : <String, dynamic>{},
+                  ),
                 )
               : <Map<String, dynamic>>[];
           isLoading = false;
@@ -89,7 +97,12 @@ class _PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  Future<void> _updatePaymentStatus(String paymentID, {String? matchID, String? winnerID, bool? isTie}) async {
+  Future<void> _updatePaymentStatus(
+    String paymentID, {
+    String? matchID,
+    String? winnerID,
+    bool? isTie,
+  }) async {
     setState(() {
       updatingPayments[paymentID] = true;
     });
@@ -118,7 +131,9 @@ class _PaymentPageState extends State<PaymentPage> {
       if (isTie != null) body['isTie'] = isTie;
 
       final response = await http.put(
-        Uri.parse('http://localhost:5000/api/payments/update-payment/$paymentID'),
+        Uri.parse(
+          'http://localhost:5000/api/payments/update-payment/$paymentID',
+        ),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -168,9 +183,13 @@ class _PaymentPageState extends State<PaymentPage> {
       DateTime date;
       if (dateValue is Map) {
         if (dateValue['_seconds'] != null) {
-          date = DateTime.fromMillisecondsSinceEpoch(dateValue['_seconds'] * 1000);
+          date = DateTime.fromMillisecondsSinceEpoch(
+            dateValue['_seconds'] * 1000,
+          );
         } else if (dateValue['seconds'] != null) {
-          date = DateTime.fromMillisecondsSinceEpoch(dateValue['seconds'] * 1000);
+          date = DateTime.fromMillisecondsSinceEpoch(
+            dateValue['seconds'] * 1000,
+          );
         } else {
           return 'Unknown';
         }
@@ -180,7 +199,20 @@ class _PaymentPageState extends State<PaymentPage> {
         return 'Unknown';
       }
       // Format: "Dec 05, 2024 14:30"
-      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      final months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
       final month = months[date.month - 1];
       final day = date.day.toString().padLeft(2, '0');
       final year = date.year;
@@ -281,13 +313,16 @@ class _PaymentPageState extends State<PaymentPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(buildContext),
-                child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.white70),
+                ),
               ),
               ElevatedButton(
                 onPressed: () {
                   final winnerID = selectedWinners[payment['id']];
                   final isTie = selectedTies[payment['id']] ?? false;
-                  
+
                   if (winnerID == null && !isTie) {
                     ScaffoldMessenger.of(buildContext).showSnackBar(
                       const SnackBar(
@@ -297,10 +332,10 @@ class _PaymentPageState extends State<PaymentPage> {
                     );
                     return;
                   }
-                  
+
                   Navigator.pop(buildContext);
                   final paymentId = payment['id']?.toString();
-                  final matchId = match?['id']?.toString();
+                  final matchId = match['id']?.toString();
                   if (paymentId != null) {
                     _updatePaymentStatus(
                       paymentId,
@@ -324,24 +359,60 @@ class _PaymentPageState extends State<PaymentPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final isTablet = screenWidth > 600;
+    final horizontalPadding = isSmallScreen
+        ? 12.0
+        : isTablet
+        ? 24.0
+        : 16.0;
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         backgroundColor: Colors.black,
-      appBar: AppBar(
+        appBar: AppBar(
           backgroundColor: Colors.redAccent,
-        title: const Text(
-            'Pending Payments',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          title: Row(
+            children: [
+              Icon(
+                Icons.payments,
+                color: Colors.white,
+                size: isSmallScreen ? 20 : 24,
+              ),
+              SizedBox(width: isSmallScreen ? 8 : 12),
+              Text(
+                'Pending Payments',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: isSmallScreen ? 16 : 18,
+                ),
+              ),
+            ],
           ),
           iconTheme: const IconThemeData(color: Colors.white),
-          bottom: const TabBar(
+          bottom: TabBar(
             indicatorColor: Colors.white,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
+            labelStyle: TextStyle(
+              fontSize: isSmallScreen ? 13 : 14,
+              fontWeight: FontWeight.w600,
+            ),
+            unselectedLabelStyle: TextStyle(
+              fontSize: isSmallScreen ? 13 : 14,
+            ),
             tabs: [
-              Tab(text: 'Bookings'),
-              Tab(text: 'Matches'),
+              Tab(
+                icon: Icon(Icons.calendar_today, size: isSmallScreen ? 18 : 20),
+                text: 'Bookings',
+              ),
+              Tab(
+                icon: Icon(Icons.sports_soccer, size: isSmallScreen ? 18 : 20),
+                text: 'Matches',
+              ),
             ],
           ),
         ),
@@ -350,53 +421,77 @@ class _PaymentPageState extends State<PaymentPage> {
                 child: CircularProgressIndicator(color: Colors.redAccent),
               )
             : errorMessage != null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          errorMessage!,
-                          style: const TextStyle(color: Colors.redAccent),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _fetchPendingPayments,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.redAccent,
-                          ),
-                          child: const Text('Retry'),
-                        ),
-                      ],
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      color: Colors.redAccent,
+                      size: isSmallScreen ? 48 : 64,
                     ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _fetchPendingPayments,
-                    color: Colors.redAccent,
-                    child: TabBarView(
-                      children: [
-                        // Bookings Tab
-                        _buildBookingsList(),
-                        // Matches Tab
-                        _buildMatchesList(),
-                      ],
+                    SizedBox(height: isSmallScreen ? 12 : 16),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                      child: Text(
+                        errorMessage!,
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: isSmallScreen ? 14 : 16,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
-                  ),
+                    SizedBox(height: isSmallScreen ? 16 : 20),
+                    ElevatedButton.icon(
+                      onPressed: _fetchPendingPayments,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 24 : 32,
+                          vertical: isSmallScreen ? 12 : 14,
+                        ),
+                      ),
+                      icon: Icon(Icons.refresh, size: isSmallScreen ? 18 : 20),
+                      label: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              )
+            : RefreshIndicator(
+                onRefresh: _fetchPendingPayments,
+                color: Colors.redAccent,
+                child: TabBarView(
+                  children: [
+                    // Bookings Tab
+                    _buildBookingsList(horizontalPadding, isSmallScreen),
+                    // Matches Tab
+                    _buildMatchesList(horizontalPadding, isSmallScreen),
+                  ],
+                ),
+              ),
       ),
     );
   }
 
-  Widget _buildBookingsList() {
+  Widget _buildBookingsList(double horizontalPadding, bool isSmallScreen) {
     if (bookingPayments.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.payment, size: 64, color: Colors.grey[700]),
-            const SizedBox(height: 16),
+            Icon(
+              Icons.payment_outlined,
+              size: isSmallScreen ? 56 : 64,
+              color: Colors.grey[700],
+            ),
+            SizedBox(height: isSmallScreen ? 12 : 16),
             Text(
               'No pending booking payments',
-              style: TextStyle(color: Colors.grey[700], fontSize: 16),
+              style: TextStyle(
+                color: Colors.grey[700],
+                fontSize: isSmallScreen ? 14 : 16,
+              ),
             ),
           ],
         ),
@@ -404,26 +499,33 @@ class _PaymentPageState extends State<PaymentPage> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(horizontalPadding),
       itemCount: bookingPayments.length,
       itemBuilder: (context, index) {
         final payment = bookingPayments[index];
-        return _buildBookingCard(payment);
+        return _buildBookingCard(payment, isSmallScreen);
       },
     );
   }
 
-  Widget _buildMatchesList() {
+  Widget _buildMatchesList(double horizontalPadding, bool isSmallScreen) {
     if (matchPayments.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.sports_soccer, size: 64, color: Colors.grey[700]),
-            const SizedBox(height: 16),
+            Icon(
+              Icons.sports_soccer_outlined,
+              size: isSmallScreen ? 56 : 64,
+              color: Colors.grey[700],
+            ),
+            SizedBox(height: isSmallScreen ? 12 : 16),
             Text(
               'No pending match payments',
-              style: TextStyle(color: Colors.grey[700], fontSize: 16),
+              style: TextStyle(
+                color: Colors.grey[700],
+                fontSize: isSmallScreen ? 14 : 16,
+              ),
             ),
           ],
         ),
@@ -431,124 +533,29 @@ class _PaymentPageState extends State<PaymentPage> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(horizontalPadding),
       itemCount: matchPayments.length,
       itemBuilder: (context, index) {
         final payment = matchPayments[index];
-        return _buildMatchCard(payment);
+        return _buildMatchCard(payment, isSmallScreen);
       },
     );
   }
 
-  Widget _buildBookingCard(Map<String, dynamic> payment) {
-    final booking = payment['booking'] is Map 
-        ? Map<String, dynamic>.from(payment['booking'] as Map) 
+  Widget _buildBookingCard(Map<String, dynamic> payment, bool isSmallScreen) {
+    final booking = payment['booking'] is Map
+        ? Map<String, dynamic>.from(payment['booking'] as Map)
         : null;
-    final court = payment['court'] is Map 
-        ? Map<String, dynamic>.from(payment['court'] as Map) 
+    final court = payment['court'] is Map
+        ? Map<String, dynamic>.from(payment['court'] as Map)
         : null;
-    final team = payment['team'] is Map 
-        ? Map<String, dynamic>.from(payment['team'] as Map) 
-        : null;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey[900],
-                borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.redAccent.withOpacity(0.3),
-          width: 1.5,
-        ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      court?['name'] ?? 'Unknown Court',
-                      style: const TextStyle(
-                      color: Colors.white,
-                        fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                    const SizedBox(height: 4),
-                    Text(
-                      team?['teamName'] ?? 'Unknown Team',
-                      style: const TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                ],
-              ),
-            ),
-              Text(
-                'Rs ${(payment['amount'] ?? 0).toString()}',
-                style: const TextStyle(
-                  color: Colors.redAccent,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (booking != null && booking['startTime'] != null && booking['endTime'] != null) ...[
-            Text(
-              'Time: ${_formatDate(booking['startTime'])} - ${_formatDate(booking['endTime'])}',
-              style: const TextStyle(color: Colors.white70, fontSize: 12),
-            ),
-          ],
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: (updatingPayments[payment['id']] ?? false) == true
-                  ? null
-                  : () => _updatePaymentStatus(payment['id']?.toString() ?? ''),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-              ),
-              child: (updatingPayments[payment['id']] ?? false) == true
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Mark as Paid'),
-              ),
-            ),
-          ],
-      ),
-    );
-  }
-
-  Widget _buildMatchCard(Map<String, dynamic> payment) {
-    final match = payment['match'] is Map 
-        ? Map<String, dynamic>.from(payment['match'] as Map) 
-        : null;
-    final court = payment['court'] is Map 
-        ? Map<String, dynamic>.from(payment['court'] as Map) 
-        : null;
-    final hostTeam = payment['hostTeam'] is Map 
-        ? Map<String, dynamic>.from(payment['hostTeam'] as Map) 
-        : null;
-    final guestTeam = payment['guestTeam'] is Map 
-        ? Map<String, dynamic>.from(payment['guestTeam'] as Map) 
+    final team = payment['team'] is Map
+        ? Map<String, dynamic>.from(payment['team'] as Map)
         : null;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: isSmallScreen ? 10 : 12),
+      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
       decoration: BoxDecoration(
         color: Colors.grey[900],
         borderRadius: BorderRadius.circular(12),
@@ -556,77 +563,358 @@ class _PaymentPageState extends State<PaymentPage> {
           color: Colors.redAccent.withOpacity(0.3),
           width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.redAccent.withOpacity(0.1),
+            blurRadius: 8,
+            spreadRadius: 1,
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      court?['name'] ?? 'Unknown Court',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.sports_soccer,
+                          color: Colors.redAccent,
+                          size: isSmallScreen ? 18 : 20,
+                        ),
+                        SizedBox(width: isSmallScreen ? 6 : 8),
+                        Expanded(
+                          child: Text(
+                            court?['name'] ?? 'Unknown Court',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: isSmallScreen ? 16 : 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-          Text(
-                      '${hostTeam?['teamName'] ?? 'Host'} vs ${guestTeam?['teamName'] ?? 'Guest'}',
-                      style: const TextStyle(color: Colors.white70, fontSize: 14),
+                    SizedBox(height: isSmallScreen ? 6 : 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.group,
+                          color: Colors.white54,
+                          size: isSmallScreen ? 14 : 16,
+                        ),
+                        SizedBox(width: isSmallScreen ? 6 : 8),
+                        Expanded(
+                          child: Text(
+                            team?['teamName'] ?? 'Unknown Team',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: isSmallScreen ? 13 : 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-          ),
-          Text(
-                'Rs ${(payment['amount'] ?? 0).toString()}',
-                style: const TextStyle(
-                  color: Colors.redAccent,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+              ),
+              SizedBox(width: isSmallScreen ? 8 : 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.currency_rupee,
+                        color: Colors.redAccent,
+                        size: isSmallScreen ? 16 : 18,
+                      ),
+                      Text(
+                        (payment['amount'] ?? 0).toString(),
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: isSmallScreen ? 18 : 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          if (match != null) ...[
-            if (match['StartTime'] != null && match['EndTime'] != null)
-              Text(
-                'Time: ${_formatDate(match['StartTime'])} - ${_formatDate(match['EndTime'])}',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-            if (match['StartTime'] != null && match['EndTime'] != null)
-              const SizedBox(height: 4),
-            Text(
-              'Sport: ${match['Sport']?.toString() ?? 'Unknown'}',
-              style: const TextStyle(color: Colors.white70, fontSize: 12),
+          SizedBox(height: isSmallScreen ? 10 : 12),
+          if (booking != null &&
+              booking['startTime'] != null &&
+              booking['endTime'] != null) ...[
+            Row(
+              children: [
+                Icon(
+                  Icons.access_time,
+                  color: Colors.white54,
+                  size: isSmallScreen ? 14 : 16,
+                ),
+                SizedBox(width: isSmallScreen ? 6 : 8),
+                Expanded(
+                  child: Text(
+                    '${_formatDate(booking['startTime'])} - ${_formatDate(booking['endTime'])}',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: isSmallScreen ? 11 : 12,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
+            SizedBox(height: isSmallScreen ? 10 : 12),
           ],
-          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
+            child: ElevatedButton.icon(
+              onPressed: (updatingPayments[payment['id']] ?? false) == true
+                  ? null
+                  : () => _updatePaymentStatus(payment['id']?.toString() ?? ''),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                padding: EdgeInsets.symmetric(
+                  vertical: isSmallScreen ? 10 : 12,
+                ),
+              ),
+              icon: (updatingPayments[payment['id']] ?? false) == true
+                  ? SizedBox(
+                      height: isSmallScreen ? 18 : 20,
+                      width: isSmallScreen ? 18 : 20,
+                      child: const CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Icon(
+                      Icons.check_circle,
+                      size: isSmallScreen ? 18 : 20,
+                    ),
+              label: (updatingPayments[payment['id']] ?? false) == true
+                  ? const SizedBox.shrink()
+                  : Text(
+                      'Mark as Paid',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 14 : 16,
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMatchCard(Map<String, dynamic> payment, bool isSmallScreen) {
+    final match = payment['match'] is Map
+        ? Map<String, dynamic>.from(payment['match'] as Map)
+        : null;
+    final court = payment['court'] is Map
+        ? Map<String, dynamic>.from(payment['court'] as Map)
+        : null;
+    final hostTeam = payment['hostTeam'] is Map
+        ? Map<String, dynamic>.from(payment['hostTeam'] as Map)
+        : null;
+    final guestTeam = payment['guestTeam'] is Map
+        ? Map<String, dynamic>.from(payment['guestTeam'] as Map)
+        : null;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: isSmallScreen ? 10 : 12),
+      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.redAccent.withOpacity(0.3),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.redAccent.withOpacity(0.1),
+            blurRadius: 8,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.sports_soccer,
+                          color: Colors.redAccent,
+                          size: isSmallScreen ? 18 : 20,
+                        ),
+                        SizedBox(width: isSmallScreen ? 6 : 8),
+                        Expanded(
+                          child: Text(
+                            court?['name'] ?? 'Unknown Court',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: isSmallScreen ? 16 : 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: isSmallScreen ? 6 : 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.group,
+                          color: Colors.white54,
+                          size: isSmallScreen ? 14 : 16,
+                        ),
+                        SizedBox(width: isSmallScreen ? 6 : 8),
+                        Expanded(
+                          child: Text(
+                            '${hostTeam?['teamName'] ?? 'Host'} vs ${guestTeam?['teamName'] ?? 'Guest'}',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: isSmallScreen ? 13 : 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: isSmallScreen ? 8 : 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.currency_rupee,
+                        color: Colors.redAccent,
+                        size: isSmallScreen ? 16 : 18,
+                      ),
+                      Text(
+                        (payment['amount'] ?? 0).toString(),
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: isSmallScreen ? 18 : 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          SizedBox(height: isSmallScreen ? 10 : 12),
+          if (match != null) ...[
+            if (match['StartTime'] != null && match['EndTime'] != null) ...[
+              Row(
+                children: [
+                  Icon(
+                    Icons.access_time,
+                    color: Colors.white54,
+                    size: isSmallScreen ? 14 : 16,
+                  ),
+                  SizedBox(width: isSmallScreen ? 6 : 8),
+                  Expanded(
+                    child: Text(
+                      '${_formatDate(match['StartTime'])} - ${_formatDate(match['EndTime'])}',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: isSmallScreen ? 11 : 12,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: isSmallScreen ? 6 : 8),
+            ],
+            Row(
+              children: [
+                Icon(
+                  Icons.sports,
+                  color: Colors.white54,
+                  size: isSmallScreen ? 14 : 16,
+                ),
+                SizedBox(width: isSmallScreen ? 6 : 8),
+                Text(
+                  'Sport: ${match['Sport']?.toString() ?? 'Unknown'}',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: isSmallScreen ? 11 : 12,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          SizedBox(height: isSmallScreen ? 10 : 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
               onPressed: (updatingPayments[payment['id']] ?? false) == true
                   ? null
                   : () => _showMatchWinnerDialog(payment),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent,
+                padding: EdgeInsets.symmetric(
+                  vertical: isSmallScreen ? 10 : 12,
+                ),
               ),
-              child: (updatingPayments[payment['id']] ?? false) == true
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
+              icon: (updatingPayments[payment['id']] ?? false) == true
+                  ? SizedBox(
+                      height: isSmallScreen ? 18 : 20,
+                      width: isSmallScreen ? 18 : 20,
+                      child: const CircularProgressIndicator(
                         strokeWidth: 2,
-              color: Colors.white,
+                        color: Colors.white,
                       ),
                     )
-                  : const Text('Select Winner & Mark Paid'),
+                  : Icon(
+                      Icons.emoji_events,
+                      size: isSmallScreen ? 18 : 20,
+                    ),
+              label: (updatingPayments[payment['id']] ?? false) == true
+                  ? const SizedBox.shrink()
+                  : Text(
+                      'Select Winner & Mark Paid',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 13 : 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
             ),
           ),
         ],

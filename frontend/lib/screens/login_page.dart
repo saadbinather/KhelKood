@@ -29,48 +29,31 @@ class _LoginPageState extends State<LoginPage> {
     try {
       setState(() => isGoogleLoading = true);
 
-      // IMPORTANT: You need to get your OAuth Client ID from Google Cloud Console
-      // Steps:
-      // 1. Go to: https://console.cloud.google.com/apis/credentials?project=khelkooddb
-      // 2. Click "Create Credentials" > "OAuth client ID"
-      // 3. Application type: "Web application"
-      // 4. Name: "KhelKood Web Client"
-      // 5. Authorized JavaScript origins: Add "http://localhost:5000" and your domain
-      // 6. Authorized redirect URIs: Add "http://localhost:5000" and your domain
-      // 7. Copy the Client ID (format: 123456789-abc...xyz.apps.googleusercontent.com)
-      // 8. Replace the value below with your actual Client ID
-      
       final GoogleSignIn googleSignIn = GoogleSignIn(
         scopes: ['email', 'profile'],
-        // Use clientId from config if available, otherwise read from meta tag
         clientId: GoogleAuthConfig.clientId,
       );
       
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
-        // User cancelled the sign-in
         setState(() => isGoogleLoading = false);
         return;
       }
 
-      // Step 2: Get authentication details
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
       if (googleAuth.idToken == null) {
         throw Exception("Failed to get ID token from Google");
       }
 
-      // Step 3: Create Firebase credential
       final credential = GoogleAuthProvider.credential(
         idToken: googleAuth.idToken,
         accessToken: googleAuth.accessToken,
       );
 
-      // Step 4: Sign in to Firebase
       final UserCredential userCredential =
           await FirebaseAuth.instance.signInWithCredential(credential);
 
-      // Step 5: Get Firebase ID token
       final token = await userCredential.user!.getIdToken();
       
       if (token == null) {
@@ -79,14 +62,13 @@ class _LoginPageState extends State<LoginPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text("Failed to get authentication token"),
-              backgroundColor: Colors.red,
+              backgroundColor: Colors.redAccent,
             ),
           );
         }
         return;
       }
 
-      // Step 6: Send token to backend
       final response = await http.post(
         Uri.parse("http://localhost:5000/api/auth/google-login"),
         headers: {"Content-Type": "application/json"},
@@ -98,9 +80,7 @@ class _LoginPageState extends State<LoginPage> {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
 
-        // Handle different response statuses
         if (data["status"] == "choose_role") {
-          // User needs to choose role and complete registration
           if (mounted) {
             Navigator.pushReplacement(
               context,
@@ -114,7 +94,6 @@ class _LoginPageState extends State<LoginPage> {
             );
           }
         } else if (data["status"] == "blocked") {
-          // Account not verified or rejected
           if (mounted) {
             _showVerificationDialog(
               title: 'Account Not Verified',
@@ -124,7 +103,6 @@ class _LoginPageState extends State<LoginPage> {
             );
           }
         } else if (data["status"] == "ok") {
-          // Verified user - save token and redirect
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('auth_token', token);
 
@@ -149,33 +127,30 @@ class _LoginPageState extends State<LoginPage> {
           }
         }
       } else {
-        // Handle error response
         final errorData = jsonDecode(response.body);
         final errorMessage = errorData['error'] ?? 'Google login failed';
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(errorMessage),
-              backgroundColor: Colors.red,
+              backgroundColor: Colors.redAccent,
             ),
           );
         }
       }
     } catch (e) {
       setState(() => isGoogleLoading = false);
-      print("Google Login Error: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Google sign-in failed. Please try again."),
-            backgroundColor: Colors.red,
+            backgroundColor: Colors.redAccent,
           ),
         );
       }
     }
   }
 
-  // REAL BACKEND AUTHENTICATION
   Future<Map<String, dynamic>> authenticateUser(String email, String password) async {
     try {
       final response = await http.post(
@@ -184,13 +159,9 @@ class _LoginPageState extends State<LoginPage> {
         body: jsonEncode({"email": email, "password": password}),
       );
 
-      print("Status Code: ${response.statusCode}");
-      print("Response Body: ${response.body}");
-
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
 
-        // Save token if available
         if (data.containsKey("data") && data["data"].containsKey("token")) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('auth_token', data["data"]["token"]);
@@ -206,7 +177,6 @@ class _LoginPageState extends State<LoginPage> {
           };
         }
       } else {
-        // Parse error message
         final errorData = jsonDecode(response.body);
         final errorMessage = errorData['error'] ?? 'Login failed';
         return {
@@ -216,7 +186,6 @@ class _LoginPageState extends State<LoginPage> {
       }
       return {'success': false, 'error': 'Unknown error occurred'};
     } catch (e) {
-      print("Login Error: $e");
       return {'success': false, 'error': 'Network error. Please check your connection.'};
     }
   }
@@ -229,7 +198,7 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Please enter email and password"),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
         ),
       );
       return;
@@ -244,7 +213,6 @@ class _LoginPageState extends State<LoginPage> {
     if (!result['success']) {
       final errorMessage = result['error'] ?? 'Login failed';
       
-      // Check if it's a pending or rejected account
       if (errorMessage.toLowerCase().contains('pending')) {
         _showVerificationDialog(
           title: 'Account Pending Verification',
@@ -263,7 +231,7 @@ class _LoginPageState extends State<LoginPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage),
-            backgroundColor: Colors.red,
+            backgroundColor: Colors.redAccent,
           ),
         );
       }
@@ -290,7 +258,7 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Unknown role: $role"),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
         ),
       );
     }
@@ -338,141 +306,281 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final isTablet = screenWidth > 600;
+    final horizontalPadding = isSmallScreen ? 16.0 : isTablet ? 32.0 : 24.0;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.redAccent,
-        title: const Text("Login", style: TextStyle(color: Colors.white)),
-        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Row(
+          children: [
+            Icon(
+              Icons.login,
+              color: Colors.redAccent,
+              size: isSmallScreen ? 20 : 24,
+            ),
+            SizedBox(width: isSmallScreen ? 8 : 12),
+            Text(
+              "Login",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: isSmallScreen ? 18 : 20,
+              ),
+            ),
+          ],
+        ),
+        centerTitle: false,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
+            SizedBox(height: isSmallScreen ? 20 : 40),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.sports_soccer,
+                  color: Colors.redAccent,
+                  size: isSmallScreen ? 32 : 40,
+                ),
+                SizedBox(width: isSmallScreen ? 8 : 12),
+                Text(
               "KhelKood",
               style: TextStyle(
-                fontSize: 32,
+                    fontSize: isSmallScreen ? 28 : 32,
                 fontWeight: FontWeight.bold,
                 color: Colors.redAccent,
+                    letterSpacing: 1,
               ),
             ),
-            const SizedBox(height: 40),
+              ],
+            ),
+            SizedBox(height: isSmallScreen ? 8 : 12),
+            Text(
+              "Welcome back",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: isSmallScreen ? 14 : 16,
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+            SizedBox(height: isSmallScreen ? 32 : 40),
 
             // GOOGLE SIGN-IN BUTTON
             SizedBox(
               width: double.infinity,
-              height: 48,
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.white70),
+                  side: BorderSide(color: Colors.grey[700]!, width: 1.5),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    vertical: isSmallScreen ? 14 : 16,
                   ),
                 ),
                 onPressed: isGoogleLoading ? null : googleLogin,
                 icon: isGoogleLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                    ? SizedBox(
+                        width: isSmallScreen ? 18 : 20,
+                        height: isSmallScreen ? 18 : 20,
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white70,
+                        ),
                       )
-                    : const Icon(Icons.g_mobiledata, color: Colors.white70),
+                    : Icon(
+                        Icons.g_mobiledata,
+                        color: Colors.white70,
+                        size: isSmallScreen ? 20 : 24,
+                      ),
                 label: isGoogleLoading
-                    ? const Text(
+                    ? Text(
                         "Signing in...",
-                        style: TextStyle(color: Colors.white70),
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: isSmallScreen ? 14 : 16,
+                        ),
                       )
-                    : const Text(
+                    : Text(
                         "Continue with Google",
-                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: isSmallScreen ? 14 : 16,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
               ),
             ),
 
-            const SizedBox(height: 20),
+            SizedBox(height: isSmallScreen ? 20 : 24),
 
             // DIVIDER
             Row(
               children: [
                 Expanded(child: Divider(color: Colors.grey[700])),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 12 : 16),
                   child: Text(
                     "OR",
-                    style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: isSmallScreen ? 12 : 14,
+                    ),
                   ),
                 ),
                 Expanded(child: Divider(color: Colors.grey[700])),
               ],
             ),
 
-            const SizedBox(height: 20),
+            SizedBox(height: isSmallScreen ? 20 : 24),
 
             // EMAIL FIELD
             TextField(
               controller: emailController,
-              style: const TextStyle(color: Colors.white),
+              keyboardType: TextInputType.emailAddress,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: isSmallScreen ? 14 : 16,
+              ),
               decoration: InputDecoration(
+                prefixIcon: Icon(
+                  Icons.email_outlined,
+                  color: Colors.redAccent.withOpacity(0.7),
+                  size: isSmallScreen ? 20 : 22,
+                ),
                 filled: true,
                 fillColor: Colors.grey[900],
                 labelText: "Email",
-                labelStyle: const TextStyle(color: Colors.white70),
+                labelStyle: TextStyle(
+                  color: Colors.white54,
+                  fontSize: isSmallScreen ? 14 : 16,
+                ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey[800]!, width: 1),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+                ),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: isSmallScreen ? 14 : 16,
                 ),
               ),
             ),
 
-            const SizedBox(height: 20),
+            SizedBox(height: isSmallScreen ? 16 : 20),
 
             // PASSWORD FIELD
             TextField(
               controller: passwordController,
               obscureText: true,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: isSmallScreen ? 14 : 16,
+              ),
               decoration: InputDecoration(
+                prefixIcon: Icon(
+                  Icons.lock_outline,
+                  color: Colors.redAccent.withOpacity(0.7),
+                  size: isSmallScreen ? 20 : 22,
+                ),
                 filled: true,
                 fillColor: Colors.grey[900],
                 labelText: "Password",
-                labelStyle: const TextStyle(color: Colors.white70),
+                labelStyle: TextStyle(
+                  color: Colors.white54,
+                  fontSize: isSmallScreen ? 14 : 16,
+                ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey[800]!, width: 1),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+                ),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: isSmallScreen ? 14 : 16,
                 ),
               ),
             ),
 
-            const SizedBox(height: 30),
+            SizedBox(height: isSmallScreen ? 24 : 30),
 
             // LOGIN BUTTON
             SizedBox(
               width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
+              child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.redAccent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(
+                    vertical: isSmallScreen ? 14 : 16,
                   ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
                 ),
                 onPressed: (isLoading || isGoogleLoading) ? null : handleLogin,
-                child: isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
+                icon: isLoading
+                    ? SizedBox(
+                        width: isSmallScreen ? 18 : 20,
+                        height: isSmallScreen ? 18 : 20,
+                        child: const CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Icon(
+                        Icons.login,
+                        size: isSmallScreen ? 18 : 20,
+                      ),
+                label: isLoading
+                    ? const Text("Logging in...")
+                    : Text(
                         "LOGIN",
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          letterSpacing: 1.2,
+                          fontSize: isSmallScreen ? 14 : 16,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
                         ),
                       ),
               ),
             ),
 
-            const SizedBox(height: 20),
+            SizedBox(height: isSmallScreen ? 20 : 24),
 
-            // NEW TEXT BUTTON: New to KhelKood?
+            // REGISTER LINK
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.person_add_outlined,
+                  color: Colors.white54,
+                  size: isSmallScreen ? 16 : 18,
+                ),
+                SizedBox(width: isSmallScreen ? 6 : 8),
             TextButton(
               onPressed: () {
                 Navigator.push(
@@ -480,15 +588,18 @@ class _LoginPageState extends State<LoginPage> {
                   MaterialPageRoute(builder: (_) => const ChooseRegisterPage()),
                 );
               },
-              child: const Text(
-                "New to KhelKood?",
+                  child: Text(
+                    "New to KhelKood? Register",
                 style: TextStyle(
                   color: Colors.redAccent,
-                  fontSize: 16,
-                  decoration: TextDecoration.underline,
+                      fontSize: isSmallScreen ? 14 : 16,
+                      fontWeight: FontWeight.w500,
                 ),
               ),
             ),
+              ],
+            ),
+            SizedBox(height: isSmallScreen ? 20 : 24),
           ],
         ),
       ),

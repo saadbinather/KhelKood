@@ -37,6 +37,19 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
     }
   }
 
+  @override
+  void dispose() {
+    nameController.dispose();
+    teamNameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    phoneController.dispose();
+    for (var controller in playerControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
   void addPlayerField() {
     setState(() {
       playerControllers.add(TextEditingController());
@@ -44,7 +57,13 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
   }
 
   void removePlayerField(int index) {
+    if (index < 0 || index >= playerControllers.length) {
+      return;
+    }
+
     setState(() {
+      // Dispose the controller
+      playerControllers[index].dispose();
       playerControllers.removeAt(index);
     });
   }
@@ -61,10 +80,7 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
         .map((c) => c.text.trim())
         .toList();
 
-    if (name.isEmpty ||
-        teamName.isEmpty ||
-        email.isEmpty ||
-        phone.isEmpty) {
+    if (name.isEmpty || teamName.isEmpty || email.isEmpty || phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Please fill all required fields"),
@@ -88,6 +104,22 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Password must be at least 6 characters"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    // Validate player count based on sport
+    final minPlayers = (selectedSport == "padel") ? 2 : 5;
+    final sportName = selectedSport.toUpperCase();
+
+    if (players.length < minPlayers) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "$sportName requires at least $minPlayers players. You have ${players.length} player${players.length == 1 ? '' : 's'}.",
+          ),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -121,7 +153,9 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
         final responseData = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(responseData['message'] ?? "Team Registered Successfully!"),
+            content: Text(
+              responseData['message'] ?? "Team Registered Successfully!",
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -149,129 +183,356 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final isTablet = screenWidth > 600;
+    final horizontalPadding = isSmallScreen
+        ? 16.0
+        : isTablet
+        ? 32.0
+        : 24.0;
+    final verticalPadding = isSmallScreen ? 12.0 : 16.0;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text(
-          "Register Team",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        title: Row(
+          children: [
+            Icon(
+              Icons.group_add,
+              color: Colors.redAccent,
+              size: isSmallScreen ? 20 : 24,
+            ),
+            SizedBox(width: isSmallScreen ? 8 : 12),
+            Text(
+              "Register Team",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: isSmallScreen ? 18 : 20,
+              ),
+            ),
+          ],
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        padding: EdgeInsets.symmetric(
+          horizontal: horizontalPadding,
+          vertical: verticalPadding,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 8),
-            const Text(
-              "Create your team profile",
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-                fontWeight: FontWeight.w300,
-              ),
+            SizedBox(height: isSmallScreen ? 4 : 8),
+            Row(
+              children: [
+                Icon(
+                  Icons.sports_soccer,
+                  color: Colors.redAccent.withOpacity(0.8),
+                  size: isSmallScreen ? 18 : 20,
+                ),
+                SizedBox(width: isSmallScreen ? 8 : 12),
+                Expanded(
+                  child: Text(
+                    "Create your team profile",
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: isSmallScreen ? 14 : 16,
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 32),
-            _buildTextField("Full Name", nameController),
-            const SizedBox(height: 20),
-            _buildTextField("Team Name", teamNameController),
-            const SizedBox(height: 20),
+            SizedBox(height: isSmallScreen ? 24 : 32),
+            _buildTextField(
+              "Full Name",
+              nameController,
+              icon: Icons.person_outline,
+            ),
+            SizedBox(height: isSmallScreen ? 16 : 20),
+            _buildTextField(
+              "Team Name",
+              teamNameController,
+              icon: Icons.flag_outlined,
+            ),
+            SizedBox(height: isSmallScreen ? 16 : 20),
             _buildTextField(
               "Email",
               emailController,
               isEmail: true,
               readOnly: widget.fromGoogle,
+              icon: Icons.email_outlined,
             ),
             if (!widget.fromGoogle) ...[
-              const SizedBox(height: 20),
+              SizedBox(height: isSmallScreen ? 16 : 20),
               _buildTextField(
                 "Password (min 6 characters)",
                 passwordController,
                 isPassword: true,
+                icon: Icons.lock_outline,
               ),
             ],
-            const SizedBox(height: 20),
-            _buildTextField("Phone Number", phoneController, isPhone: true),
-            const SizedBox(height: 20),
-            _buildSportDropdown(),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Players",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                IconButton(
-                  onPressed: addPlayerField,
-                  icon: const Icon(Icons.add_circle_outline, color: Colors.redAccent),
-                  tooltip: 'Add Player',
-                ),
-              ],
+            SizedBox(height: isSmallScreen ? 16 : 20),
+            _buildTextField(
+              "Phone Number",
+              phoneController,
+              isPhone: true,
+              icon: Icons.phone_outlined,
             ),
-            const SizedBox(height: 12),
-            ...List.generate(
-              playerControllers.length,
-              (index) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
+            SizedBox(height: isSmallScreen ? 16 : 20),
+            _buildSportDropdown(),
+            SizedBox(height: isSmallScreen ? 24 : 32),
+            _buildPlayersSection(),
+            SizedBox(height: isSmallScreen ? 32 : 40),
+            _buildRegisterButton(),
+            SizedBox(height: isSmallScreen ? 20 : 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlayersSection() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.people_outline,
+                  color: Colors.redAccent,
+                  size: isSmallScreen ? 18 : 20,
+                ),
+                SizedBox(width: isSmallScreen ? 8 : 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: _buildTextField("Player Name", playerControllers[index]),
+                    Text(
+                      "Players",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: isSmallScreen ? 15 : 16,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
                     ),
-                    const SizedBox(width: 12),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.redAccent),
-                      onPressed: () => removePlayerField(index),
-                      tooltip: 'Remove',
+                    SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.white54,
+                          size: 12,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          selectedSport == "padel"
+                              ? "Minimum 2 players"
+                              : "Minimum 5 players",
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: isSmallScreen ? 11 : 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ),
+              ],
             ),
-            const SizedBox(height: 40),
-            Center(
-              child: ElevatedButton(
-                onPressed: isLoading ? null : registerTeam,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: addPlayerField,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.redAccent.withOpacity(0.3),
+                      width: 1.5,
+                    ),
                   ),
-                  elevation: 0,
+                  child: Icon(
+                    Icons.add_circle_outline,
+                    color: Colors.redAccent,
+                    size: isSmallScreen ? 20 : 24,
+                  ),
                 ),
-                child: isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text(
-                        "Register Team",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
               ),
             ),
-            const SizedBox(height: 24),
           ],
         ),
+        SizedBox(height: isSmallScreen ? 12 : 16),
+        if (playerControllers.isEmpty)
+          Container(
+            padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+            decoration: BoxDecoration(
+              color: Colors.grey[900]!.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.grey[800]!.withOpacity(0.5),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.add_circle_outline,
+                  color: Colors.white38,
+                  size: isSmallScreen ? 18 : 20,
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    "Tap the + button to add players",
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: isSmallScreen ? 13 : 14,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ...List.generate(playerControllers.length, (index) {
+            // Safety check before building
+            if (index >= 0 && index < playerControllers.length) {
+              return Padding(
+                padding: EdgeInsets.only(bottom: isSmallScreen ? 10 : 12),
+                child: _buildPlayerField(index),
+              );
+            }
+            return const SizedBox.shrink();
+          }),
+      ],
+    );
+  }
+
+  Widget _buildPlayerField(int index) {
+    // Safety check: ensure index is valid
+    if (index < 0 || index >= playerControllers.length) {
+      return const SizedBox.shrink();
+    }
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+
+    return Row(
+      children: [
+        Container(
+          padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+          decoration: BoxDecoration(
+            color: Colors.redAccent.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            Icons.person,
+            color: Colors.redAccent,
+            size: isSmallScreen ? 18 : 20,
+          ),
+        ),
+        SizedBox(width: isSmallScreen ? 10 : 12),
+        Expanded(
+          child: _buildTextField(
+            "Player ${index + 1}",
+            playerControllers[index],
+            showIcon: false,
+          ),
+        ),
+        SizedBox(width: isSmallScreen ? 8 : 12),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              if (index >= 0 && index < playerControllers.length) {
+                removePlayerField(index);
+              }
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.redAccent.withOpacity(0.3),
+                  width: 1.5,
+                ),
+              ),
+              child: Icon(
+                Icons.close,
+                color: Colors.redAccent,
+                size: isSmallScreen ? 18 : 20,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRegisterButton() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final isTablet = screenWidth > 600;
+
+    return Center(
+      child: ElevatedButton(
+        onPressed: isLoading ? null : registerTeam,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.redAccent,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen
+                ? 40
+                : isTablet
+                ? 56
+                : 48,
+            vertical: isSmallScreen ? 12 : 14,
+          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          elevation: 0,
+        ),
+        child: isLoading
+            ? SizedBox(
+                width: isSmallScreen ? 18 : 20,
+                height: isSmallScreen ? 18 : 20,
+                child: const CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.app_registration, size: isSmallScreen ? 18 : 20),
+                  SizedBox(width: isSmallScreen ? 8 : 12),
+                  Text(
+                    "Register Team",
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 14 : 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -283,7 +544,12 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
     bool isEmail = false,
     bool isPhone = false,
     bool readOnly = false,
+    IconData? icon,
+    bool showIcon = true,
   }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+
     return TextField(
       controller: controller,
       obscureText: isPassword,
@@ -291,14 +557,25 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
       keyboardType: isEmail
           ? TextInputType.emailAddress
           : isPhone
-              ? TextInputType.phone
-              : TextInputType.text,
+          ? TextInputType.phone
+          : TextInputType.text,
       style: TextStyle(
         color: readOnly ? Colors.white54 : Colors.white,
+        fontSize: isSmallScreen ? 14 : 16,
       ),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.white54),
+        labelStyle: TextStyle(
+          color: Colors.white54,
+          fontSize: isSmallScreen ? 14 : 16,
+        ),
+        prefixIcon: showIcon && icon != null
+            ? Icon(
+                icon,
+                color: Colors.redAccent.withOpacity(0.7),
+                size: isSmallScreen ? 20 : 22,
+              )
+            : null,
         filled: true,
         fillColor: Colors.grey[900],
         border: OutlineInputBorder(
@@ -313,39 +590,98 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: Colors.redAccent, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: showIcon && icon != null ? 12 : 16,
+          vertical: isSmallScreen ? 14 : 16,
+        ),
       ),
     );
   }
 
   Widget _buildSportDropdown() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 12 : 16,
+        vertical: isSmallScreen ? 4 : 0,
+      ),
       decoration: BoxDecoration(
         color: Colors.grey[900],
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey[800]!, width: 1),
       ),
-      child: DropdownButton<String>(
-        value: selectedSport,
-        dropdownColor: Colors.grey[900],
-        underline: Container(),
-        isExpanded: true,
-        style: const TextStyle(color: Colors.white, fontSize: 16),
-        icon: const Icon(Icons.arrow_drop_down, color: Colors.redAccent),
-        items: ["futsal", "cricket", "padel"]
-            .map((sport) => DropdownMenuItem(
-                  value: sport,
-                  child: Text(
-                    sport.toUpperCase(),
-                    style: const TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                ))
-            .toList(),
-        onChanged: (value) {
-          setState(() => selectedSport = value!);
-        },
+      child: Row(
+        children: [
+          Icon(
+            _getSportIcon(selectedSport),
+            color: Colors.redAccent,
+            size: isSmallScreen ? 18 : 20,
+          ),
+          SizedBox(width: isSmallScreen ? 8 : 12),
+          Expanded(
+            child: DropdownButton<String>(
+              value: selectedSport,
+              dropdownColor: Colors.grey[900],
+              underline: Container(),
+              isExpanded: true,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: isSmallScreen ? 14 : 16,
+              ),
+              icon: Icon(
+                Icons.arrow_drop_down,
+                color: Colors.redAccent,
+                size: isSmallScreen ? 24 : 28,
+              ),
+              items:
+                  [
+                    {"value": "futsal", "icon": Icons.sports_soccer},
+                    {"value": "cricket", "icon": Icons.sports_cricket},
+                    {"value": "padel", "icon": Icons.sports_tennis},
+                  ].map<DropdownMenuItem<String>>((sport) {
+                    return DropdownMenuItem<String>(
+                      value: sport["value"] as String,
+                      child: Row(
+                        children: [
+                          Icon(
+                            sport["icon"] as IconData,
+                            color: Colors.redAccent.withOpacity(0.7),
+                            size: isSmallScreen ? 18 : 20,
+                          ),
+                          SizedBox(width: isSmallScreen ? 8 : 12),
+                          Text(
+                            (sport["value"] as String).toUpperCase(),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: isSmallScreen ? 14 : 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+              onChanged: (value) {
+                setState(() => selectedSport = value!);
+              },
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  IconData _getSportIcon(String sport) {
+    switch (sport.toLowerCase()) {
+      case "futsal":
+        return Icons.sports_soccer;
+      case "cricket":
+        return Icons.sports_cricket;
+      case "padel":
+        return Icons.sports_tennis;
+      default:
+        return Icons.sports;
+    }
   }
 }

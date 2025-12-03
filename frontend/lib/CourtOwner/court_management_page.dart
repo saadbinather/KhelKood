@@ -271,7 +271,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${_selectedSport} field added successfully!'),
+              content: Text('$_selectedSport field added successfully!'),
               backgroundColor: Colors.green,
             ),
           );
@@ -314,9 +314,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           "Add Field",
           style: TextStyle(
@@ -328,7 +326,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
-              value: _selectedSport,
+              initialValue: _selectedSport,
               dropdownColor: Colors.white,
               style: const TextStyle(color: Color(0xFF2E7D32)),
               items: ["Cricket", "Football", "Padel"]
@@ -360,14 +358,13 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
-              "Cancel",
-              style: TextStyle(color: Colors.grey),
-            ),
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: isSaving ? null : _addField,
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CAF50)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4CAF50),
+            ),
             child: isSaving
                 ? const SizedBox(
                     height: 16,
@@ -390,33 +387,41 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
     return List.generate(7, (index) => today.add(Duration(days: index)));
   }
 
-
   Map<String, List<Map<String, dynamic>>> _getAllCourtNumbers() {
     if (courtData == null) return {};
-    
+
     final cricketCount = courtData!['numOfCricketFields'] ?? 0;
     final futsalCount = courtData!['numOfFutsalFields'] ?? 0;
     final padelCount = courtData!['numOfPadelCourts'] ?? 0;
-    
+
     return {
-      'cricket': List.generate(cricketCount, (i) => {
-        'encodedNum': i + 1,
-        'actualNum': i + 1,
-        'sport': 'cricket',
-        'label': 'Cricket Field ${i + 1}',
-      }),
-      'futsal': List.generate(futsalCount, (i) => {
-        'encodedNum': 1000 + (i + 1),
-        'actualNum': i + 1,
-        'sport': 'futsal',
-        'label': 'Futsal Field ${i + 1}',
-      }),
-      'padel': List.generate(padelCount, (i) => {
-        'encodedNum': 2000 + (i + 1),
-        'actualNum': i + 1,
-        'sport': 'padel',
-        'label': 'Padel Court ${i + 1}',
-      }),
+      'cricket': List.generate(
+        cricketCount,
+        (i) => {
+          'encodedNum': i + 1,
+          'actualNum': i + 1,
+          'sport': 'cricket',
+          'label': 'Cricket Field ${i + 1}',
+        },
+      ),
+      'futsal': List.generate(
+        futsalCount,
+        (i) => {
+          'encodedNum': 1000 + (i + 1),
+          'actualNum': i + 1,
+          'sport': 'futsal',
+          'label': 'Futsal Field ${i + 1}',
+        },
+      ),
+      'padel': List.generate(
+        padelCount,
+        (i) => {
+          'encodedNum': 2000 + (i + 1),
+          'actualNum': i + 1,
+          'sport': 'padel',
+          'label': 'Padel Court ${i + 1}',
+        },
+      ),
     };
   }
 
@@ -471,8 +476,9 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
               selectedEndSlot = slotIndex;
             }
             // Limit to 3 hours max
-            final range = (selectedEndSlot! ~/ 24 * 24 + selectedEndSlot! % 24) - 
-                          (selectedStartSlot! ~/ 24 * 24 + selectedStartSlot! % 24);
+            final range =
+                (selectedEndSlot! ~/ 24 * 24 + selectedEndSlot! % 24) -
+                (selectedStartSlot! ~/ 24 * 24 + selectedStartSlot! % 24);
             if (range > 2) {
               // Too many hours - reset to clicked slot
               selectedStartSlot = slotIndex;
@@ -600,7 +606,9 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(data['message'] ?? 'Court marked as unavailable successfully!'),
+              content: Text(
+                data['message'] ?? 'Court marked as unavailable successfully!',
+              ),
               backgroundColor: Colors.green,
             ),
           );
@@ -616,7 +624,9 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(errorData['error'] ?? 'Failed to mark court as unavailable'),
+              content: Text(
+                errorData['error'] ?? 'Failed to mark court as unavailable',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -639,7 +649,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
 
   Widget _buildCourtNumberSelector() {
     final allCourtNumbers = _getAllCourtNumbers();
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -669,7 +679,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
           ),
           const SizedBox(height: 16),
         ],
-        
+
         // Futsal Fields
         if (allCourtNumbers['futsal']!.isNotEmpty) ...[
           const Text(
@@ -696,7 +706,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
           ),
           const SizedBox(height: 16),
         ],
-        
+
         // Padel Courts
         if (allCourtNumbers['padel']!.isNotEmpty) ...[
           const Text(
@@ -730,7 +740,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
   Widget _buildCourtNumberButton(String label, int courtNum, bool isSelected) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
-    
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -745,8 +755,8 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
           vertical: isSmallScreen ? 10 : 12,
         ),
         decoration: BoxDecoration(
-          color: isSelected 
-              ? const Color(0xFF2E7D32).withOpacity(0.1) 
+          color: isSelected
+              ? const Color(0xFF2E7D32).withOpacity(0.1)
               : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -786,7 +796,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
     final isTablet = screenWidth > 600;
-    
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -805,9 +815,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
             indicatorColor: Colors.white,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
-            labelStyle: TextStyle(
-              fontSize: isSmallScreen ? 12 : 14,
-            ),
+            labelStyle: TextStyle(fontSize: isSmallScreen ? 12 : 14),
             tabs: const [
               Tab(text: 'Settings'),
               Tab(text: 'Mark Unavailable'),
@@ -841,7 +849,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
               )
             : courtData == null
             ? const Center(
-                child: const Text(
+                child: Text(
                   'No court data found',
                   style: TextStyle(color: Colors.grey),
                 ),
@@ -850,7 +858,13 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                 children: [
                   // Settings Tab
                   SingleChildScrollView(
-                    padding: EdgeInsets.all(isSmallScreen ? 12 : isTablet ? 24 : 16),
+                    padding: EdgeInsets.all(
+                      isSmallScreen
+                          ? 12
+                          : isTablet
+                          ? 24
+                          : 16,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -859,7 +873,11 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                           courtData!['name'] ?? 'Court',
                           style: TextStyle(
                             color: const Color(0xFF2E7D32),
-                            fontSize: isSmallScreen ? 20 : isTablet ? 28 : 24,
+                            fontSize: isSmallScreen
+                                ? 20
+                                : isTablet
+                                ? 28
+                                : 24,
                             fontWeight: FontWeight.bold,
                           ),
                           maxLines: 2,
@@ -870,19 +888,33 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                           courtData!['address'] ?? 'No address',
                           style: TextStyle(
                             color: Colors.grey,
-                            fontSize: isSmallScreen ? 14 : isTablet ? 18 : 16,
+                            fontSize: isSmallScreen
+                                ? 14
+                                : isTablet
+                                ? 18
+                                : 16,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        SizedBox(height: isSmallScreen ? 16 : isTablet ? 32 : 24),
+                        SizedBox(
+                          height: isSmallScreen
+                              ? 16
+                              : isTablet
+                              ? 32
+                              : 24,
+                        ),
 
                         // Field Counts
                         Text(
                           'Field Counts',
                           style: TextStyle(
                             color: const Color(0xFF2E7D32),
-                            fontSize: isSmallScreen ? 18 : isTablet ? 24 : 20,
+                            fontSize: isSmallScreen
+                                ? 18
+                                : isTablet
+                                ? 24
+                                : 20,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -904,14 +936,24 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                           courtData!['numOfPadelCourts'] ?? 0,
                           Icons.sports_tennis,
                         ),
-                        SizedBox(height: isSmallScreen ? 16 : isTablet ? 32 : 24),
+                        SizedBox(
+                          height: isSmallScreen
+                              ? 16
+                              : isTablet
+                              ? 32
+                              : 24,
+                        ),
 
                         // Rates Section
                         Text(
                           'Per Hour Rates',
                           style: TextStyle(
                             color: const Color(0xFF2E7D32),
-                            fontSize: isSmallScreen ? 18 : isTablet ? 24 : 20,
+                            fontSize: isSmallScreen
+                                ? 18
+                                : isTablet
+                                ? 24
+                                : 20,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -930,7 +972,13 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                           'Padel Rate (Rs./hour)',
                           _padelRateController,
                         ),
-                        SizedBox(height: isSmallScreen ? 16 : isTablet ? 32 : 24),
+                        SizedBox(
+                          height: isSmallScreen
+                              ? 16
+                              : isTablet
+                              ? 32
+                              : 24,
+                        ),
                         ElevatedButton(
                           onPressed: isSaving ? null : _updateRates,
                           style: ElevatedButton.styleFrom(
@@ -938,7 +986,10 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                             padding: EdgeInsets.symmetric(
                               vertical: isSmallScreen ? 12 : 16,
                             ),
-                            minimumSize: Size(double.infinity, isSmallScreen ? 44 : 50),
+                            minimumSize: Size(
+                              double.infinity,
+                              isSmallScreen ? 44 : 50,
+                            ),
                           ),
                           child: isSaving
                               ? SizedBox(
@@ -953,7 +1004,11 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                                   'Update Rates',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: isSmallScreen ? 14 : isTablet ? 18 : 16,
+                                    fontSize: isSmallScreen
+                                        ? 14
+                                        : isTablet
+                                        ? 18
+                                        : 16,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -963,7 +1018,13 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                   ),
                   // Mark Unavailable Tab
                   SingleChildScrollView(
-                    padding: EdgeInsets.all(isSmallScreen ? 12 : isTablet ? 24 : 16),
+                    padding: EdgeInsets.all(
+                      isSmallScreen
+                          ? 12
+                          : isTablet
+                          ? 24
+                          : 16,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -992,7 +1053,11 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                                 'Mark Time Slots as Unavailable',
                                 style: TextStyle(
                                   color: const Color(0xFF2E7D32),
-                                  fontSize: isSmallScreen ? 16 : isTablet ? 20 : 18,
+                                  fontSize: isSmallScreen
+                                      ? 16
+                                      : isTablet
+                                      ? 20
+                                      : 18,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -1001,21 +1066,35 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                                 'Select 2-3 consecutive time slots on the same day to mark them as unavailable. These slots will be blocked for all bookings and challenges.',
                                 style: TextStyle(
                                   color: Colors.grey,
-                                  fontSize: isSmallScreen ? 12 : isTablet ? 16 : 14,
+                                  fontSize: isSmallScreen
+                                      ? 12
+                                      : isTablet
+                                      ? 16
+                                      : 14,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        SizedBox(height: isSmallScreen ? 16 : isTablet ? 24 : 20),
-                        
+                        SizedBox(
+                          height: isSmallScreen
+                              ? 16
+                              : isTablet
+                              ? 24
+                              : 20,
+                        ),
+
                         // Court Number Selector
                         if (courtData != null) ...[
                           Text(
                             'Select Court/Field Number',
                             style: TextStyle(
                               color: const Color(0xFF2E7D32),
-                              fontSize: isSmallScreen ? 16 : isTablet ? 20 : 18,
+                              fontSize: isSmallScreen
+                                  ? 16
+                                  : isTablet
+                                  ? 20
+                                  : 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -1024,16 +1103,26 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                             'Choose which court/field to mark as unavailable',
                             style: TextStyle(
                               color: Colors.grey,
-                              fontSize: isSmallScreen ? 12 : isTablet ? 16 : 14,
+                              fontSize: isSmallScreen
+                                  ? 12
+                                  : isTablet
+                                  ? 16
+                                  : 14,
                             ),
                           ),
                           SizedBox(height: isSmallScreen ? 8 : 12),
                           _buildCourtNumberSelector(),
                         ],
-                        
+
                         // Time Slot Grid (show only after court number is selected)
                         if (courtData != null && selectedCourtNum != null) ...[
-                          SizedBox(height: isSmallScreen ? 16 : isTablet ? 24 : 20),
+                          SizedBox(
+                            height: isSmallScreen
+                                ? 16
+                                : isTablet
+                                ? 24
+                                : 20,
+                          ),
                           Container(
                             padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
                             decoration: BoxDecoration(
@@ -1053,31 +1142,43 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                             ),
                             child: TimeSlotGrid(
                               selectedCourt: courtData,
-                              selectedCourtNum: _decodeCourtNum(selectedCourtNum!),
+                              selectedCourtNum: _decodeCourtNum(
+                                selectedCourtNum!,
+                              ),
                               selectedStartSlot: selectedStartSlot,
                               selectedEndSlot: selectedEndSlot,
                               onSlotSelected: _selectTimeSlot,
-                              onChallengeAccepted: null, // Not needed for court owner
+                              onChallengeAccepted:
+                                  null, // Not needed for court owner
                               days: _getNext7Days(),
-                              sportType: _getSportTypeFromCourtNum(selectedCourtNum!),
+                              sportType: _getSportTypeFromCourtNum(
+                                selectedCourtNum!,
+                              ),
                             ),
                           ),
                         ],
-                        
+
                         // Mark Unavailable Button
-                        if (selectedCourtNum != null && selectedStartSlot != null && selectedEndSlot != null)
+                        if (selectedCourtNum != null &&
+                            selectedStartSlot != null &&
+                            selectedEndSlot != null)
                           Padding(
                             padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
                             child: SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
-                                onPressed: isMarkingUnavailable ? null : _markUnavailable,
+                                onPressed: isMarkingUnavailable
+                                    ? null
+                                    : _markUnavailable,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF4CAF50),
                                   padding: EdgeInsets.symmetric(
                                     vertical: isSmallScreen ? 12 : 16,
                                   ),
-                                  minimumSize: Size(double.infinity, isSmallScreen ? 44 : 50),
+                                  minimumSize: Size(
+                                    double.infinity,
+                                    isSmallScreen ? 44 : 50,
+                                  ),
                                 ),
                                 child: isMarkingUnavailable
                                     ? SizedBox(
@@ -1092,7 +1193,11 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                                         'Mark as Unavailable',
                                         style: TextStyle(
                                           color: Colors.white,
-                                          fontSize: isSmallScreen ? 14 : isTablet ? 18 : 16,
+                                          fontSize: isSmallScreen
+                                              ? 14
+                                              : isTablet
+                                              ? 18
+                                              : 16,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -1121,13 +1226,11 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
   Widget _buildFieldCountCard(String label, int count, IconData icon) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
-    
+
     return Card(
       color: Colors.white,
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: Container(
           padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
@@ -1160,31 +1263,40 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
     );
   }
 
-  Widget _buildRateField(
-    String label,
-    TextEditingController controller,
-  ) {
+  Widget _buildRateField(String label, TextEditingController controller) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
     final isTablet = screenWidth > 600;
-    
+
     return TextField(
       controller: controller,
       keyboardType: TextInputType.number,
       style: TextStyle(
         color: const Color(0xFF2E7D32),
-        fontSize: isSmallScreen ? 14 : isTablet ? 18 : 16,
+        fontSize: isSmallScreen
+            ? 14
+            : isTablet
+            ? 18
+            : 16,
       ),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(
           color: Colors.grey,
-          fontSize: isSmallScreen ? 13 : isTablet ? 17 : 15,
+          fontSize: isSmallScreen
+              ? 13
+              : isTablet
+              ? 17
+              : 15,
         ),
         prefixText: 'Rs. ',
         prefixStyle: TextStyle(
           color: const Color(0xFF2E7D32),
-          fontSize: isSmallScreen ? 14 : isTablet ? 18 : 16,
+          fontSize: isSmallScreen
+              ? 14
+              : isTablet
+              ? 18
+              : 16,
           fontWeight: FontWeight.w600,
         ),
         filled: true,

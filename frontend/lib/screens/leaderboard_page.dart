@@ -75,6 +75,15 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final isTablet = screenWidth > 600;
+    final horizontalPadding = isSmallScreen
+        ? 12.0
+        : isTablet
+        ? 24.0
+        : 16.0;
+
     // Filter teams by search query (already sorted by points descending from API)
     final List<Map<String, dynamic>> filteredTeams = teams
         .where((team) =>
@@ -85,9 +94,27 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.redAccent,
-        title: Text(
-          sport != null ? 'Leaderboard - ${sport?.toUpperCase()}' : 'Leaderboard',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        title: Row(
+          children: [
+            Icon(
+              Icons.emoji_events,
+              color: Colors.white,
+              size: isSmallScreen ? 20 : 24,
+            ),
+            SizedBox(width: isSmallScreen ? 8 : 12),
+            Expanded(
+              child: Text(
+                sport != null ? 'Leaderboard - ${sport?.toUpperCase()}' : 'Leaderboard',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: isSmallScreen ? 16 : 18,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -100,38 +127,84 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        errorMessage!,
-                        style: const TextStyle(color: Colors.redAccent),
-                        textAlign: TextAlign.center,
+                      Icon(
+                        Icons.error_outline,
+                        color: Colors.redAccent,
+                        size: isSmallScreen ? 48 : 64,
                       ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
+                      SizedBox(height: isSmallScreen ? 12 : 16),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                        child: Text(
+                          errorMessage!,
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: isSmallScreen ? 14 : 16,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      SizedBox(height: isSmallScreen ? 16 : 20),
+                      ElevatedButton.icon(
                         onPressed: _fetchLeaderboard,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.redAccent,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isSmallScreen ? 24 : 32,
+                            vertical: isSmallScreen ? 12 : 14,
+                          ),
                         ),
-                        child: const Text('Retry'),
+                        icon: Icon(Icons.refresh, size: isSmallScreen ? 18 : 20),
+                        label: const Text('Retry'),
                       ),
                     ],
                   ),
                 )
               : Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(horizontalPadding),
                   child: Column(
                     children: [
+                      SizedBox(height: isSmallScreen ? 8 : 12),
                       // Search bar
                       TextField(
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isSmallScreen ? 14 : 16,
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Search Team',
-                          hintStyle: const TextStyle(color: Colors.white54),
-                          prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                          hintStyle: TextStyle(
+                            color: Colors.white54,
+                            fontSize: isSmallScreen ? 14 : 16,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: Colors.redAccent,
+                            size: isSmallScreen ? 20 : 24,
+                          ),
                           filled: true,
                           fillColor: Colors.grey[900],
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.redAccent.withOpacity(0.3),
+                              width: 1.5,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Colors.redAccent,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: isSmallScreen ? 12 : 16,
+                            vertical: isSmallScreen ? 12 : 16,
                           ),
                         ),
                         onChanged: (value) {
@@ -140,7 +213,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                           });
                         },
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: isSmallScreen ? 12 : 16),
 
                       // Leaderboard list
                       Expanded(
@@ -149,13 +222,20 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.emoji_events, size: 64, color: Colors.grey[700]),
-                                    const SizedBox(height: 16),
+                                    Icon(
+                                      Icons.emoji_events_outlined,
+                                      size: isSmallScreen ? 56 : 64,
+                                      color: Colors.grey[700],
+                                    ),
+                                    SizedBox(height: isSmallScreen ? 12 : 16),
                                     Text(
                                       searchQuery.isNotEmpty
                                           ? 'No teams found'
                                           : 'No teams in leaderboard',
-                                      style: TextStyle(color: Colors.grey[700], fontSize: 16),
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
+                                        fontSize: isSmallScreen ? 14 : 16,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -164,6 +244,10 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                                 onRefresh: _fetchLeaderboard,
                                 color: Colors.redAccent,
                                 child: ListView.builder(
+                                  padding: EdgeInsets.only(
+                                    top: isSmallScreen ? 8 : 12,
+                                    bottom: isSmallScreen ? 12 : 16,
+                                  ),
                                   itemCount: filteredTeams.length,
                                   itemBuilder: (context, index) {
                                     final team = filteredTeams[index];
@@ -171,31 +255,39 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                                     // Determine if we show trophy for top 3
                                     Widget rankWidget;
                                     if (index == 0) {
-                                      rankWidget = const Icon(
+                                      rankWidget = Icon(
                                         Icons.emoji_events,
                                         color: Colors.amber,
-                                        size: 32,
+                                        size: isSmallScreen ? 28 : 32,
                                       );
                                     } else if (index == 1) {
-                                      rankWidget = const Icon(
+                                      rankWidget = Icon(
                                         Icons.emoji_events,
-                                        color: Colors.grey,
-                                        size: 28,
+                                        color: Colors.grey[400],
+                                        size: isSmallScreen ? 24 : 28,
                                       );
                                     } else if (index == 2) {
-                                      rankWidget = const Icon(
+                                      rankWidget = Icon(
                                         Icons.emoji_events,
-                                        color: Colors.brown,
-                                        size: 28,
+                                        color: Colors.brown[300],
+                                        size: isSmallScreen ? 24 : 28,
                                       );
                                     } else {
-                                      rankWidget = CircleAvatar(
-                                        backgroundColor: Colors.redAccent,
-                                        child: Text(
-                                          '${index + 1}',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
+                                      rankWidget = Container(
+                                        width: isSmallScreen ? 32 : 36,
+                                        height: isSmallScreen ? 32 : 36,
+                                        decoration: BoxDecoration(
+                                          color: Colors.redAccent,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '${index + 1}',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: isSmallScreen ? 14 : 16,
+                                            ),
                                           ),
                                         ),
                                       );
@@ -204,7 +296,9 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                                     final playerCount = team['playerCount'] ?? (team['players'] as List?)?.length ?? 0;
 
                                     return Container(
-                                      margin: const EdgeInsets.only(bottom: 12),
+                                      margin: EdgeInsets.only(
+                                        bottom: isSmallScreen ? 10 : 12,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: Colors.grey[900],
                                         borderRadius: BorderRadius.circular(12),
@@ -212,31 +306,113 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                                           color: Colors.redAccent.withOpacity(0.3),
                                           width: 1.5,
                                         ),
-                                      ),
-                                      child: ListTile(
-                                        contentPadding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 8,
-                                        ),
-                                        leading: rankWidget,
-                                        title: Text(
-                                          team['teamName'] ?? 'Unknown Team',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.redAccent.withOpacity(0.1),
+                                            blurRadius: 8,
+                                            spreadRadius: 1,
                                           ),
-                                        ),
-                                        subtitle: Text(
-                                          '${team['sports'] ?? ''} · $playerCount ${playerCount == 1 ? 'player' : 'players'}',
-                                          style: const TextStyle(color: Colors.white70),
-                                        ),
-                                        trailing: Text(
-                                          '${team['points'] ?? 0} pts',
-                                          style: const TextStyle(
-                                            color: Colors.redAccent,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
+                                        ],
+                                      ),
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(12),
+                                          onTap: () {
+                                            // Could navigate to team details
+                                          },
+                                          child: Padding(
+                                            padding: EdgeInsets.all(
+                                              isSmallScreen ? 12 : 16,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                rankWidget,
+                                                SizedBox(width: isSmallScreen ? 12 : 16),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text(
+                                                        team['teamName'] ?? 'Unknown Team',
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: isSmallScreen ? 15 : 16,
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                      SizedBox(height: isSmallScreen ? 3 : 4),
+                                                      Row(
+                                                        children: [
+                                                          Icon(
+                                                            Icons.sports_soccer,
+                                                            color: Colors.white54,
+                                                            size: isSmallScreen ? 14 : 16,
+                                                          ),
+                                                          SizedBox(width: isSmallScreen ? 4 : 6),
+                                                          Text(
+                                                            '${team['sports'] ?? ''}',
+                                                            style: TextStyle(
+                                                              color: Colors.white54,
+                                                              fontSize: isSmallScreen ? 12 : 13,
+                                                            ),
+                                                          ),
+                                                          SizedBox(width: isSmallScreen ? 6 : 8),
+                                                          Icon(
+                                                            Icons.people,
+                                                            color: Colors.white54,
+                                                            size: isSmallScreen ? 14 : 16,
+                                                          ),
+                                                          SizedBox(width: isSmallScreen ? 4 : 6),
+                                                          Text(
+                                                            '$playerCount ${playerCount == 1 ? 'player' : 'players'}',
+                                                            style: TextStyle(
+                                                              color: Colors.white54,
+                                                              fontSize: isSmallScreen ? 12 : 13,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                SizedBox(width: isSmallScreen ? 8 : 12),
+                                                Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                                  children: [
+                                                    Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                          Icons.stars,
+                                                          color: Colors.amber,
+                                                          size: isSmallScreen ? 16 : 18,
+                                                        ),
+                                                        SizedBox(width: isSmallScreen ? 4 : 6),
+                                                        Text(
+                                                          '${team['points'] ?? 0}',
+                                                          style: TextStyle(
+                                                            color: Colors.redAccent,
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize: isSmallScreen ? 15 : 16,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    SizedBox(height: isSmallScreen ? 2 : 4),
+                                                    Text(
+                                                      'pts',
+                                                      style: TextStyle(
+                                                        color: Colors.white54,
+                                                        fontSize: isSmallScreen ? 11 : 12,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       ),

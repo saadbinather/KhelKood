@@ -142,7 +142,10 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.redAccent,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 48,
+                    vertical: 14,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -180,11 +183,9 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
       keyboardType: isEmail
           ? TextInputType.emailAddress
           : isNumber
-              ? TextInputType.number
-              : TextInputType.text,
-      style: TextStyle(
-        color: readOnly ? Colors.white54 : Colors.white,
-      ),
+          ? TextInputType.number
+          : TextInputType.text,
+      style: TextStyle(color: readOnly ? Colors.white54 : Colors.white),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: Colors.white54),
@@ -202,7 +203,10 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: Colors.redAccent, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
       ),
     );
   }

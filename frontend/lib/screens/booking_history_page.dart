@@ -101,13 +101,44 @@ class _BookingHistoryPageState extends State<BookingHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final isTablet = screenWidth > 600;
+    final horizontalPadding = isSmallScreen
+        ? 12.0
+        : isTablet
+        ? 24.0
+        : 16.0;
+
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.deepPurple,
-        title: const Text("Booking History"),
+        backgroundColor: Colors.redAccent,
+        title: Row(
+          children: [
+            Icon(
+              Icons.history,
+              color: Colors.white,
+              size: isSmallScreen ? 20 : 24,
+            ),
+            SizedBox(width: isSmallScreen ? 8 : 12),
+            Text(
+              "Booking History",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: isSmallScreen ? 18 : 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(
+              Icons.refresh,
+              size: isSmallScreen ? 20 : 24,
+            ),
             onPressed: _fetchBookingHistory,
             tooltip: 'Refresh',
           ),
@@ -115,41 +146,72 @@ class _BookingHistoryPageState extends State<BookingHistoryPage> {
       ),
       body: isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Colors.deepPurple),
+              child: CircularProgressIndicator(color: Colors.redAccent),
             )
           : errorMessage != null
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        errorMessage!,
-                        style: const TextStyle(color: Colors.red),
-                        textAlign: TextAlign.center,
+                      Icon(
+                        Icons.error_outline,
+                        color: Colors.redAccent,
+                        size: isSmallScreen ? 48 : 64,
                       ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
+                      SizedBox(height: isSmallScreen ? 12 : 16),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                        child: Text(
+                          errorMessage!,
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: isSmallScreen ? 14 : 16,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      SizedBox(height: isSmallScreen ? 16 : 20),
+                      ElevatedButton.icon(
                         onPressed: _fetchBookingHistory,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepPurple,
+                          backgroundColor: Colors.redAccent,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isSmallScreen ? 24 : 32,
+                            vertical: isSmallScreen ? 12 : 14,
+                          ),
                         ),
-                        child: const Text('Retry'),
+                        icon: Icon(Icons.refresh, size: isSmallScreen ? 18 : 20),
+                        label: const Text('Retry'),
                       ),
                     ],
                   ),
                 )
               : bookings.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No booking history found',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.history_outlined,
+                            size: isSmallScreen ? 56 : 64,
+                            color: Colors.grey[700],
+                          ),
+                          SizedBox(height: isSmallScreen ? 12 : 16),
+                          Text(
+                            'No booking history found',
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 14 : 16,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                        ],
                       ),
                     )
                   : RefreshIndicator(
                       onRefresh: _fetchBookingHistory,
-                      color: Colors.deepPurple,
+                      color: Colors.redAccent,
                       child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(horizontalPadding),
                         itemCount: bookings.length,
                         itemBuilder: (context, index) {
                           final booking = bookings[index];
@@ -158,87 +220,219 @@ class _BookingHistoryPageState extends State<BookingHistoryPage> {
                           final isMatch = booking['isMatch'] == true;
                           final opponent = booking['opponent'];
 
-                          return Card(
-                            elevation: 3,
-                            margin: const EdgeInsets.only(bottom: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
+                          return Container(
+                            margin: EdgeInsets.only(
+                              bottom: isSmallScreen ? 10 : 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[900],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.redAccent.withOpacity(0.3),
+                                width: 1.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.redAccent.withOpacity(0.1),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                ),
+                              ],
                             ),
                             child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Left Column: Date, Time, Court, Opponent
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          booking['date']?.toString() ?? 'N/A',
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          booking['time']?.toString() ?? 'N/A',
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          "Court: ${booking['court']?.toString() ?? 'Unknown'}",
-                                          style: const TextStyle(fontSize: 14),
-                                        ),
-                                        if (isMatch && opponent != null)
-                                          Text(
-                                            "Opponent: $opponent",
-                                            style: const TextStyle(fontSize: 14),
-                                          )
-                                        else if (isMatch && opponent == null)
-                                          const Text(
-                                            "Opponent: Unknown",
-                                            style: TextStyle(fontSize: 14),
-                                          )
-                                        else
-                                          const Text(
-                                            "Type: Friendly Booking",
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontStyle: FontStyle.italic,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  // Right Column: Status & Points
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(
-                                        status,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: statusColor,
-                                          fontSize: 16,
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.calendar_today,
+                                                  color: Colors.redAccent,
+                                                  size: isSmallScreen ? 16 : 18,
+                                                ),
+                                                SizedBox(width: isSmallScreen ? 6 : 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    booking['date']?.toString() ?? 'N/A',
+                                                    style: TextStyle(
+                                                      fontSize: isSmallScreen ? 15 : 16,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.white,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(height: isSmallScreen ? 6 : 8),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.access_time,
+                                                  color: Colors.white54,
+                                                  size: isSmallScreen ? 14 : 16,
+                                                ),
+                                                SizedBox(width: isSmallScreen ? 6 : 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    booking['time']?.toString() ?? 'N/A',
+                                                    style: TextStyle(
+                                                      fontSize: isSmallScreen ? 13 : 14,
+                                                      color: Colors.white70,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(height: isSmallScreen ? 8 : 10),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.sports_soccer,
+                                                  color: Colors.white54,
+                                                  size: isSmallScreen ? 14 : 16,
+                                                ),
+                                                SizedBox(width: isSmallScreen ? 6 : 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    "Court: ${booking['court']?.toString() ?? 'Unknown'}",
+                                                    style: TextStyle(
+                                                      fontSize: isSmallScreen ? 13 : 14,
+                                                      color: Colors.white70,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            if (isMatch && opponent != null) ...[
+                                              SizedBox(height: isSmallScreen ? 6 : 8),
+                                              Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.group,
+                                                    color: Colors.white54,
+                                                    size: isSmallScreen ? 14 : 16,
+                                                  ),
+                                                  SizedBox(width: isSmallScreen ? 6 : 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      "Opponent: $opponent",
+                                                      style: TextStyle(
+                                                        fontSize: isSmallScreen ? 13 : 14,
+                                                        color: Colors.white70,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ] else if (isMatch && opponent == null) ...[
+                                              SizedBox(height: isSmallScreen ? 6 : 8),
+                                              Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.group,
+                                                    color: Colors.white54,
+                                                    size: isSmallScreen ? 14 : 16,
+                                                  ),
+                                                  SizedBox(width: isSmallScreen ? 6 : 8),
+                                                  Text(
+                                                    "Opponent: Unknown",
+                                                    style: TextStyle(
+                                                      fontSize: isSmallScreen ? 13 : 14,
+                                                      color: Colors.white70,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ] else ...[
+                                              SizedBox(height: isSmallScreen ? 6 : 8),
+                                              Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.favorite,
+                                                    color: Colors.blue,
+                                                    size: isSmallScreen ? 14 : 16,
+                                                  ),
+                                                  SizedBox(width: isSmallScreen ? 6 : 8),
+                                                  Text(
+                                                    "Type: Friendly Booking",
+                                                    style: TextStyle(
+                                                      fontSize: isSmallScreen ? 13 : 14,
+                                                      color: Colors.blue,
+                                                      fontStyle: FontStyle.italic,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ],
                                         ),
                                       ),
-                                      if (isMatch && status != 'Friendly')
-                                        Padding(
-                                          padding: const EdgeInsets.only(top: 4),
-                                          child: Text(
-                                            "Points: ${booking['pointsEarned'] ?? 0}",
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.grey,
+                                      SizedBox(width: isSmallScreen ? 8 : 12),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: isSmallScreen ? 8 : 10,
+                                              vertical: isSmallScreen ? 4 : 6,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: statusColor.withOpacity(0.2),
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: statusColor,
+                                                width: 1.5,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              status.toUpperCase(),
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: statusColor,
+                                                fontSize: isSmallScreen ? 11 : 12,
+                                              ),
                                             ),
                                           ),
-                                        ),
+                                          if (isMatch && status != 'Friendly') ...[
+                                            SizedBox(height: isSmallScreen ? 6 : 8),
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.stars,
+                                                  color: Colors.amber,
+                                                  size: isSmallScreen ? 14 : 16,
+                                                ),
+                                                SizedBox(width: isSmallScreen ? 4 : 6),
+                                                Text(
+                                                  "${booking['pointsEarned'] ?? 0}",
+                                                  style: TextStyle(
+                                                    fontSize: isSmallScreen ? 13 : 14,
+                                                    color: Colors.amber,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ],
+                                      ),
                                     ],
                                   ),
                                 ],

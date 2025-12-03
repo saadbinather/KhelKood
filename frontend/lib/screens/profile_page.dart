@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'booking_history_page.dart';
+import 'match_history_page.dart';
 
 const String baseUrl = 'http://localhost:5000/api';
 
@@ -284,6 +285,48 @@ class _ProfilePageState extends State<ProfilePage> {
                                     profileRow(Icons.sports_soccer, "Sport", teamData!['sports']?.toString() ?? 'N/A'),
                                     profileRow(Icons.star, "Points", (teamData!['points'] ?? 0).toString()),
                                   ],
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            // Match History Button
+                            Card(
+                              elevation: 3,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15)),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(15),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const MatchHistoryPage(),
+                                    ),
+                                  );
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.history, color: Colors.deepPurple),
+                                          const SizedBox(width: 12),
+                                          const Text(
+                                            "Match History",
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Icon(Icons.arrow_forward_ios, size: 16),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),

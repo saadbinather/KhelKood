@@ -96,6 +96,72 @@ const TeamRepository = {
 
     return { ...team, players: updatedPlayers };
   },
+
+  async findAllBySport(sport) {
+    const teamsSnapshot = await db.collection("teams")
+      .where("sports", "==", sport)
+      .get();
+    
+    return teamsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  },
+
+  async findAllBySports(sports) {
+    // Firestore 'in' query supports up to 10 values
+    if (sports.length === 0) return [];
+    if (sports.length === 1) {
+      return await this.findAllBySport(sports[0]);
+    }
+    
+    const teamsSnapshot = await db.collection("teams")
+      .where("sports", "in", sports)
+      .get();
+    
+    return teamsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  },
+
+  async findMatchesByTeamId(teamID) {
+    // Get matches where team is host
+    const hostMatchesSnapshot = await db.collection("matches")
+      .where("Host_Team_ID", "==", teamID)
+      .get();
+    
+    // Get matches where team is guest
+    const guestMatchesSnapshot = await db.collection("matches")
+      .where("Guest_Team_ID", "==", teamID)
+      .get();
+    
+    // Combine and deduplicate
+    const allMatches = [];
+    const matchIds = new Set();
+    
+    hostMatchesSnapshot.docs.forEach(doc => {
+      if (!matchIds.has(doc.id)) {
+        matchIds.add(doc.id);
+        allMatches.push({ id: doc.id, ...doc.data() });
+      }
+    });
+    
+    guestMatchesSnapshot.docs.forEach(doc => {
+      if (!matchIds.has(doc.id)) {
+        matchIds.add(doc.id);
+        allMatches.push({ id: doc.id, ...doc.data() });
+      }
+    });
+    
+    return allMatches;
+  },
+
+  async findTeamById(teamID) {
+    const teamRef = db.collection("teams").doc(teamID);
+    const teamDoc = await teamRef.get();
+    return teamDoc.exists ? { id: teamDoc.id, ...teamDoc.data() } : null;
+  },
 };
 
 // ==================== SERVICE LAYER (Business Logic) ====================
@@ -165,6 +231,170 @@ const TeamService = {
       throw new Error(validation.error);
     }
     return await TeamRepository.removePlayer(teamID, playerName);
+  },
+
+  async getAllTeamsBySport(sport, excludeTeamID) {
+    const validation = validateRequired({ sport }, ["sport"]);
+    if (!validation.isValid) {
+      throw new Error(validation.error);
+    }
+
+    // Normalize sport: map "football" to "futsal"
+    let normalizedSport = sport.toLowerCase();
+    if (normalizedSport === "football") {
+      normalizedSport = "futsal";
+    }
+
+    const validSports = ["futsal", "cricket", "padel"];
+    if (!validSports.includes(normalizedSport)) {
+      throw new Error("Invalid sport type. Must be futsal, cricket, or padel");
+    }
+
+    let teams;
+
+    // If original sport was "football", query for both "futsal" and "football" to handle data inconsistencies
+    if (sport.toLowerCase() === "football") {
+      teams = await TeamRepository.findAllBySports(["futsal", "football"]);
+      // Deduplicate teams by ID
+      teams = teams.reduce((acc, team) => {
+        if (!acc.find(t => t.id === team.id)) {
+          acc.push(team);
+        }
+        return acc;
+      }, []);
+    } else {
+      // For other sports, just query normally
+      teams = await TeamRepository.findAllBySport(normalizedSport);
+    }
+
+    // Exclude the logged-in team from the results
+    if (excludeTeamID) {
+      teams = teams.filter(team => team.id !== excludeTeamID);
+    }
+
+    return teams;
+  },
+
+  async getTeamDetails(teamID) {
+    const team = await TeamRepository.findById(teamID);
+    if (!team) {
+      throw new Error("Team not found");
+    }
+
+    // Get match history for the team (both as host and guest)
+    const matches = await TeamRepository.findMatchesByTeamId(teamID);
+
+    // Enrich matches with opponent team information for competitive matches
+    const enrichedMatches = await Promise.all(
+      matches.map(async (match) => {
+        let opponentTeam = null;
+        
+        // For competitive matches, get opponent team name
+        if (match.matchType === "competitive") {
+          const opponentTeamID = match.Host_Team_ID === teamID 
+            ? match.Guest_Team_ID 
+            : match.Host_Team_ID;
+          
+          if (opponentTeamID) {
+            opponentTeam = await TeamRepository.findTeamById(opponentTeamID);
+          }
+        }
+
+        return {
+          ...match,
+          opponentTeamName: opponentTeam?.teamName || null,
+          StartTime: match.StartTime?._seconds 
+            ? new Date(match.StartTime._seconds * 1000).toISOString()
+            : match.StartTime,
+          EndTime: match.EndTime?._seconds 
+            ? new Date(match.EndTime._seconds * 1000).toISOString()
+            : match.EndTime,
+          createdAt: match.createdAt?._seconds 
+            ? new Date(match.createdAt._seconds * 1000).toISOString()
+            : match.createdAt,
+        };
+      })
+    );
+
+    // Filter: Only show matches that are either:
+    // 1. Friendly matches (no Challenge_ID)
+    // 2. Competitive matches (have Challenge_ID, meaning challenge was accepted)
+    const filteredMatches = enrichedMatches.filter(match => {
+      // If it's a competitive match, it must have a Challenge_ID (meaning it was accepted)
+      if (match.matchType === "competitive") {
+        return match.Challenge_ID != null;
+      }
+      // Friendly matches are always shown
+      return true;
+    });
+
+    return {
+      team,
+      matchHistory: filteredMatches.sort((a, b) => 
+        new Date(b.StartTime || b.createdAt) - new Date(a.StartTime || a.createdAt)
+      ),
+    };
+  },
+
+  async getMyMatchHistory(teamID) {
+    const team = await TeamRepository.findById(teamID);
+    if (!team) {
+      throw new Error("Team not found");
+    }
+
+    // Get match history for the logged-in team (both as host and guest)
+    const matches = await TeamRepository.findMatchesByTeamId(teamID);
+
+    // Enrich matches with opponent team information for competitive matches
+    const enrichedMatches = await Promise.all(
+      matches.map(async (match) => {
+        let opponentTeam = null;
+        
+        // For competitive matches, get opponent team name
+        if (match.matchType === "competitive") {
+          const opponentTeamID = match.Host_Team_ID === teamID 
+            ? match.Guest_Team_ID 
+            : match.Host_Team_ID;
+          
+          if (opponentTeamID) {
+            opponentTeam = await TeamRepository.findTeamById(opponentTeamID);
+          }
+        }
+
+        return {
+          ...match,
+          opponentTeamName: opponentTeam?.teamName || null,
+          StartTime: match.StartTime?._seconds 
+            ? new Date(match.StartTime._seconds * 1000).toISOString()
+            : match.StartTime,
+          EndTime: match.EndTime?._seconds 
+            ? new Date(match.EndTime._seconds * 1000).toISOString()
+            : match.EndTime,
+          createdAt: match.createdAt?._seconds 
+            ? new Date(match.createdAt._seconds * 1000).toISOString()
+            : match.createdAt,
+        };
+      })
+    );
+
+    // Filter: Only show matches that are either:
+    // 1. Friendly matches (no Challenge_ID)
+    // 2. Competitive matches (have Challenge_ID, meaning challenge was accepted)
+    const filteredMatches = enrichedMatches.filter(match => {
+      // If it's a competitive match, it must have a Challenge_ID (meaning it was accepted)
+      if (match.matchType === "competitive") {
+        return match.Challenge_ID != null;
+      }
+      // Friendly matches are always shown
+      return true;
+    });
+
+    return {
+      team,
+      matchHistory: filteredMatches.sort((a, b) => 
+        new Date(b.StartTime || b.createdAt) - new Date(a.StartTime || a.createdAt)
+      ),
+    };
   },
 };
 
@@ -240,6 +470,46 @@ const TeamController = {
       return sendError(res, 500, error.message);
     }
   },
+
+  async getAllTeamsBySport(req, res) {
+    try {
+      const { sport } = req.query;
+      const currentTeamID = req.user.uid; // Get logged-in team ID
+      const teams = await TeamService.getAllTeamsBySport(sport, currentTeamID);
+      return sendSuccess(res, 200, "Teams fetched successfully ✅", { teams });
+    } catch (error) {
+      if (error.message.includes("required") || error.message.includes("Invalid sport")) {
+        return sendValidationError(res, error.message);
+      }
+      return sendError(res, 500, error.message);
+    }
+  },
+
+  async getTeamDetails(req, res) {
+    try {
+      const { teamID } = req.params;
+      const data = await TeamService.getTeamDetails(teamID);
+      return sendSuccess(res, 200, "Team details fetched successfully ✅", data);
+    } catch (error) {
+      if (error.message === "Team not found") {
+        return sendNotFoundError(res, "Team");
+      }
+      return sendError(res, 500, error.message);
+    }
+  },
+
+  async getMyMatchHistory(req, res) {
+    try {
+      const teamID = req.user.uid; // Get logged-in team ID
+      const data = await TeamService.getMyMatchHistory(teamID);
+      return sendSuccess(res, 200, "Match history fetched successfully ✅", data);
+    } catch (error) {
+      if (error.message === "Team not found") {
+        return sendNotFoundError(res, "Team");
+      }
+      return sendError(res, 500, error.message);
+    }
+  },
 };
 
 // ==================== ROUTES ====================
@@ -247,5 +517,8 @@ router.put("/edit-profile", verifyToken(["team"]), TeamController.updateProfile)
 router.get("/profile", verifyToken(["team"]), TeamController.getProfile);
 router.post("/add-player", verifyToken(["team"]), TeamController.addPlayer);
 router.post("/remove-player", verifyToken(["team"]), TeamController.removePlayer);
+router.get("/all-teams", verifyToken(["team"]), TeamController.getAllTeamsBySport);
+router.get("/team-details/:teamID", verifyToken(["team"]), TeamController.getTeamDetails);
+router.get("/match-history", verifyToken(["team"]), TeamController.getMyMatchHistory);
 
 export default router;

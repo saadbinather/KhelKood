@@ -8,6 +8,7 @@ import 'leaderboard_page.dart';
 import 'challenges_page.dart';
 import 'create_booking_or_challenge_page.dart';
 import 'all_courts_page.dart';
+import 'view_all_teams.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -128,11 +129,17 @@ class _DashboardPageState extends State<DashboardPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
+            child: const Text(
+              'Logout',
+              style: TextStyle(color: Colors.redAccent),
+            ),
           ),
         ],
       ),
@@ -143,7 +150,7 @@ class _DashboardPageState extends State<DashboardPage> {
         // Call logout endpoint
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('auth_token');
-        
+
         if (token != null) {
           await http.post(
             Uri.parse('http://localhost:5000/api/auth/logout'),
@@ -153,7 +160,7 @@ class _DashboardPageState extends State<DashboardPage> {
             },
           );
         }
-        
+
         // Clear local token
         await prefs.remove('auth_token');
       } catch (e) {
@@ -161,7 +168,7 @@ class _DashboardPageState extends State<DashboardPage> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('auth_token');
       }
-      
+
       if (context.mounted) {
         Navigator.pushAndRemoveUntil(
           context,
@@ -209,11 +216,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   color: Colors.redAccent.withOpacity(0.2),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  icon,
-                  size: 40,
-                  color: Colors.redAccent,
-                ),
+                child: Icon(icon, size: 40, color: Colors.redAccent),
               ),
               const SizedBox(height: 16),
               Text(
@@ -228,10 +231,7 @@ class _DashboardPageState extends State<DashboardPage> {
               const SizedBox(height: 8),
               Text(
                 subtitle,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.white70, fontSize: 12),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -297,7 +297,8 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        teamData!['sports'] != null && teamData!['sports'].toString().isNotEmpty
+                        teamData!['sports'] != null &&
+                                teamData!['sports'].toString().isNotEmpty
                             ? teamData!['sports'].toString().toUpperCase()
                             : 'No Sport',
                         style: TextStyle(
@@ -322,10 +323,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 const SizedBox(width: 12),
                 const Text(
                   'Points: ',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
                 ),
                 Text(
                   '${teamData!['points'] ?? 0}',
@@ -337,7 +335,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ],
             ),
-            if (teamData!['players'] != null && (teamData!['players'] as List).isNotEmpty) ...[
+            if (teamData!['players'] != null &&
+                (teamData!['players'] as List).isNotEmpty) ...[
               const SizedBox(height: 16),
               const Divider(color: Colors.white24),
               const SizedBox(height: 12),
@@ -355,7 +354,10 @@ class _DashboardPageState extends State<DashboardPage> {
                 runSpacing: 8,
                 children: (teamData!['players'] as List).map<Widget>((player) {
                   return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.redAccent.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(20),
@@ -365,10 +367,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     ),
                     child: Text(
                       player.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   );
                 }).toList(),
@@ -388,10 +387,7 @@ class _DashboardPageState extends State<DashboardPage> {
         Expanded(
           child: RichText(
             text: TextSpan(
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
               children: [
                 TextSpan(
                   text: '$label: ',
@@ -417,7 +413,8 @@ class _DashboardPageState extends State<DashboardPage> {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const CreateBookingOrChallengePage(actionType: 'challenge'),
+              builder: (context) =>
+                  const CreateBookingOrChallengePage(actionType: 'challenge'),
             ),
           );
           // Refresh courts if challenge was created successfully
@@ -445,7 +442,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -454,10 +450,7 @@ class _DashboardPageState extends State<DashboardPage> {
         backgroundColor: Colors.redAccent,
         title: const Text(
           'Player Dashboard',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         actions: [
@@ -473,142 +466,156 @@ class _DashboardPageState extends State<DashboardPage> {
               child: CircularProgressIndicator(color: Colors.redAccent),
             )
           : errorMessage != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        errorMessage!,
-                        style: const TextStyle(color: Colors.redAccent),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _fetchTeamDetails,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                        ),
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                )
-              : SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 8),
-                        Text(
-                          'Welcome, ${teamData?['teamName'] ?? 'Player'}!',
-                          style: const TextStyle(
-                            color: Colors.redAccent,
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Manage your profile, challenges, and bookings',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        _buildTeamInfoCard(),
-                        const SizedBox(height: 20),
-                        _buildCreateChallengeButton(),
-                        const SizedBox(height: 20),
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                childAspectRatio: 0.85,
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildDashboardCard(
-                    context: context,
-                    title: 'Profile',
-                    subtitle: 'View & edit your profile',
-                    icon: Icons.person,
-                    onTap: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ProfilePage(),
-                        ),
-                      );
-                      // Refresh team data if changes were made
-                      if (result == true) {
-                        _fetchTeamDetails();
-                      }
-                    },
+                  Text(
+                    errorMessage!,
+                    style: const TextStyle(color: Colors.redAccent),
+                    textAlign: TextAlign.center,
                   ),
-                  _buildDashboardCard(
-                    context: context,
-                    title: 'Leaderboard',
-                    subtitle: 'Check rankings',
-                    icon: Icons.emoji_events,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const LeaderboardPage(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildDashboardCard(
-                    context: context,
-                    title: 'Challenges',
-                    subtitle: 'View & accept challenges',
-                    icon: Icons.sports_mma,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ChallengesPage(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildDashboardCard(
-                    context: context,
-                    title: 'Book a court for yourself',
-                    subtitle: 'Friendly match',
-                    icon: Icons.calendar_today,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const CreateBookingOrChallengePage(actionType: 'booking'),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildDashboardCard(
-                    context: context,
-                    title: 'All Courts',
-                    subtitle: 'Browse and review courts',
-                    icon: Icons.sports_soccer,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AllCourtsPage(),
-                        ),
-                      );
-                    },
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _fetchTeamDetails,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                    ),
+                    child: const Text('Retry'),
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
-      ),
+            )
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 8),
+                    Text(
+                      'Welcome, ${teamData?['teamName'] ?? 'Player'}!',
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Manage your profile, challenges, and bookings',
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                    ),
+                    const SizedBox(height: 20),
+                    _buildTeamInfoCard(),
+                    const SizedBox(height: 20),
+                    _buildCreateChallengeButton(),
+                    const SizedBox(height: 20),
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 16,
+                      childAspectRatio: 0.85,
+                      children: [
+                        _buildDashboardCard(
+                          context: context,
+                          title: 'Profile',
+                          subtitle: 'View & edit your profile',
+                          icon: Icons.person,
+                          onTap: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ProfilePage(),
+                              ),
+                            );
+                            // Refresh team data if changes were made
+                            if (result == true) {
+                              _fetchTeamDetails();
+                            }
+                          },
+                        ),
+                        _buildDashboardCard(
+                          context: context,
+                          title: 'Leaderboard',
+                          subtitle: 'Check rankings',
+                          icon: Icons.emoji_events,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const LeaderboardPage(),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildDashboardCard(
+                          context: context,
+                          title: 'Challenges',
+                          subtitle: 'View & accept challenges',
+                          icon: Icons.sports_mma,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ChallengesPage(),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildDashboardCard(
+                          context: context,
+                          title: 'Book a court for yourself',
+                          subtitle: 'Friendly match',
+                          icon: Icons.calendar_today,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const CreateBookingOrChallengePage(
+                                      actionType: 'booking',
+                                    ),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildDashboardCard(
+                          context: context,
+                          title: 'All Courts',
+                          subtitle: 'Browse and review courts',
+                          icon: Icons.sports_soccer,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const AllCourtsPage(),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildDashboardCard(
+                          context: context,
+                          title: 'All Teams',
+                          subtitle: 'View teams in your sport',
+                          icon: Icons.groups,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ViewAllTeamsPage(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
     );
   }
 }

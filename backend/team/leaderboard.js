@@ -44,4 +44,4 @@ router.get("/", verifyToken(["team"]), (req, res) =>
   leaderboardController.getLeaderboard(req, res)
 );
 
-export default router;git
+export default router;

@@ -1,8 +1,8 @@
 import express from "express";
-import { db } from "./config/firebase.js";
-import { verifyToken } from "./middleware/verifyToken.js";
-import { sendSuccess, sendError, sendValidationError, sendNotFoundError } from "./utils/response.js";
-import { validateRequired } from "./utils/validators.js";
+import { db } from "../config/firebase.js";
+import { verifyToken } from "../middleware/verifyToken.js";
+import { sendSuccess, sendError, sendValidationError, sendNotFoundError } from "../utils/response.js";
+import { validateRequired } from "../utils/validators.js";
 
 const router = express.Router();
 
@@ -246,3 +246,4 @@ router.post("/verify-user", verifyToken(["admin"]), AdminController.verifyUser);
 router.post("/reject-user", verifyToken(["admin"]), AdminController.rejectUser);
 
 export default router;
+

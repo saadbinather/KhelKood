@@ -1,17 +1,17 @@
 import express from "express";
 import axios from "axios";
-import { admin, db } from "./config/firebase.js";
+import { admin, db } from "../config/firebase.js";
 import {
   sendSuccess,
   sendError,
   sendValidationError,
   sendNotFoundError,
-} from "./utils/response.js";
+} from "../utils/response.js";
 import {
   validateRequired,
   validatePhone,
   validateCNIC,
-} from "./utils/validators.js";
+} from "../utils/validators.js";
 
 const router = express.Router();
 
@@ -125,13 +125,13 @@ const AuthService = {
     } = signupData;
 
     // Validation - password not required if firebase_uid is provided (Google sign-in)
-    const requiredFields = firebase_uid 
+    const requiredFields = firebase_uid
       ? { email, name, role }
       : { email, password, name, role };
     const requiredFieldNames = firebase_uid
       ? ["email", "name", "role"]
       : ["email", "password", "name", "role"];
-    
+
     const validation = validateRequired(requiredFields, requiredFieldNames);
     if (!validation.isValid) {
       throw new Error(validation.error);
@@ -169,28 +169,33 @@ const AuthService = {
       verificationStatus: "pending",
       createdAt: new Date(),
       // Store signup data for courtowner/team creation during approval if needed
-      signupData: role === "courtowner" ? {
-        phone: phone || "",
-        cnic: cnic || "",
-        courtName: courtName || "",
-        location: location || "",
-        courtTitle: courtTitle || "",
-        courtAddress: courtAddress || "",
-        numOfCricketFields: Number(numOfCricketFields) || 0,
-        numOfPadelCourts: Number(numOfPadelCourts) || 0,
-        numOfFutsalFields: Number(numOfFutsalFields) || 0,
-        cricketRate: Number(cricketRate) || 0,
-        futsalRate: Number(futsalRate) || 0,
-        padelRate: Number(padelRate) || 0,
-        rating: Number(rating) || 0,
-        openingTime: Number(openingTime) || 8,
-        closingTime: Number(closingTime) || 23,
-      } : role === "team" ? {
-        teamName: teamName || "",
-        sports: sports || "",
-        phone: phone || "",
-        players: Array.isArray(players) ? players : [],
-      } : null,
+      signupData:
+        role === "courtowner"
+          ? {
+              phone: phone || "",
+              cnic: cnic || "",
+              courtName: courtName || "",
+              location: location || "",
+              courtTitle: courtTitle || "",
+              courtAddress: courtAddress || "",
+              numOfCricketFields: Number(numOfCricketFields) || 0,
+              numOfPadelCourts: Number(numOfPadelCourts) || 0,
+              numOfFutsalFields: Number(numOfFutsalFields) || 0,
+              cricketRate: Number(cricketRate) || 0,
+              futsalRate: Number(futsalRate) || 0,
+              padelRate: Number(padelRate) || 0,
+              rating: Number(rating) || 0,
+              openingTime: Number(openingTime) || 8,
+              closingTime: Number(closingTime) || 23,
+            }
+          : role === "team"
+          ? {
+              teamName: teamName || "",
+              sports: sports || "",
+              phone: phone || "",
+              players: Array.isArray(players) ? players : [],
+            }
+          : null,
     };
     await AuthRepository.createUser(finalFirebaseUid, userData);
 
@@ -211,7 +216,7 @@ const AuthService = {
         location: location || "",
         createdAt: new Date(),
       };
-      
+
       try {
         await AuthRepository.createCourtowner(finalFirebaseUid, courtownerData);
       } catch (error) {
@@ -236,7 +241,7 @@ const AuthService = {
         closingTime: Number(closingTime) || 23,
         createdAt: new Date(),
       };
-      
+
       try {
         await AuthRepository.createCourt(courtData);
       } catch (error) {
@@ -263,14 +268,19 @@ const AuthService = {
         phone: phone || "",
         teamName: teamName.trim(),
         sports: sports.toLowerCase(), // Normalize to lowercase
-        players: Array.isArray(players) ? players.filter(p => p && p.trim() !== "") : [],
+        players: Array.isArray(players)
+          ? players.filter((p) => p && p.trim() !== "")
+          : [],
         createdAt: new Date(),
         points: 0,
       };
       await AuthRepository.createTeam(finalFirebaseUid, teamData);
       // Only create players if array is not empty
       if (Array.isArray(players) && players.length > 0) {
-        await AuthRepository.createPlayers(players.filter(p => p && p.trim() !== ""), finalFirebaseUid);
+        await AuthRepository.createPlayers(
+          players.filter((p) => p && p.trim() !== ""),
+          finalFirebaseUid
+        );
       }
     }
 
@@ -372,9 +382,14 @@ const AuthController = {
   async signup(req, res) {
     try {
       const result = await AuthService.signup(req.body);
-      return sendSuccess(res, 201, `Signup successful as ${result.role}. Please wait for admin verification.`, {
-        uid: result.firebase_uid,
-      });
+      return sendSuccess(
+        res,
+        201,
+        `Signup successful as ${result.role}. Please wait for admin verification.`,
+        {
+          uid: result.firebase_uid,
+        }
+      );
     } catch (error) {
       const errorMessage =
         error.response?.data?.error?.message || error.message;
@@ -427,7 +442,7 @@ const AuthController = {
   async googleLogin(req, res) {
     try {
       const result = await AuthService.googleLogin(req.body.token);
-      
+
       // Handle different response statuses
       // Return responses at root level to match Flutter expectations (data["status"])
       if (result.status === "choose_role") {
@@ -437,13 +452,13 @@ const AuthController = {
           email: result.email,
         });
       }
-      
+
       if (result.status === "blocked") {
         return res.status(200).json({
           status: "blocked",
         });
       }
-      
+
       // Success - verified user
       return res.status(200).json({
         status: "ok",
@@ -455,7 +470,10 @@ const AuthController = {
       if (errorMessage.includes("Invalid") || errorMessage.includes("token")) {
         return sendError(res, 401, "Invalid or expired token");
       }
-      if (errorMessage.includes("required") || errorMessage.includes("Missing")) {
+      if (
+        errorMessage.includes("required") ||
+        errorMessage.includes("Missing")
+      ) {
         return sendValidationError(res, errorMessage);
       }
       return sendError(res, 500, errorMessage);

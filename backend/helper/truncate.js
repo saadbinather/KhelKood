@@ -1,5 +1,5 @@
 // truncate_collections.js
-import { db } from "./config/firebase.js";
+import { db } from "../config/firebase.js";
 
 const collectionsToTruncate = ["challenges", "bookings", "matches", "payments"];
 

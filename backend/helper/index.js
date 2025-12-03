@@ -1,9 +1,14 @@
 import admin from "firebase-admin";
-import fs from "fs"; // 👈 ye line add karo
+import fs from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // 🔹 Load service account key
 const serviceAccount = JSON.parse(
-  fs.readFileSync("./serviceAccountKey.json", "utf8")
+  fs.readFileSync(join(__dirname, "../Auth/serviceAccountkey.json"), "utf8")
 );
 
 // 🔹 Initialize Firebase Admin SDK

@@ -56,16 +56,16 @@
 
 import express from "express";
 import axios from "axios";
-import { db } from "./config/firebase.js";
-import { verifyToken } from "./middleware/verifyToken.js";
+import { db } from "../config/firebase.js";
+import { verifyToken } from "../middleware/verifyToken.js";
 import {
   sendSuccess,
   sendError,
   sendValidationError,
   sendNotFoundError,
   sendUnauthorizedError,
-} from "./utils/response.js";
-import { validateRequired } from "./utils/validators.js";
+} from "../utils/response.js";
+import { validateRequired } from "../utils/validators.js";
 
 const router = express.Router();
 
@@ -413,3 +413,4 @@ router.post(
 );
 
 export default router;
+

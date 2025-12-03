@@ -1,13 +1,13 @@
 import express from "express";
-import { db } from "./config/firebase.js";
-import { verifyToken } from "./middleware/verifyToken.js";
+import { db } from "../config/firebase.js";
+import { verifyToken } from "../middleware/verifyToken.js";
 import {
   sendSuccess,
   sendError,
   sendValidationError,
   sendNotFoundError,
-} from "./utils/response.js";
-import { validateRequired } from "./utils/validators.js";
+} from "../utils/response.js";
+import { validateRequired } from "../utils/validators.js";
 
 const router = express.Router();
 
@@ -301,3 +301,4 @@ router.get(
 );
 
 export default router;
+

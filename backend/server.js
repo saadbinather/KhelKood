@@ -1,19 +1,19 @@
 import express from "express";
 import cors from "cors";
-import authRoutes from "./auth.js";
-import teamRoutes from "./team.js";
-import bookingRoutes from "./booking.js";
-import matchRoutes from "./match.js";
-import paymentRoutes from "./payments.js";
+import authRoutes from "./Auth/auth.js";
+import teamRoutes from "./team/team.js";
+import bookingRoutes from "./team/booking.js";
+import matchRoutes from "./team/match.js";
+import paymentRoutes from "./team/payments.js";
 import { verifyToken } from "./middleware/verifyToken.js";
 import { db } from "./config/firebase.js";
-import challengeRoutes from "./challenges.js";
-import courtownerRoutes from "./courtOwner.js";
-import adminRoutes from "./admin.js";
-import userRoutes from "./user.js";
-import courtsRoutes from "./courts.js";
-import reviewsRoutes from "./reviews.js";
-import leaderboardRoutes from "./leaderboard.js";
+import challengeRoutes from "./team/challenges.js";
+// import courtownerRoutes from "./courtowner/courtOwner.js"; // TODO: Create courtowner folder and files
+import adminRoutes from "./admin/admin.js";
+import userRoutes from "./user/user.js";
+// import courtsRoutes from "./courtowner/courts.js"; // TODO: Create courtowner folder and files
+import reviewsRoutes from "./team/reviews.js";
+import leaderboardRoutes from "./team/leaderboard.js";
 import { sendSuccess, sendError, sendNotFoundError } from "./utils/response.js";
 
 const app = express();
@@ -24,13 +24,13 @@ app.use(cors());
 app.use("/api/admin", adminRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api/courtowner", courtownerRoutes);
+// app.use("/api/courtowner", courtownerRoutes); // TODO: Uncomment when courtowner files are created
 app.use("/api/team", teamRoutes);
 app.use("/api/booking", bookingRoutes);
 app.use("/api/match", matchRoutes);
 app.use("/api/challenges", challengeRoutes);
 app.use("/api/payments", paymentRoutes);
-app.use("/api/courts", courtsRoutes);
+// app.use("/api/courts", courtsRoutes); // TODO: Uncomment when courtowner files are created
 app.use("/api/reviews", reviewsRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
 

@@ -1,8 +1,8 @@
 import express from "express";
-import { db } from "./config/firebase.js";
-import { verifyToken } from "./middleware/verifyToken.js";
-import { sendSuccess, sendError, sendValidationError, sendNotFoundError } from "./utils/response.js";
-import { validateRequired, validateTeamPhone, validateEmail } from "./utils/validators.js";
+import { db } from "../config/firebase.js";
+import { verifyToken } from "../middleware/verifyToken.js";
+import { sendSuccess, sendError, sendValidationError, sendNotFoundError } from "../utils/response.js";
+import { validateRequired, validateTeamPhone, validateEmail } from "../utils/validators.js";
 
 const router = express.Router();
 
@@ -522,3 +522,4 @@ router.get("/team-details/:teamID", verifyToken(["team"]), TeamController.getTea
 router.get("/match-history", verifyToken(["team"]), TeamController.getMyMatchHistory);
 
 export default router;
+

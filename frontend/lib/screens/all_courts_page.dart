@@ -151,6 +151,9 @@ class _AllCourtsPageState extends State<AllCourtsPage> {
   }
 
   Widget _buildCourtCard(BuildContext context, Map<String, dynamic> court) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -164,10 +167,10 @@ class _AllCourtsPageState extends State<AllCourtsPage> {
         );
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 8),
+        margin: EdgeInsets.symmetric(vertical: isSmallScreen ? 6 : 8),
         decoration: BoxDecoration(
           color: Colors.grey[900],
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: Colors.redAccent.withOpacity(0.3),
             width: 1.5,
@@ -180,65 +183,128 @@ class _AllCourtsPageState extends State<AllCourtsPage> {
             ),
           ],
         ),
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(16),
-          leading: Container(
-            padding: const EdgeInsets.all(12),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CreateBookingOrChallengePage(
+                    actionType: 'both',
+                    preSelectedCourt: court,
+                  ),
+                ),
+              );
+            },
+            child: Padding(
+              padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
             decoration: BoxDecoration(
               color: Colors.redAccent.withOpacity(0.2),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(
+                    child: Icon(
               Icons.sports_soccer,
               color: Colors.redAccent,
-              size: 24,
+                      size: isSmallScreen ? 20 : 24,
             ),
           ),
-          title: Text(
+                  SizedBox(width: isSmallScreen ? 12 : 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
             court['name'] ?? 'Unknown Court',
-            style: const TextStyle(
+                          style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
-              fontSize: 18,
+                            fontSize: isSmallScreen ? 16 : 18,
             ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
           ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+                        SizedBox(height: isSmallScreen ? 4 : 6),
+                        Row(
             children: [
-              const SizedBox(height: 4),
-              Text(
+                            Icon(
+                              Icons.location_on_outlined,
+                              color: Colors.white60,
+                              size: isSmallScreen ? 14 : 16,
+                            ),
+                            SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
                 court['address'] ?? 'Unknown Address',
-                style: const TextStyle(color: Colors.white60),
+                                style: TextStyle(
+                                  color: Colors.white60,
+                                  fontSize: isSmallScreen ? 12 : 14,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
               ),
-              const SizedBox(height: 4),
+                          ],
+                        ),
+                        SizedBox(height: isSmallScreen ? 4 : 6),
               Row(
                 children: [
-                  Icon(Icons.access_time, color: Colors.white70, size: 14),
-                  const SizedBox(width: 4),
+                            Icon(
+                              Icons.access_time,
+                              color: Colors.white70,
+                              size: isSmallScreen ? 14 : 16,
+                            ),
+                            SizedBox(width: 4),
                   Text(
                     '${court['openingTime'] ?? 8}:00 - ${court['closingTime'] ?? 23}:00',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: isSmallScreen ? 11 : 12,
+                              ),
                   ),
                 ],
               ),
             ],
           ),
-          trailing: Row(
+                  ),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.star, color: Colors.amber, size: 20),
-              const SizedBox(width: 4),
+                          Icon(
+                            Icons.star,
+                            color: Colors.amber,
+                            size: isSmallScreen ? 16 : 18,
+                          ),
+                          SizedBox(width: 4),
               Text(
                 '${court['rating'] ?? 0}',
-                style: const TextStyle(color: Colors.white),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: isSmallScreen ? 14 : 16,
+                              fontWeight: FontWeight.w600,
+                            ),
               ),
-              const SizedBox(width: 4),
+                        ],
+                      ),
+                      SizedBox(height: isSmallScreen ? 4 : 8),
               Icon(
                 Icons.arrow_forward_ios_rounded,
                 color: Colors.redAccent,
-                size: 18,
+                        size: isSmallScreen ? 14 : 16,
+                      ),
+                    ],
               ),
             ],
+              ),
+            ),
           ),
         ),
       ),
@@ -247,18 +313,35 @@ class _AllCourtsPageState extends State<AllCourtsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final isTablet = screenWidth > 600;
+    final horizontalPadding = isSmallScreen ? 12.0 : isTablet ? 24.0 : 16.0;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.redAccent,
-        title: const Text(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Row(
+          children: [
+            Icon(
+              Icons.sports_soccer,
+              color: Colors.redAccent,
+              size: isSmallScreen ? 20 : 24,
+            ),
+            SizedBox(width: isSmallScreen ? 8 : 12),
+            Text(
           'All Courts',
           style: TextStyle(
             color: Colors.white,
-            fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
+                fontSize: isSmallScreen ? 18 : 20,
+              ),
           ),
+          ],
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: isLoading
           ? const Center(
@@ -310,40 +393,97 @@ class _AllCourtsPageState extends State<AllCourtsPage> {
                       onRefresh: _fetchVerifiedCourts,
                       color: Colors.redAccent,
                       child: Padding(
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(horizontalPadding),
                         child: Column(
                           children: [
                             // Search Bar
                             TextField(
                               controller: _searchController,
                               onChanged: (_) => setState(() {}),
-                              style: const TextStyle(color: Colors.white),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: isSmallScreen ? 14 : 16,
+                              ),
                               decoration: InputDecoration(
                                 hintText: 'Search courts...',
-                                hintStyle: const TextStyle(color: Colors.white54),
-                                prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                                hintStyle: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: isSmallScreen ? 14 : 16,
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.search,
+                                  color: Colors.redAccent.withOpacity(0.7),
+                                  size: isSmallScreen ? 20 : 22,
+                                ),
                                 filled: true,
                                 fillColor: Colors.grey[900],
                                 border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(8),
                                   borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: Colors.grey[800]!, width: 1),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+                            ),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: isSmallScreen ? 12 : 16,
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: isSmallScreen ? 12 : 16),
                             // Filter Dropdown
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text(
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.sort,
+                                      color: Colors.redAccent,
+                                      size: isSmallScreen ? 18 : 20,
+                                    ),
+                                    SizedBox(width: isSmallScreen ? 6 : 8),
+                                    Text(
                                   'Sort by:',
-                                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: isSmallScreen ? 14 : 16,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                DropdownButton<String>(
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isSmallScreen ? 8 : 12,
+                                    vertical: isSmallScreen ? 4 : 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[900],
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.redAccent.withOpacity(0.3),
+                                      width: 1.5,
+                                    ),
+                                ),
+                                  child: DropdownButton<String>(
                                   value: _selectedFilter,
                                   dropdownColor: Colors.grey[900],
-                                  style: const TextStyle(color: Colors.white),
-                                  borderRadius: BorderRadius.circular(12),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: isSmallScreen ? 14 : 16,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                    underline: Container(),
+                                    icon: Icon(
+                                      Icons.arrow_drop_down,
+                                      color: Colors.redAccent,
+                                      size: isSmallScreen ? 20 : 24,
+                                    ),
                                   items: const [
                                     DropdownMenuItem(value: 'A-Z', child: Text('A-Z')),
                                     DropdownMenuItem(value: 'Z-A', child: Text('Z-A')),
@@ -355,6 +495,7 @@ class _AllCourtsPageState extends State<AllCourtsPage> {
                                       _applyFilters();
                                     });
                                   },
+                                  ),
                                 ),
                               ],
                             ),

@@ -1,72 +1,71 @@
-/**
- * Reusable Empty State Widget
- * 
- * OOP Principles:
- * - Encapsulation: Empty state UI in one place
- * - Reusability: Consistent empty states across app
- */
-
 import 'package:flutter/material.dart';
+import '../../core/constants/app_colors.dart';
 
+/// Reusable empty state widget
+/// Implements Single Responsibility - displays empty state
 class EmptyState extends StatelessWidget {
-  final IconData icon;
   final String title;
-  final String? subtitle;
-  final String? actionText;
+  final String? message;
+  final IconData icon;
   final VoidCallback? onAction;
+  final String? actionLabel;
 
   const EmptyState({
     super.key,
-    required this.icon,
     required this.title,
-    this.subtitle,
-    this.actionText,
+    this.message,
+    required this.icon,
     this.onAction,
+    this.actionLabel,
   });
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               icon,
+              color: AppColors.textSecondary,
               size: 80,
-              color: Colors.white38,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             Text(
               title,
               style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
             ),
-            if (subtitle != null) ...[
+            if (message != null) ...[
               const SizedBox(height: 8),
               Text(
-                subtitle!,
+                message!,
                 style: const TextStyle(
-                  color: Colors.white60,
+                  color: AppColors.textSecondary,
                   fontSize: 14,
                 ),
                 textAlign: TextAlign.center,
               ),
             ],
-            if (actionText != null && onAction != null) ...[
+            if (onAction != null && actionLabel != null) ...[
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: onAction,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.textPrimary,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                 ),
-                child: Text(actionText!),
+                child: Text(actionLabel!),
               ),
             ],
           ],

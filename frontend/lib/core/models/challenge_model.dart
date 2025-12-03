@@ -1,133 +1,191 @@
-/**
- * Challenge Model - Data entity for challenges
- * 
- * OOP Principles:
- * - Encapsulation: Data structure with business logic
- * - Single Responsibility: Only handles challenge data
- */
-
+/// Challenge data model
+/// Implements OOP principles with encapsulation
 class ChallengeModel {
-  final String id;
+  final String? id;
+  final String challengerTeamId;
+  final String challengerTeamName;
+  final String opponentTeamId;
+  final String opponentTeamName;
   final String courtId;
-  final int courtNum;
-  final String hostTeamId;
-  final String hostTeamName;
-  final DateTime startTime;
-  final DateTime endTime;
+  final String courtName;
+  final String sport;
+  final DateTime date;
+  final int startSlot;
+  final int endSlot;
   final String status;
-  final String? guestTeamId;
-  final String? guestTeamName;
-  final String? sportType;
+  final int? amount;
   final DateTime? createdAt;
+  final DateTime? acceptedAt;
+  final String? winnerId;
+  final String? winnerName;
 
   ChallengeModel({
-    required this.id,
+    this.id,
+    required this.challengerTeamId,
+    required this.challengerTeamName,
+    required this.opponentTeamId,
+    required this.opponentTeamName,
     required this.courtId,
-    required this.courtNum,
-    required this.hostTeamId,
-    required this.hostTeamName,
-    required this.startTime,
-    required this.endTime,
-    this.status = 'open',
-    this.guestTeamId,
-    this.guestTeamName,
-    this.sportType,
+    required this.courtName,
+    required this.sport,
+    required this.date,
+    required this.startSlot,
+    required this.endSlot,
+    required this.status,
+    this.amount,
     this.createdAt,
+    this.acceptedAt,
+    this.winnerId,
+    this.winnerName,
   });
 
+  // Factory constructor for creating instance from JSON
   factory ChallengeModel.fromJson(Map<String, dynamic> json) {
     return ChallengeModel(
-      id: json['id'] ?? '',
-      courtId: json['courtID'] ?? json['courtId'] ?? '',
-      courtNum: json['courtNum'] ?? 0,
-      hostTeamId: json['hostTeamID'] ?? json['hostTeamId'] ?? '',
-      hostTeamName: json['hostTeamName'] ?? 'Unknown',
-      startTime: _parseDateTime(json['startTime']),
-      endTime: _parseDateTime(json['endTime']),
-      status: json['status'] ?? 'open',
-      guestTeamId: json['guestTeamID'] ?? json['guestTeamId'],
-      guestTeamName: json['guestTeamName'],
-      sportType: json['sportType'],
-      createdAt: json['createdAt'] != null 
-          ? _parseDateTime(json['createdAt'])
-          : null,
+      id: json['_id']?.toString() ?? json['id']?.toString(),
+      challengerTeamId: json['challengerTeamId']?.toString() ?? 
+                       json['challenger_team_id']?.toString() ?? '',
+      challengerTeamName: json['challengerTeamName']?.toString() ?? 
+                         json['challenger_team_name']?.toString() ?? 'Unknown',
+      opponentTeamId: json['opponentTeamId']?.toString() ?? 
+                     json['opponent_team_id']?.toString() ?? '',
+      opponentTeamName: json['opponentTeamName']?.toString() ?? 
+                       json['opponent_team_name']?.toString() ?? 'Unknown',
+      courtId: json['courtId']?.toString() ?? json['court_id']?.toString() ?? '',
+      courtName: json['courtName']?.toString() ?? json['court_name']?.toString() ?? 'Unknown',
+      sport: json['sport']?.toString() ?? '',
+      date: _parseDate(json['date']) ?? DateTime.now(),
+      startSlot: _parseInt(json['startSlot']) ?? _parseInt(json['start_slot']) ?? 0,
+      endSlot: _parseInt(json['endSlot']) ?? _parseInt(json['end_slot']) ?? 0,
+      status: json['status']?.toString() ?? 'pending',
+      amount: _parseInt(json['amount']),
+      createdAt: _parseDate(json['createdAt']) ?? _parseDate(json['created_at']),
+      acceptedAt: _parseDate(json['acceptedAt']) ?? _parseDate(json['accepted_at']),
+      winnerId: json['winnerId']?.toString() ?? json['winner_id']?.toString(),
+      winnerName: json['winnerName']?.toString() ?? json['winner_name']?.toString(),
     );
   }
 
-  static DateTime _parseDateTime(dynamic value) {
-    if (value == null) return DateTime.now();
-    if (value is DateTime) return value;
-    if (value is String) return DateTime.parse(value);
-    if (value is Map && value.containsKey('_seconds')) {
-      return DateTime.fromMillisecondsSinceEpoch(
-        (value['_seconds'] as int) * 1000
-      );
-    }
-    return DateTime.now();
-  }
-
+  // Convert instance to JSON
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'courtID': courtId,
-      'courtNum': courtNum,
-      'hostTeamID': hostTeamId,
-      'hostTeamName': hostTeamName,
-      'startTime': startTime.toIso8601String(),
-      'endTime': endTime.toIso8601String(),
+      if (id != null) 'id': id,
+      'challengerTeamId': challengerTeamId,
+      'challengerTeamName': challengerTeamName,
+      'opponentTeamId': opponentTeamId,
+      'opponentTeamName': opponentTeamName,
+      'courtId': courtId,
+      'courtName': courtName,
+      'sport': sport,
+      'date': date.toIso8601String(),
+      'startSlot': startSlot,
+      'endSlot': endSlot,
       'status': status,
-      'guestTeamID': guestTeamId,
-      'guestTeamName': guestTeamName,
-      'sportType': sportType,
-      'createdAt': createdAt?.toIso8601String(),
+      if (amount != null) 'amount': amount,
+      if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
+      if (acceptedAt != null) 'acceptedAt': acceptedAt!.toIso8601String(),
+      if (winnerId != null) 'winnerId': winnerId,
+      if (winnerName != null) 'winnerName': winnerName,
     };
   }
 
-  // Business logic methods
-  bool isOpen() => status.toLowerCase() == 'open';
-  bool isAccepted() => status.toLowerCase() == 'accepted';
-  bool isCancelled() => status.toLowerCase() == 'cancelled';
-
-  int getDurationInHours() {
-    return endTime.difference(startTime).inHours;
+  // Helper methods
+  static int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value);
+    if (value is double) return value.toInt();
+    return null;
   }
 
-  bool isPast() {
-    return endTime.isBefore(DateTime.now());
+  static DateTime? _parseDate(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
   }
 
-  bool isUpcoming() {
-    return startTime.isAfter(DateTime.now());
-  }
-
+  // Copy with method
   ChallengeModel copyWith({
     String? id,
+    String? challengerTeamId,
+    String? challengerTeamName,
+    String? opponentTeamId,
+    String? opponentTeamName,
     String? courtId,
-    int? courtNum,
-    String? hostTeamId,
-    String? hostTeamName,
-    DateTime? startTime,
-    DateTime? endTime,
+    String? courtName,
+    String? sport,
+    DateTime? date,
+    int? startSlot,
+    int? endSlot,
     String? status,
-    String? guestTeamId,
-    String? guestTeamName,
-    String? sportType,
+    int? amount,
     DateTime? createdAt,
+    DateTime? acceptedAt,
+    String? winnerId,
+    String? winnerName,
   }) {
     return ChallengeModel(
       id: id ?? this.id,
+      challengerTeamId: challengerTeamId ?? this.challengerTeamId,
+      challengerTeamName: challengerTeamName ?? this.challengerTeamName,
+      opponentTeamId: opponentTeamId ?? this.opponentTeamId,
+      opponentTeamName: opponentTeamName ?? this.opponentTeamName,
       courtId: courtId ?? this.courtId,
-      courtNum: courtNum ?? this.courtNum,
-      hostTeamId: hostTeamId ?? this.hostTeamId,
-      hostTeamName: hostTeamName ?? this.hostTeamName,
-      startTime: startTime ?? this.startTime,
-      endTime: endTime ?? this.endTime,
+      courtName: courtName ?? this.courtName,
+      sport: sport ?? this.sport,
+      date: date ?? this.date,
+      startSlot: startSlot ?? this.startSlot,
+      endSlot: endSlot ?? this.endSlot,
       status: status ?? this.status,
-      guestTeamId: guestTeamId ?? this.guestTeamId,
-      guestTeamName: guestTeamName ?? this.guestTeamName,
-      sportType: sportType ?? this.sportType,
+      amount: amount ?? this.amount,
       createdAt: createdAt ?? this.createdAt,
+      acceptedAt: acceptedAt ?? this.acceptedAt,
+      winnerId: winnerId ?? this.winnerId,
+      winnerName: winnerName ?? this.winnerName,
     );
   }
+
+  // Business logic methods
+  String get formattedDate {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  String get timeRange {
+    return 'Slot $startSlot - $endSlot';
+  }
+
+  bool get isPending {
+    return status.toLowerCase() == 'pending' || status.toLowerCase() == 'open';
+  }
+
+  bool get isAccepted {
+    return status.toLowerCase() == 'accepted';
+  }
+
+  bool get isCompleted {
+    return status.toLowerCase() == 'completed';
+  }
+
+  bool get isCancelled {
+    return status.toLowerCase() == 'cancelled';
+  }
+
+  bool get isUpcoming {
+    return date.isAfter(DateTime.now()) && (isPending || isAccepted);
+  }
+
+  @override
+  String toString() => 
+      'ChallengeModel(id: $id, challenger: $challengerTeamName, opponent: $opponentTeamName)';
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is ChallengeModel && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
 }
 

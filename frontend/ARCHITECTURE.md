@@ -1,378 +1,295 @@
-# Frontend Architecture Documentation
+# KhelKood Frontend Architecture
 
 ## Overview
-This Flutter application follows **SOLID principles** and **OOP best practices** with a **modular, layered architecture**.
+This document describes the architecture and design principles implemented in the KhelKood frontend application.
 
----
+## Design Principles Implemented
 
-## SOLID Principles Implemented
+### 1. SOLID Principles
 
-### 1. **Single Responsibility Principle (SRP)**
-Each class/module has one clear responsibility:
-- **Models**: Only handle data structure (e.g., `CourtModel`, `BookingModel`)
-- **Repositories**: Only handle data access/API calls (e.g., `CourtRepository`)
-- **Services**: Only handle HTTP communication (`ApiService`)
-- **Widgets**: Only handle UI presentation (e.g., `CourtCard`, `LoadingIndicator`)
+#### Single Responsibility Principle (SRP)
+Each class/module has only one reason to change:
+- **Services**: Handle only one type of operation
+  - `StorageService`: Manages local storage operations only
+  - `ApiService`: Handles HTTP requests only
+- **Repositories**: Handle data operations for a single entity
+  - `TeamRepository`: Team data operations only
+  - `CourtRepository`: Court data operations only
+  - `BookingRepository`: Booking data operations only
+  - `ChallengeRepository`: Challenge data operations only
+- **Widgets**: Each widget has a single purpose
+  - `StatCard`: Display single statistic
+  - `CourtCard`: Display court information
+  - `ChallengeCard`: Display challenge information
+- **Models**: Encapsulate data and related logic for single entity
+- **Constants**: Separated into logical groups (colors, app constants)
 
-### 2. **Dependency Inversion Principle (DIP)**
+#### Dependency Inversion Principle (DIP)
 High-level modules depend on abstractions, not concrete implementations:
-- **Repositories** depend on `ApiService` abstraction (injected via constructor)
-- Pages use **Repository pattern** instead of direct API calls
-- Easy to swap implementations (e.g., mock API for testing)
+- **Repository Interfaces**: Abstract interfaces defined (`ITeamRepository`, `ICourtRepository`, etc.)
+- **Dependency Injection**: Services injected through constructors
+- **Service Locator**: Centralizes dependency management
+- Example:
+```dart
+abstract class ITeamRepository {
+  Future<TeamModel?> getTeamDetails();
+  Future<List<TeamModel>> getTopTeams({int limit = 10});
+}
 
----
-
-## OOP Principles Applied
-
-### 1. **Encapsulation**
-- Models encapsulate data with private fields and getters
-- Business logic encapsulated in model methods (e.g., `booking.isFriendly()`)
-- Widgets encapsulate their own state and UI logic
-
-### 2. **Inheritance**
-- All models can extend a base `Entity` class if needed
-- Widgets inherit from `StatelessWidget` or `StatefulWidget`
-
-### 3. **Polymorphism**
-- Different sport types handled through a unified interface
-- Repositories can be swapped without changing calling code
-
-### 4. **Abstraction**
-- Complex API logic abstracted behind simple repository methods
-- UI components abstracted into reusable widgets
-
----
-
-## Folder Structure
-
+class TeamRepository implements ITeamRepository {
+  final ApiService _apiService; // Depends on abstraction
+  TeamRepository(this._apiService); // Constructor injection
+}
 ```
-lib/
-├── core/
-│   ├── models/              # Data entities (OOP)
+
+### 2. Object-Oriented Programming (OOP) Principles
+
+#### Encapsulation
+- Models encapsulate data with private/public access
+- Business logic contained within models
+- Data validation in model constructors
+- Example:
+```dart
+class TeamModel {
+  final String teamName;
+  final int? wins;
+  
+  // Encapsulated business logic
+  double get winRate {
+    final totalMatches = (wins ?? 0) + (losses ?? 0) + (draws ?? 0);
+    if (totalMatches == 0) return 0.0;
+    return ((wins ?? 0) / totalMatches) * 100;
+  }
+}
+```
+
+#### Abstraction
+- Abstract repository interfaces hide implementation details
+- Widget abstractions for reusable components
+- Service interfaces define contracts
+
+#### Polymorphism
+- Multiple implementations can satisfy repository interfaces
+- Widgets can be extended and customized
+- Service implementations can be swapped
+
+#### Inheritance
+- Flutter widget inheritance for reusability
+- Stateless/Stateful widget extensions
+
+### 3. Modularity & Component Architecture
+
+#### Folder Structure
+```
+frontend/lib/
+├── core/                          # Core business logic
+│   ├── constants/                 # App-wide constants
+│   │   ├── app_constants.dart    # API URLs, keys, config
+│   │   └── app_colors.dart       # Color scheme
+│   ├── models/                    # Data models
+│   │   ├── team_model.dart
 │   │   ├── court_model.dart
 │   │   ├── booking_model.dart
 │   │   └── challenge_model.dart
-│   │
-│   ├── repositories/        # Data access layer (SRP, DIP)
+│   ├── services/                  # Service layer
+│   │   ├── storage_service.dart  # Local storage
+│   │   └── api_service.dart      # HTTP client
+│   ├── repositories/              # Data access layer
+│   │   ├── team_repository.dart
 │   │   ├── court_repository.dart
 │   │   ├── booking_repository.dart
 │   │   └── challenge_repository.dart
-│   │
-│   ├── services/            # HTTP communication (SRP)
-│   │   └── api_service.dart
-│   │
-│   ├── constants/           # App-wide constants
-│   │   └── api_constants.dart
-│   │
-│   └── utils/               # Helper functions (SRP)
-│       ├── sport_utils.dart
-│       └── date_utils.dart
-│
-├── shared/
-│   └── widgets/             # Reusable UI components
-│       ├── loading_indicator.dart
-│       ├── error_display.dart
+│   └── di/                        # Dependency injection
+│       └── service_locator.dart
+├── shared/                        # Shared/reusable components
+│   └── widgets/                   # Reusable widgets
+│       ├── stat_card.dart
 │       ├── court_card.dart
-│       ├── custom_button.dart
+│       ├── challenge_card.dart
+│       ├── leaderboard_card.dart
+│       ├── team_stats_row.dart
+│       ├── section_header.dart
+│       ├── loading_indicator.dart
+│       ├── error_message.dart
 │       └── empty_state.dart
-│
-├── screens/                 # Page-level widgets
-│   ├── all_courts_page.dart
-│   ├── booking_history_page.dart
-│   ├── create_booking_page.dart
-│   └── ...
-│
-├── widgets/                 # Feature-specific widgets
-│   └── time_slot_grid.dart
-│
-├── CourtOwner/              # Court owner specific screens
-├── Admin/                   # Admin specific screens
-└── main.dart
+├── screens/                       # Feature screens
+│   ├── dashboard/
+│   │   └── dashboard_sections.dart
+│   └── [other screens...]
+└── widgets/                       # Screen-specific widgets
 ```
-
----
 
 ## Architecture Layers
 
-### **1. Data Layer (Models)**
-**Responsibility**: Define data structures
+### 1. Presentation Layer (UI)
+- **Widgets**: Reusable UI components
+- **Screens**: Page-level components
+- **Sections**: Logical groupings of related UI
 
+### 2. Business Logic Layer
+- **Repositories**: Data access and business rules
+- **Models**: Data structures with business logic
+- **Services**: Cross-cutting concerns
+
+### 3. Data Layer
+- **API Service**: HTTP communication
+- **Storage Service**: Local persistence
+- **Models**: Data transformation (JSON ↔ Dart objects)
+
+## Key Features
+
+### Dependency Injection
+Using Service Locator pattern for centralized dependency management:
 ```dart
-class CourtModel {
-  final String id;
-  final String name;
-  // ... fields
-  
-  // Factory for JSON deserialization
-  factory CourtModel.fromJson(Map<String, dynamic> json) { ... }
-  
-  // Business logic methods
-  int getCourtsForSport(String sport) { ... }
+// Initialize once at app startup
+await ServiceLocator().initialize();
+
+// Access anywhere in the app
+final teamRepo = ServiceLocator().teamRepository;
+final teams = await teamRepo.getTopTeams();
+```
+
+### Type-Safe Models
+All data is strongly typed with validation:
+```dart
+factory TeamModel.fromJson(Map<String, dynamic> json) {
+  return TeamModel(
+    teamName: json['teamName']?.toString() ?? 'Unknown Team',
+    wins: _parseInt(json['wins']),
+    // ... more fields with validation
+  );
 }
 ```
 
-**Benefits**:
-- Type-safe data structures
-- Centralized data validation
-- Business logic encapsulated in models
+### Reusable Components
+Components are designed to be:
+- **Composable**: Can be combined to create complex UIs
+- **Configurable**: Accept parameters for customization
+- **Self-contained**: Include all necessary logic and styling
 
----
+### Error Handling
+- Try-catch blocks in all async operations
+- Graceful degradation with default values
+- User-friendly error messages
 
-### **2. Repository Layer (Data Access)**
-**Responsibility**: Handle API communication
+## Best Practices
 
-```dart
-class CourtRepository {
-  final ApiService _apiService;
-  
-  CourtRepository({ApiService? apiService})
-      : _apiService = apiService ?? ApiService();
-  
-  Future<List<CourtModel>> getVerifiedCourts() async {
-    final response = await _apiService.get('/courts/verified');
-    return (response['data']['courts'] as List)
-        .map((json) => CourtModel.fromJson(json))
-        .toList();
-  }
-}
-```
+### 1. Code Organization
+- One class per file
+- Related files grouped in directories
+- Clear naming conventions
 
-**Benefits** (SOLID):
-- **SRP**: Only handles data fetching
-- **DIP**: Depends on `ApiService` abstraction
-- Easy to mock for testing
-- Consistent error handling
+### 2. Separation of Concerns
+- UI logic separated from business logic
+- Data access separated from presentation
+- Configuration separated from code
 
----
+### 3. DRY (Don't Repeat Yourself)
+- Reusable widgets for common UI patterns
+- Shared models and services
+- Centralized constants
 
-### **3. Service Layer (HTTP)**
-**Responsibility**: HTTP communication
-
-```dart
-class ApiService {
-  static const String baseUrl = 'http://localhost:5000/api';
-  
-  Future<Map<String, dynamic>> get(String endpoint) async {
-    final headers = await _buildHeaders();
-    final response = await http.get(Uri.parse('$baseUrl$endpoint'), ...);
-    return _handleResponse(response);
-  }
-}
-```
-
-**Benefits**:
-- **SRP**: Only handles HTTP
-- Centralized token management
-- Consistent response handling
-- Singleton pattern for efficiency
-
----
-
-### **4. Presentation Layer (Widgets)**
-**Responsibility**: UI rendering
-
-#### **Reusable Components**:
-```dart
-// Before: Duplicate loading code everywhere
-Center(child: CircularProgressIndicator(color: Colors.redAccent))
-
-// After: Reusable component
-LoadingIndicator(message: 'Fetching courts...')
-```
-
-**Reusable Widgets**:
-- `LoadingIndicator`: Consistent loading UI
-- `ErrorDisplay`: Consistent error handling UI
-- `CourtCard`: Reusable court display
-- `CustomButton`: Consistent button styling
-- `EmptyState`: Consistent empty state UI
-
----
+### 4. Testability
+- Dependency injection enables easy mocking
+- Pure functions in models
+- Clear interfaces for repositories
 
 ## Usage Examples
 
-### **Example 1: Fetch Courts (Old vs New)**
-
-**❌ Old Way** (No separation of concerns):
+### Using Repositories
 ```dart
-Future<void> _fetchCourts() async {
-  final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString('auth_token');
-  final response = await http.get(
-    Uri.parse('http://localhost:5000/api/courts/verified'),
-    headers: {'Authorization': 'Bearer $token', ...},
-  );
-  final data = jsonDecode(response.body);
-  setState(() {
-    courts = data['data']['courts'];
-  });
-}
+// Get team details
+final teamRepo = ServiceLocator().teamRepository;
+final team = await teamRepo.getTeamDetails();
+
+// Get top teams
+final topTeams = await teamRepo.getTopTeams(limit: 10);
 ```
 
-**✅ New Way** (SOLID principles):
+### Using Reusable Widgets
 ```dart
-final _courtRepository = CourtRepository();
-
-Future<void> _fetchCourts() async {
-  try {
-    final courts = await _courtRepository.getVerifiedCourts();
-    setState(() {
-      _courts = courts;
-    });
-  } catch (e) {
-    // Handle error
-  }
-}
-```
-
-**Benefits**:
-- Clean, readable code
-- Easy to test (mock repository)
-- Type-safe models
-- Centralized API logic
-
----
-
-### **Example 2: Display Court Card (Old vs New)**
-
-**❌ Old Way** (Duplicate code):
-```dart
-// Same card UI code repeated in 5+ files
-Card(
-  color: Colors.grey[900],
-  child: Padding(
-    padding: EdgeInsets.all(16),
-    child: Column(
-      children: [
-        Text(court['name']),
-        Text(court['location']),
-        // ... 50 more lines
-      ],
-    ),
-  ),
+// Display a stat card
+StatCard(
+  label: 'Win Rate',
+  value: '75%',
+  icon: Icons.trending_up,
+  onTap: () => navigateToStats(),
 )
-```
 
-**✅ New Way** (Reusable component):
-```dart
+// Display a court card
 CourtCard(
-  court: court,
-  isSelected: selectedCourtId == court.id,
-  onTap: () => _selectCourt(court),
-  displaySport: 'cricket',
+  court: courtModel,
+  onTap: () => navigateToCourt(courtModel),
 )
 ```
 
-**Benefits**:
-- **DRY**: Don't Repeat Yourself
-- Consistent UI across app
-- Easy to update styling globally
-- Reduced code duplication
+### Using Models
+```dart
+// Create from JSON
+final team = TeamModel.fromJson(jsonData);
 
----
+// Access business logic
+final winRate = team.winRate;
+final summary = team.matchSummary;
 
-## Benefits of This Architecture
+// Convert to JSON
+final json = team.toJson();
+```
 
-### **1. Maintainability**
-- Easy to find and fix bugs (single responsibility)
-- Changes in one layer don't affect others
-- Clear separation of concerns
+## Future Enhancements
 
-### **2. Testability**
-- Easy to unit test (mock repositories)
-- Integration testing simplified
-- Business logic isolated from UI
-
-### **3. Scalability**
-- Easy to add new features
-- New developers can understand structure quickly
-- Modular components can be reused
-
-### **4. Code Quality**
-- Reduced code duplication (50%+ reduction in some files)
-- Type-safe data handling
-- Consistent error handling
-- Cleaner, more readable code
-
----
+1. **State Management**: Implement Provider/Riverpod for reactive state
+2. **Caching**: Add data caching in repositories
+3. **Offline Support**: Implement offline-first architecture
+4. **Testing**: Add unit tests for repositories and models
+5. **Error Tracking**: Integrate error monitoring service
+6. **Analytics**: Add user behavior tracking
+7. **Internationalization**: Support multiple languages
 
 ## Migration Guide
 
-### **Step 1: Use Models**
-Replace raw `Map<String, dynamic>` with typed models:
+### Migrating Existing Code
+
+1. **Replace direct API calls** with repository methods:
 ```dart
 // Before
-Map<String, dynamic> court;
-
-// After
-CourtModel court;
-```
-
-### **Step 2: Use Repositories**
-Replace direct API calls with repository methods:
-```dart
-// Before
-final response = await http.get(...);
+final response = await http.get(url, headers: headers);
 final data = jsonDecode(response.body);
 
 // After
-final courts = await _courtRepository.getVerifiedCourts();
+final team = await ServiceLocator().teamRepository.getTeamDetails();
 ```
 
-### **Step 3: Use Reusable Widgets**
-Replace duplicate UI code with shared widgets:
+2. **Replace Map<String, dynamic>** with typed models:
 ```dart
 // Before
-Center(child: CircularProgressIndicator(...))
+Map<String, dynamic> team = {...};
+final name = team['teamName'];
 
 // After
-LoadingIndicator(message: 'Loading...')
+TeamModel team = TeamModel.fromJson({...});
+final name = team.teamName;
 ```
 
----
-
-## Testing Strategy
-
-### **Unit Tests** (Models & Utils)
+3. **Use reusable widgets** instead of custom implementations:
 ```dart
-test('Court model returns correct sport count', () {
-  final court = CourtModel(cricketCourts: 3, ...);
-  expect(court.getCourtsForSport('cricket'), 3);
-});
+// Before
+Container(
+  // ... lots of boilerplate
+  child: Text(...),
+)
+
+// After
+StatCard(label: 'Wins', value: '10', icon: Icons.check)
 ```
 
-### **Integration Tests** (Repositories)
-```dart
-test('Court repository fetches courts', () async {
-  final mockApiService = MockApiService();
-  final repository = CourtRepository(apiService: mockApiService);
-  final courts = await repository.getVerifiedCourts();
-  expect(courts.length, greaterThan(0));
-});
-```
+## Conclusion
 
----
-
-## Next Steps
-
-1. ✅ Models created (`CourtModel`, `BookingModel`, `ChallengeModel`)
-2. ✅ Repositories created (`CourtRepository`, `BookingRepository`, `ChallengeRepository`)
-3. ✅ Reusable widgets created (`CourtCard`, `LoadingIndicator`, etc.)
-4. ⏳ Migrate existing screens to use new architecture
-5. ⏳ Add unit tests for models and repositories
-6. ⏳ Add integration tests for critical flows
-
----
-
-## Summary
-
-This architecture brings **professional-grade structure** to the Flutter app:
-
-- **SOLID Principles**: SRP and DIP implemented throughout
-- **OOP**: Encapsulation, abstraction, and polymorphism
-- **Modularity**: Reusable components reduce duplication
-- **Maintainability**: Clear separation of concerns
-- **Scalability**: Easy to extend with new features
-
-The codebase is now more **maintainable**, **testable**, and **scalable**! 🚀
+This architecture provides:
+- ✅ **Maintainability**: Easy to understand and modify
+- ✅ **Scalability**: Can grow without becoming complex
+- ✅ **Testability**: Easy to write tests
+- ✅ **Reusability**: Components can be reused across the app
+- ✅ **Type Safety**: Compile-time error detection
+- ✅ **Separation of Concerns**: Clear boundaries between layers
 

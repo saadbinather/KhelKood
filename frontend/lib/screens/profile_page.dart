@@ -26,14 +26,14 @@ class PhoneNumberFormatter extends TextInputFormatter {
     TextEditingValue newValue,
   ) {
     final text = newValue.text;
-    
+
     // Remove all non-digit characters except dash
     final digitsOnly = text.replaceAll(RegExp(r'[^\d-]'), '');
-    
+
     // Limit to 10 digits + 1 optional dash
     String formatted = '';
     int digitCount = 0;
-    
+
     for (int i = 0; i < digitsOnly.length && digitCount < 10; i++) {
       final char = digitsOnly[i];
       if (char == '-') {
@@ -46,7 +46,7 @@ class PhoneNumberFormatter extends TextInputFormatter {
         digitCount++;
       }
     }
-    
+
     return TextEditingValue(
       text: formatted,
       selection: TextSelection.collapsed(offset: formatted.length),
@@ -62,8 +62,6 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  bool showEditText = false;
-  bool showViewText = false;
   bool isLoading = true;
   bool isSaving = false;
   String? errorMessage;
@@ -117,7 +115,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final team = data['data']['team'] as Map<String, dynamic>;
-        
+
         setState(() {
           teamData = team;
           players = List<String>.from(team['players'] ?? []);
@@ -129,7 +127,8 @@ class _ProfilePageState extends State<ProfilePage> {
       } else {
         final errorData = jsonDecode(response.body);
         setState(() {
-          errorMessage = errorData['error']?.toString() ?? 'Failed to fetch team profile';
+          errorMessage =
+              errorData['error']?.toString() ?? 'Failed to fetch team profile';
           isLoading = false;
         });
       }
@@ -143,300 +142,504 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final isTablet = screenWidth > 600;
+    final horizontalPadding = isSmallScreen
+        ? 16.0
+        : isTablet
+        ? 32.0
+        : 24.0;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
             Navigator.of(context).pop(_hasChanges);
           },
         ),
-        title: const Text(
-          'Profile',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Row(
+          children: [
+            Icon(
+              Icons.person,
+              color: Colors.redAccent,
+              size: isSmallScreen ? 20 : 24,
+            ),
+            SizedBox(width: isSmallScreen ? 8 : 12),
+            Text(
+              'Profile',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: isSmallScreen ? 18 : 20,
+              ),
+            ),
+          ],
         ),
         actions: [
-          Row(
-            children: [
-              // Edit Profile Button
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                onEnter: (_) => setState(() => showEditText = true),
-                onExit: (_) => setState(() => showEditText = false),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.white),
-                      onPressed: teamData == null ? null : () {
-                        _showEditDialog();
-                      },
-                    ),
-                    if (showEditText)
-                      const Padding(
-                        padding: EdgeInsets.only(right: 10),
-                        child: Text(
-                          "Edit",
-                          style: TextStyle(color: Colors.white, fontSize: 14),
-                        ),
-                      ),
-                  ],
+          IconButton(
+            icon: const Icon(Icons.edit, color: Colors.white),
+            onPressed: teamData == null
+                ? null
+                : () {
+                    _showEditDialog();
+                  },
+            tooltip: 'Edit Profile',
+          ),
+          IconButton(
+            icon: const Icon(Icons.history, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const BookingHistoryPage(),
                 ),
-              ),
-
-              // View Booking History Button
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                onEnter: (_) => setState(() => showViewText = true),
-                onExit: (_) => setState(() => showViewText = false),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.history, color: Colors.white),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const BookingHistoryPage(),
-                          ),
-                        );
-                      },
-                    ),
-                    if (showViewText)
-                      const Padding(
-                        padding: EdgeInsets.only(right: 10),
-                        child: Text(
-                          "View History",
-                          style:
-                              TextStyle(color: Colors.white, fontSize: 14),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
+              );
+            },
+            tooltip: 'Booking History',
           ),
         ],
       ),
       body: isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Colors.deepPurple),
+              child: CircularProgressIndicator(color: Colors.redAccent),
             )
           : errorMessage != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        errorMessage!,
-                        style: const TextStyle(color: Colors.red),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _fetchTeamProfile,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepPurple,
-                        ),
-                        child: const Text('Retry'),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    color: Colors.redAccent,
+                    size: isSmallScreen ? 48 : 60,
                   ),
-                )
-              : teamData == null
-                  ? const Center(
-                      child: Text('No team data found'),
-                    )
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.all(20),
-                      child: Center(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            const CircleAvatar(
-                              radius: 55,
-                              backgroundColor: Colors.deepPurple,
-                              child: Icon(Icons.person, size: 70, color: Colors.white),
+                  SizedBox(height: isSmallScreen ? 12 : 16),
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: horizontalPadding,
+                    ),
+                    child: Text(
+                      errorMessage!,
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: isSmallScreen ? 14 : 16,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  SizedBox(height: isSmallScreen ? 16 : 20),
+                  ElevatedButton(
+                    onPressed: _fetchTeamProfile,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                    ),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            )
+          : teamData == null
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.person_off,
+                    color: Colors.white24,
+                    size: isSmallScreen ? 48 : 60,
+                  ),
+                  SizedBox(height: isSmallScreen ? 12 : 16),
+                  Text(
+                    'No team data found',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: isSmallScreen ? 14 : 16,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : SingleChildScrollView(
+              padding: EdgeInsets.all(horizontalPadding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(height: isSmallScreen ? 12 : 20),
+                  Container(
+                    padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.group,
+                      color: Colors.redAccent,
+                      size: isSmallScreen ? 50 : 60,
+                    ),
+                  ),
+                  SizedBox(height: isSmallScreen ? 16 : 20),
+
+                  // Team Name
+                  Text(
+                    teamData!['teamName']?.toString() ?? 'Team',
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 20 : 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: isSmallScreen ? 4 : 8),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSmallScreen ? 12 : 16,
+                      vertical: isSmallScreen ? 4 : 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      teamData!['sports']?.toString().toUpperCase() ?? 'N/A',
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: isSmallScreen ? 12 : 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: isSmallScreen ? 24 : 32),
+
+                  // Info Card
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[900],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.redAccent.withOpacity(0.3),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+                      child: Column(
+                        children: [
+                          profileRow(
+                            Icons.email_outlined,
+                            "Email",
+                            teamData!['email']?.toString() ?? 'N/A',
+                          ),
+                          SizedBox(height: isSmallScreen ? 12 : 16),
+                          profileRow(
+                            Icons.phone_outlined,
+                            "Phone",
+                            teamData!['phone']?.toString() ?? 'N/A',
+                          ),
+                          SizedBox(height: isSmallScreen ? 12 : 16),
+                          profileRow(
+                            Icons.sports_soccer,
+                            "Sport",
+                            teamData!['sports']?.toString() ?? 'N/A',
+                          ),
+                          SizedBox(height: isSmallScreen ? 12 : 16),
+                          profileRow(
+                            Icons.stars,
+                            "Points",
+                            (teamData!['points'] ?? 0).toString(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: isSmallScreen ? 20 : 24),
+
+                  // Match History Button
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[900],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.redAccent.withOpacity(0.3),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const MatchHistoryPage(),
                             ),
-                            const SizedBox(height: 20),
-
-                            // Team Name
-                            Text(
-                              teamData!['teamName']?.toString() ?? 'Team',
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-
-                            // Info Card
-                            Card(
-                              elevation: 3,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15)),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  children: [
-                                    profileRow(Icons.email, "Email", teamData!['email']?.toString() ?? 'N/A'),
-                                    profileRow(Icons.phone, "Phone", teamData!['phone']?.toString() ?? 'N/A'),
-                                    profileRow(Icons.sports_soccer, "Sport", teamData!['sports']?.toString() ?? 'N/A'),
-                                    profileRow(Icons.star, "Points", (teamData!['points'] ?? 0).toString()),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 20),
-
-                            // Match History Button
-                            Card(
-                              elevation: 3,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15)),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(15),
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const MatchHistoryPage(),
-                                    ),
-                                  );
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.history, color: Colors.deepPurple),
-                                          const SizedBox(width: 12),
-                                          const Text(
-                                            "Match History",
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const Icon(Icons.arrow_forward_ios, size: 16),
-                                    ],
+                          );
+                        },
+                        child: Padding(
+                          padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.history,
+                                    color: Colors.redAccent,
+                                    size: isSmallScreen ? 20 : 24,
                                   ),
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 20),
-
-                            // Player List
-                            Card(
-                              elevation: 3,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15)),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        const Text(
-                                          "Players",
-                                          style: TextStyle(
-                                              fontSize: 18, fontWeight: FontWeight.bold),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.add, color: Colors.deepPurple),
-                                          onPressed: isSaving ? null : () {
-                                            _showAddPlayerDialog();
-                                          },
-                                        ),
-                                      ],
+                                  SizedBox(width: isSmallScreen ? 12 : 16),
+                                  Text(
+                                    "Match History",
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 16 : 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
                                     ),
-                                    const Divider(),
-                                    if (players.isEmpty)
-                                      const Padding(
-                                        padding: EdgeInsets.symmetric(vertical: 16),
-                                        child: Center(
-                                          child: Text(
-                                            'No players added yet',
-                                            style: TextStyle(color: Colors.grey),
-                                          ),
-                                        ),
-                                      )
-                                    else
-                                      for (int i = 0; i < players.length; i++)
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(vertical: 4),
-                                          child: Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  const Icon(Icons.person,
-                                                      color: Colors.deepPurple),
-                                                  const SizedBox(width: 10),
-                                                  Text(players[i],
-                                                      style: const TextStyle(fontSize: 16)),
-                                                ],
-                                              ),
-                                              IconButton(
-                                                icon: const Icon(Icons.delete,
-                                                    color: Colors.red),
-                                                onPressed: isSaving ? null : () {
-                                                  _removePlayer(players[i]);
-                                                },
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                color: Colors.white54,
+                                size: isSmallScreen ? 14 : 16,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
+                  ),
+
+                  SizedBox(height: isSmallScreen ? 20 : 24),
+
+                  // Player List
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[900],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.redAccent.withOpacity(0.3),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.people_outline,
+                                    color: Colors.redAccent,
+                                    size: isSmallScreen ? 20 : 24,
+                                  ),
+                                  SizedBox(width: isSmallScreen ? 8 : 12),
+                                  Text(
+                                    "Players",
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 16 : 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: isSaving
+                                      ? null
+                                      : () {
+                                          _showAddPlayerDialog();
+                                        },
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Container(
+                                    padding: EdgeInsets.all(
+                                      isSmallScreen ? 8 : 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.redAccent.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Icon(
+                                      Icons.add,
+                                      color: Colors.redAccent,
+                                      size: isSmallScreen ? 20 : 24,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: isSmallScreen ? 12 : 16),
+                          Divider(color: Colors.white24),
+                          SizedBox(height: isSmallScreen ? 12 : 16),
+                          if (players.isEmpty)
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                vertical: isSmallScreen ? 12 : 16,
+                              ),
+                              child: Center(
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.person_add_outlined,
+                                      color: Colors.white24,
+                                      size: isSmallScreen ? 32 : 40,
+                                    ),
+                                    SizedBox(height: isSmallScreen ? 8 : 12),
+                                    Text(
+                                      'No players added yet',
+                                      style: TextStyle(
+                                        color: Colors.white54,
+                                        fontSize: isSmallScreen ? 14 : 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          else
+                            ...players.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final player = entry.value;
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: index < players.length - 1
+                                      ? (isSmallScreen ? 10 : 12)
+                                      : 0,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: EdgeInsets.all(
+                                            isSmallScreen ? 8 : 10,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.redAccent.withOpacity(
+                                              0.1,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            Icons.person,
+                                            color: Colors.redAccent,
+                                            size: isSmallScreen ? 18 : 20,
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: isSmallScreen ? 10 : 12,
+                                        ),
+                                        Text(
+                                          player,
+                                          style: TextStyle(
+                                            fontSize: isSmallScreen ? 14 : 16,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: isSaving
+                                            ? null
+                                            : () {
+                                                _removePlayer(player);
+                                              },
+                                        borderRadius: BorderRadius.circular(20),
+                                        child: Container(
+                                          padding: EdgeInsets.all(
+                                            isSmallScreen ? 8 : 10,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            Icons.close,
+                                            color: Colors.red,
+                                            size: isSmallScreen ? 18 : 20,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: isSmallScreen ? 20 : 24),
+                ],
+              ),
+            ),
     );
   }
 
   Widget profileRow(IconData icon, String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.deepPurple),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              "$title: $value",
-              style: const TextStyle(fontSize: 16),
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+
+    return Row(
+      children: [
+        Icon(icon, color: Colors.redAccent, size: isSmallScreen ? 18 : 20),
+        SizedBox(width: isSmallScreen ? 10 : 12),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: isSmallScreen ? 14 : 16,
+              ),
+              children: [
+                TextSpan(
+                  text: '$title: ',
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+                TextSpan(
+                  text: value,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   // Validate phone number format
   bool _validatePhoneFormat(String phone) {
     if (phone.isEmpty) return false;
-    
+
     // Remove dash for validation
     final cleaned = phone.replaceAll('-', '');
-    
+
     // Must be exactly 10 digits
     if (!RegExp(r'^\d{10}$').hasMatch(cleaned)) {
       return false;
     }
-    
+
     // If dash is present, it must be after exactly 4 digits
     if (phone.contains('-')) {
       final parts = phone.split('-');
@@ -444,7 +647,7 @@ class _ProfilePageState extends State<ProfilePage> {
         return false;
       }
     }
-    
+
     return true;
   }
 
@@ -464,7 +667,17 @@ class _ProfilePageState extends State<ProfilePage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (buildContext, setDialogState) => AlertDialog(
-          title: const Text("Edit Profile"),
+          backgroundColor: Colors.grey[900],
+          title: Row(
+            children: [
+              Icon(Icons.edit, color: Colors.redAccent, size: 24),
+              SizedBox(width: 12),
+              Text(
+                "Edit Profile",
+                style: TextStyle(color: Colors.white, fontSize: 20),
+              ),
+            ],
+          ),
           content: SingleChildScrollView(
             child: Form(
               key: formKey,
@@ -473,14 +686,68 @@ class _ProfilePageState extends State<ProfilePage> {
                 children: [
                   TextField(
                     controller: teamNameController,
-                    decoration: const InputDecoration(labelText: "Team Name"),
+                    style: TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: "Team Name",
+                      labelStyle: TextStyle(color: Colors.white54),
+                      prefixIcon: Icon(
+                        Icons.flag_outlined,
+                        color: Colors.redAccent.withOpacity(0.7),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[800],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: Colors.grey[700]!,
+                          width: 1,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: Colors.redAccent,
+                          width: 2,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: emailController,
+                    style: TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       labelText: "Email",
+                      labelStyle: TextStyle(color: Colors.white54),
                       errorText: emailError,
+                      prefixIcon: Icon(
+                        Icons.email_outlined,
+                        color: Colors.redAccent.withOpacity(0.7),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[800],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: Colors.grey[700]!,
+                          width: 1,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: Colors.redAccent,
+                          width: 2,
+                        ),
+                      ),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     onChanged: (value) {
@@ -494,10 +761,38 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: phoneController,
+                    style: TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      labelText: "Phone Number (e.g., 1234-567890 or 1234567890)",
+                      labelText:
+                          "Phone Number (e.g., 1234-567890 or 1234567890)",
+                      labelStyle: TextStyle(color: Colors.white54),
                       errorText: phoneError,
                       helperText: "10 digits, optional dash after 4th digit",
+                      helperStyle: TextStyle(color: Colors.white54),
+                      prefixIcon: Icon(
+                        Icons.phone_outlined,
+                        color: Colors.redAccent.withOpacity(0.7),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[800],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: Colors.grey[700]!,
+                          width: 1,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: Colors.redAccent,
+                          width: 2,
+                        ),
+                      ),
                     ),
                     keyboardType: TextInputType.phone,
                     inputFormatters: [PhoneNumberFormatter()],
@@ -516,34 +811,40 @@ class _ProfilePageState extends State<ProfilePage> {
           actions: [
             TextButton(
               onPressed: isSaving ? null : () => Navigator.pop(context),
-              child: const Text("Cancel"),
+              child: Text("Cancel", style: TextStyle(color: Colors.white70)),
             ),
             ElevatedButton(
-              onPressed: isSaving ? null : () {
-                // Validate before submitting
-                bool isValid = true;
-                
-                // Validate phone
-                if (!_validatePhoneFormat(phoneController.text.trim())) {
-                  setDialogState(() {
-                    phoneError = "Invalid format. Must be 10 digits (e.g., 1234-567890)";
-                  });
-                  isValid = false;
-                }
-                
-                // Validate email
-                if (!_validateEmailFormat(emailController.text.trim())) {
-                  setDialogState(() {
-                    emailError = "Invalid email format";
-                  });
-                  isValid = false;
-                }
-                
-                if (isValid) {
-                  Navigator.pop(context);
-                  _updateProfile();
-                }
-              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+              ),
+              onPressed: isSaving
+                  ? null
+                  : () {
+                      // Validate before submitting
+                      bool isValid = true;
+
+                      // Validate phone
+                      if (!_validatePhoneFormat(phoneController.text.trim())) {
+                        setDialogState(() {
+                          phoneError =
+                              "Invalid format. Must be 10 digits (e.g., 1234-567890)";
+                        });
+                        isValid = false;
+                      }
+
+                      // Validate email
+                      if (!_validateEmailFormat(emailController.text.trim())) {
+                        setDialogState(() {
+                          emailError = "Invalid email format";
+                        });
+                        isValid = false;
+                      }
+
+                      if (isValid) {
+                        Navigator.pop(context);
+                        _updateProfile();
+                      }
+                    },
               child: isSaving
                   ? const SizedBox(
                       height: 16,
@@ -607,14 +908,14 @@ class _ProfilePageState extends State<ProfilePage> {
       } else {
         final errorData = jsonDecode(response.body);
         String errorMessage = 'Failed to update profile';
-        
+
         // Extract error message from response
         if (errorData['error'] != null) {
           errorMessage = errorData['error'].toString();
         } else if (errorData['message'] != null) {
           errorMessage = errorData['message'].toString();
         }
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -651,99 +952,139 @@ class _ProfilePageState extends State<ProfilePage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (buildContext, setDialogState) => AlertDialog(
-          title: const Text("Add Player"),
+          backgroundColor: Colors.grey[900],
+          title: Row(
+            children: [
+              Icon(Icons.person_add, color: Colors.redAccent, size: 24),
+              SizedBox(width: 12),
+              Text(
+                "Add Player",
+                style: TextStyle(color: Colors.white, fontSize: 20),
+              ),
+            ],
+          ),
           content: TextField(
             controller: playerController,
-            decoration: const InputDecoration(labelText: "Player Name"),
+            style: TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: "Player Name",
+              labelStyle: TextStyle(color: Colors.white54),
+              prefixIcon: Icon(
+                Icons.person_outline,
+                color: Colors.redAccent.withOpacity(0.7),
+              ),
+              filled: true,
+              fillColor: Colors.grey[800],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey[700]!, width: 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.redAccent, width: 2),
+              ),
+            ),
             enabled: !isAdding,
           ),
           actions: [
             TextButton(
               onPressed: isAdding ? null : () => Navigator.pop(context),
-              child: const Text("Cancel"),
+              child: Text("Cancel", style: TextStyle(color: Colors.white70)),
             ),
             ElevatedButton(
-              onPressed: isAdding ? null : () async {
-                if (playerController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(buildContext).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please enter a player name'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                  return;
-                }
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+              ),
+              onPressed: isAdding
+                  ? null
+                  : () async {
+                      if (playerController.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(buildContext).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please enter a player name'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
 
-                setDialogState(() {
-                  isAdding = true;
-                });
+                      setDialogState(() {
+                        isAdding = true;
+                      });
 
-                try {
-                  final token = await _getAuthToken();
-                  if (token == null) {
-                    if (mounted) {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('No authentication token found'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                    return;
-                  }
+                      try {
+                        final token = await _getAuthToken();
+                        if (token == null) {
+                          if (mounted) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('No authentication token found'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                          return;
+                        }
 
-                  final response = await http.post(
-                    Uri.parse('$baseUrl/team/add-player'),
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': 'Bearer $token',
+                        final response = await http.post(
+                          Uri.parse('$baseUrl/team/add-player'),
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer $token',
+                          },
+                          body: jsonEncode({
+                            'playerName': playerController.text.trim(),
+                          }),
+                        );
+
+                        if (response.statusCode == 200) {
+                          if (mounted) {
+                            _hasChanges = true;
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Player added successfully!'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                            await _fetchTeamProfile();
+                          }
+                        } else {
+                          final errorData = jsonDecode(response.body);
+                          setDialogState(() {
+                            isAdding = false;
+                          });
+                          if (mounted) {
+                            ScaffoldMessenger.of(buildContext).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  errorData['error']?.toString() ??
+                                      'Failed to add player',
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                      } catch (e) {
+                        setDialogState(() {
+                          isAdding = false;
+                        });
+                        if (mounted) {
+                          ScaffoldMessenger.of(buildContext).showSnackBar(
+                            SnackBar(
+                              content: Text('Error: ${e.toString()}'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
                     },
-                    body: jsonEncode({
-                      'playerName': playerController.text.trim(),
-                    }),
-                  );
-
-                  if (response.statusCode == 200) {
-                    if (mounted) {
-                      _hasChanges = true;
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Player added successfully!'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                      await _fetchTeamProfile();
-                    }
-                  } else {
-                    final errorData = jsonDecode(response.body);
-                    setDialogState(() {
-                      isAdding = false;
-                    });
-                    if (mounted) {
-                      ScaffoldMessenger.of(buildContext).showSnackBar(
-                        SnackBar(
-                          content: Text(errorData['error']?.toString() ?? 'Failed to add player'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  }
-                } catch (e) {
-                  setDialogState(() {
-                    isAdding = false;
-                  });
-                  if (mounted) {
-                    ScaffoldMessenger.of(buildContext).showSnackBar(
-                      SnackBar(
-                        content: Text('Error: ${e.toString()}'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-              },
               child: isAdding
                   ? const SizedBox(
                       height: 16,
@@ -766,16 +1107,35 @@ class _ProfilePageState extends State<ProfilePage> {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Remove Player"),
-        content: Text("Are you sure you want to remove $playerName?"),
+        backgroundColor: Colors.grey[900],
+        title: Row(
+          children: [
+            Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.redAccent,
+              size: 24,
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                "Remove Player",
+                style: TextStyle(color: Colors.white, fontSize: 20),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          "Are you sure you want to remove $playerName?",
+          style: TextStyle(color: Colors.white70, fontSize: 16),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel"),
+            child: Text("Cancel", style: TextStyle(color: Colors.white70)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             child: const Text("Remove"),
           ),
         ],
@@ -808,9 +1168,7 @@ class _ProfilePageState extends State<ProfilePage> {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({
-          'playerName': playerName,
-        }),
+        body: jsonEncode({'playerName': playerName}),
       );
 
       if (response.statusCode == 200) {
@@ -829,7 +1187,9 @@ class _ProfilePageState extends State<ProfilePage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(errorData['error']?.toString() ?? 'Failed to remove player'),
+              content: Text(
+                errorData['error']?.toString() ?? 'Failed to remove player',
+              ),
               backgroundColor: Colors.red,
             ),
           );

@@ -1,137 +1,160 @@
-/**
- * Court Model - Data entity for courts
- * 
- * OOP Principles:
- * - Encapsulation: Private fields with getters
- * - Single Responsibility: Only handles court data structure
- */
-
+/// Court data model
+/// Implements OOP principles with encapsulation
 class CourtModel {
-  final String id;
-  final String name;
-  final String location;
-  final int cricketCourts;
-  final int futsalCourts;
-  final int padelCourts;
-  final int cricketRate;
-  final int futsalRate;
-  final int padelRate;
+  final String? id;
+  final String courtName;
+  final String? location;
+  final String? city;
+  final List<String> availableSports;
+  final Map<String, int>? rates;
   final bool isVerified;
-  final String ownerId;
-  final DateTime? createdAt;
+  final String? imageUrl;
+  final String? ownerId;
+  final String? ownerName;
+  final double? rating;
+  final List<String>? amenities;
 
   CourtModel({
-    required this.id,
-    required this.name,
-    required this.location,
-    required this.cricketCourts,
-    required this.futsalCourts,
-    required this.padelCourts,
-    required this.cricketRate,
-    required this.futsalRate,
-    required this.padelRate,
+    this.id,
+    required this.courtName,
+    this.location,
+    this.city,
+    required this.availableSports,
+    this.rates,
     this.isVerified = false,
-    required this.ownerId,
-    this.createdAt,
+    this.imageUrl,
+    this.ownerId,
+    this.ownerName,
+    this.rating,
+    this.amenities,
   });
 
-  // Factory constructor for JSON deserialization
+  // Factory constructor for creating instance from JSON
   factory CourtModel.fromJson(Map<String, dynamic> json) {
     return CourtModel(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
-      location: json['location'] ?? '',
-      cricketCourts: json['cricketCourts'] ?? 0,
-      futsalCourts: json['futsalCourts'] ?? 0,
-      padelCourts: json['padelCourts'] ?? 0,
-      cricketRate: json['cricketRate'] ?? 0,
-      futsalRate: json['futsalRate'] ?? 0,
-      padelRate: json['padelRate'] ?? 0,
-      isVerified: json['isVerified'] ?? false,
-      ownerId: json['ownerId'] ?? '',
-      createdAt: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt'].toString())
-          : null,
+      id: json['_id']?.toString() ?? json['id']?.toString(),
+      courtName: json['courtName']?.toString() ?? 'Unknown Court',
+      location: json['location']?.toString(),
+      city: json['city']?.toString(),
+      availableSports: _parseStringList(json['availableSports']),
+      rates: _parseRates(json['rates']),
+      isVerified: json['isVerified'] == true || json['verified'] == true,
+      imageUrl: json['imageUrl']?.toString() ?? json['image']?.toString(),
+      ownerId: json['ownerId']?.toString() ?? json['owner_id']?.toString(),
+      ownerName: json['ownerName']?.toString() ?? json['owner_name']?.toString(),
+      rating: _parseDouble(json['rating']),
+      amenities: _parseStringList(json['amenities']),
     );
   }
 
-  // JSON serialization
+  // Convert instance to JSON
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'name': name,
-      'location': location,
-      'cricketCourts': cricketCourts,
-      'futsalCourts': futsalCourts,
-      'padelCourts': padelCourts,
-      'cricketRate': cricketRate,
-      'futsalRate': futsalRate,
-      'padelRate': padelRate,
+      if (id != null) 'id': id,
+      'courtName': courtName,
+      if (location != null) 'location': location,
+      if (city != null) 'city': city,
+      'availableSports': availableSports,
+      if (rates != null) 'rates': rates,
       'isVerified': isVerified,
-      'ownerId': ownerId,
-      'createdAt': createdAt?.toIso8601String(),
+      if (imageUrl != null) 'imageUrl': imageUrl,
+      if (ownerId != null) 'ownerId': ownerId,
+      if (ownerName != null) 'ownerName': ownerName,
+      if (rating != null) 'rating': rating,
+      if (amenities != null) 'amenities': amenities,
     };
   }
 
-  // Get total courts for a specific sport
-  int getCourtsForSport(String sport) {
-    switch (sport.toLowerCase()) {
-      case 'cricket':
-        return cricketCourts;
-      case 'futsal':
-      case 'football':
-        return futsalCourts;
-      case 'padel':
-        return padelCourts;
-      default:
-        return 0;
+  // Helper methods
+  static List<String> _parseStringList(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value.map((e) => e.toString()).toList();
     }
+    return [];
   }
 
-  // Get rate for a specific sport
-  int getRateForSport(String sport) {
-    switch (sport.toLowerCase()) {
-      case 'cricket':
-        return cricketRate;
-      case 'futsal':
-      case 'football':
-        return futsalRate;
-      case 'padel':
-        return padelRate;
-      default:
-        return 0;
+  static Map<String, int>? _parseRates(dynamic value) {
+    if (value == null) return null;
+    if (value is Map) {
+      final result = <String, int>{};
+      value.forEach((key, val) {
+        final intVal = val is int ? val : int.tryParse(val.toString());
+        if (intVal != null) {
+          result[key.toString()] = intVal;
+        }
+      });
+      return result;
     }
+    return null;
   }
 
-  // CopyWith for immutability
+  static double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
+  // Copy with method
   CourtModel copyWith({
     String? id,
-    String? name,
+    String? courtName,
     String? location,
-    int? cricketCourts,
-    int? futsalCourts,
-    int? padelCourts,
-    int? cricketRate,
-    int? futsalRate,
-    int? padelRate,
+    String? city,
+    List<String>? availableSports,
+    Map<String, int>? rates,
     bool? isVerified,
+    String? imageUrl,
     String? ownerId,
-    DateTime? createdAt,
+    String? ownerName,
+    double? rating,
+    List<String>? amenities,
   }) {
     return CourtModel(
       id: id ?? this.id,
-      name: name ?? this.name,
+      courtName: courtName ?? this.courtName,
       location: location ?? this.location,
-      cricketCourts: cricketCourts ?? this.cricketCourts,
-      futsalCourts: futsalCourts ?? this.futsalCourts,
-      padelCourts: padelCourts ?? this.padelCourts,
-      cricketRate: cricketRate ?? this.cricketRate,
-      futsalRate: futsalRate ?? this.futsalRate,
-      padelRate: padelRate ?? this.padelRate,
+      city: city ?? this.city,
+      availableSports: availableSports ?? this.availableSports,
+      rates: rates ?? this.rates,
       isVerified: isVerified ?? this.isVerified,
+      imageUrl: imageUrl ?? this.imageUrl,
       ownerId: ownerId ?? this.ownerId,
-      createdAt: createdAt ?? this.createdAt,
+      ownerName: ownerName ?? this.ownerName,
+      rating: rating ?? this.rating,
+      amenities: amenities ?? this.amenities,
     );
   }
+
+  // Get rate for specific sport
+  int? getRateForSport(String sport) {
+    return rates?[sport.toLowerCase()];
+  }
+
+  // Check if sport is available
+  bool hasSport(String sport) {
+    return availableSports
+        .any((s) => s.toLowerCase() == sport.toLowerCase());
+  }
+
+  // Get formatted rating
+  String get formattedRating {
+    if (rating == null) return 'N/A';
+    return rating!.toStringAsFixed(1);
+  }
+
+  @override
+  String toString() => 'CourtModel(id: $id, courtName: $courtName, city: $city)';
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is CourtModel && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
 }
 

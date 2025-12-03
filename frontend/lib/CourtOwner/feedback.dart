@@ -27,9 +27,10 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
   String? errorMessage;
   List<Map<String, dynamic>> feedbackList = [];
   List<Map<String, dynamic>> filteredFeedbackList = [];
-  
+
   // Filter states
-  String? selectedRatingFilter; // null = all, "high" = 8-10, "medium" = 5-7, "low" = 1-4
+  String?
+  selectedRatingFilter; // null = all, "high" = 8-10, "medium" = 5-7, "low" = 1-4
   bool sortByLatest = true;
 
   @override
@@ -37,10 +38,10 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
     super.initState();
     _fetchReviews();
   }
-  
+
   void _applyFilters() {
     List<Map<String, dynamic>> filtered = List.from(feedbackList);
-    
+
     // Apply rating filter
     if (selectedRatingFilter != null) {
       filtered = filtered.where((feedback) {
@@ -57,7 +58,7 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
         }
       }).toList();
     }
-    
+
     // Apply date sort
     if (sortByLatest) {
       filtered.sort((a, b) {
@@ -72,20 +73,24 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
         return dateA.compareTo(dateB); // Oldest first
       });
     }
-    
+
     setState(() {
       filteredFeedbackList = filtered;
     });
   }
-  
+
   DateTime _parseDate(dynamic dateValue) {
     if (dateValue == null) return DateTime(1970);
     try {
       if (dateValue is Map) {
         if (dateValue['_seconds'] != null) {
-          return DateTime.fromMillisecondsSinceEpoch(dateValue['_seconds'] * 1000);
+          return DateTime.fromMillisecondsSinceEpoch(
+            dateValue['_seconds'] * 1000,
+          );
         } else if (dateValue['seconds'] != null) {
-          return DateTime.fromMillisecondsSinceEpoch(dateValue['seconds'] * 1000);
+          return DateTime.fromMillisecondsSinceEpoch(
+            dateValue['seconds'] * 1000,
+          );
         }
       } else if (dateValue is String) {
         return DateTime.parse(dateValue);
@@ -114,7 +119,7 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
 
       final url = '$baseUrl/reviews/courtowner';
       print('Fetching reviews from: $url');
-      
+
       final response = await http.get(
         Uri.parse(url),
         headers: {
@@ -169,9 +174,13 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
       DateTime date;
       if (dateValue is Map) {
         if (dateValue['_seconds'] != null) {
-          date = DateTime.fromMillisecondsSinceEpoch(dateValue['_seconds'] * 1000);
+          date = DateTime.fromMillisecondsSinceEpoch(
+            dateValue['_seconds'] * 1000,
+          );
         } else if (dateValue['seconds'] != null) {
-          date = DateTime.fromMillisecondsSinceEpoch(dateValue['seconds'] * 1000);
+          date = DateTime.fromMillisecondsSinceEpoch(
+            dateValue['seconds'] * 1000,
+          );
         } else {
           return 'Recently';
         }
@@ -196,12 +205,12 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
         10,
         (index) => Icon(
           index < rating ? Icons.star : Icons.star_border,
-          color: index < rating 
-              ? (rating >= 8 
-                  ? const Color(0xFF4CAF50) 
-                  : rating >= 5 
-                      ? Colors.orange 
-                      : Colors.red)
+          color: index < rating
+              ? (rating >= 8
+                    ? const Color(0xFF4CAF50)
+                    : rating >= 5
+                    ? Colors.orange
+                    : Colors.red)
               : Colors.grey[300],
           size: 18,
         ),
@@ -217,7 +226,7 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
     final rating = feedback['rating'] ?? 0;
     final isHighRating = rating >= 8;
     final isMediumRating = rating >= 5 && rating < 8;
-    
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       color: Colors.white,
@@ -225,11 +234,13 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: (isHighRating 
-              ? const Color(0xFF4CAF50) 
-              : isMediumRating 
-                  ? Colors.orange 
-                  : Colors.red).withOpacity(0.2),
+          color:
+              (isHighRating
+                      ? const Color(0xFF4CAF50)
+                      : isMediumRating
+                      ? Colors.orange
+                      : Colors.red)
+                  .withOpacity(0.2),
           width: 1,
         ),
       ),
@@ -244,20 +255,22 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: (isHighRating 
-                        ? const Color(0xFF4CAF50) 
-                        : isMediumRating 
-                            ? Colors.orange 
-                            : Colors.red).withOpacity(0.1),
+                    color:
+                        (isHighRating
+                                ? const Color(0xFF4CAF50)
+                                : isMediumRating
+                                ? Colors.orange
+                                : Colors.red)
+                            .withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     Icons.person,
-                    color: isHighRating 
-                        ? const Color(0xFF4CAF50) 
-                        : isMediumRating 
-                            ? Colors.orange 
-                            : Colors.red,
+                    color: isHighRating
+                        ? const Color(0xFF4CAF50)
+                        : isMediumRating
+                        ? Colors.orange
+                        : Colors.red,
                     size: 24,
                   ),
                 ),
@@ -299,7 +312,10 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                 ),
                 if (feedback['publishedAt'] != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
                       borderRadius: BorderRadius.circular(8),
@@ -321,49 +337,52 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                 buildStars(rating),
                 const SizedBox(width: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: (isHighRating 
-                        ? const Color(0xFF4CAF50) 
-                        : isMediumRating 
-                            ? Colors.orange 
-                            : Colors.red).withOpacity(0.1),
+                    color:
+                        (isHighRating
+                                ? const Color(0xFF4CAF50)
+                                : isMediumRating
+                                ? Colors.orange
+                                : Colors.red)
+                            .withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: isHighRating 
-                          ? const Color(0xFF4CAF50) 
-                          : isMediumRating 
-                              ? Colors.orange 
-                              : Colors.red,
+                      color: isHighRating
+                          ? const Color(0xFF4CAF50)
+                          : isMediumRating
+                          ? Colors.orange
+                          : Colors.red,
                       width: 1,
                     ),
                   ),
                   child: Text(
-                    '${rating}/10',
+                    '$rating/10',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: isHighRating 
-                          ? const Color(0xFF4CAF50) 
-                          : isMediumRating 
-                              ? Colors.orange 
-                              : Colors.red,
+                      color: isHighRating
+                          ? const Color(0xFF4CAF50)
+                          : isMediumRating
+                          ? Colors.orange
+                          : Colors.red,
                     ),
                   ),
                 ),
               ],
             ),
-            if (feedback['comment'] != null && feedback['comment'].toString().isNotEmpty) ...[
+            if (feedback['comment'] != null &&
+                feedback['comment'].toString().isNotEmpty) ...[
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.grey[50],
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: Colors.grey[200]!,
-                    width: 1,
-                  ),
+                  border: Border.all(color: Colors.grey[200]!, width: 1),
                 ),
                 child: Text(
                   feedback['comment'] ?? "No comment provided.",
@@ -464,7 +483,9 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                           // Rating Filter
                           Expanded(
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.grey[50],
                                 borderRadius: BorderRadius.circular(10),
@@ -481,7 +502,10 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                                     'Filter by Rating',
                                     style: TextStyle(color: Colors.grey),
                                   ),
-                                  icon: const Icon(Icons.filter_list, color: Color(0xFF2E7D32)),
+                                  icon: const Icon(
+                                    Icons.filter_list,
+                                    color: Color(0xFF2E7D32),
+                                  ),
                                   items: const [
                                     DropdownMenuItem(
                                       value: null,
@@ -532,12 +556,17 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                                 },
                                 borderRadius: BorderRadius.circular(10),
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(
-                                        sortByLatest ? Icons.arrow_downward : Icons.arrow_upward,
+                                        sortByLatest
+                                            ? Icons.arrow_downward
+                                            : Icons.arrow_upward,
                                         color: const Color(0xFF2E7D32),
                                         size: 18,
                                       ),
@@ -583,7 +612,9 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             itemCount: filteredFeedbackList.length,
                             itemBuilder: (context, index) {
-                              return buildFeedbackCard(filteredFeedbackList[index]);
+                              return buildFeedbackCard(
+                                filteredFeedbackList[index],
+                              );
                             },
                           ),
                         ),

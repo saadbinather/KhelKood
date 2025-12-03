@@ -1,123 +1,130 @@
-/**
- * API Service - Base service for HTTP communication
- * 
- * SOLID Principles:
- * 1. Single Responsibility: Handles only HTTP communication
- * 2. Dependency Inversion: Depends on http abstraction
- * 
- * OOP Principles:
- * - Encapsulation: Private methods for token management
- * - Reusability: Base class for all API services
- */
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import '../constants/app_constants.dart';
+import 'storage_service.dart';
 
+/// API service for making HTTP requests
+/// Implements Single Responsibility Principle - only handles API communication
 class ApiService {
-  static const String baseUrl = 'http://localhost:5000/api';
+  final StorageService _storageService;
   
-  // Singleton pattern for API service
-  static final ApiService _instance = ApiService._internal();
-  factory ApiService() => _instance;
-  ApiService._internal();
+  // Dependency Injection through constructor
+  ApiService(this._storageService);
 
-  // Get authentication token
-  Future<String?> _getAuthToken() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString('auth_token');
-    } catch (e) {
-      print('Error getting auth token: $e');
-      return null;
-    }
-  }
-
-  // Build headers with authentication
-  Future<Map<String, String>> _buildHeaders() async {
-    final token = await _getAuthToken();
+  // Private method to get headers with authentication
+  Future<Map<String, String>> _getHeaders() async {
+    final token = await _storageService.getAuthToken();
     return {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     };
   }
 
-  // Generic GET request
-  Future<Map<String, dynamic>> get(String endpoint) async {
+  // GET request
+  Future<http.Response> get(String endpoint) async {
     try {
-      final headers = await _buildHeaders();
+      final headers = await _getHeaders();
+      final url = Uri.parse('${AppConstants.baseUrl}$endpoint');
+      
       final response = await http.get(
-        Uri.parse('$baseUrl$endpoint'),
+        url,
         headers: headers,
-      );
-
-      return _handleResponse(response);
+      ).timeout(Duration(seconds: AppConstants.apiTimeout));
+      
+      return response;
     } catch (e) {
-      throw Exception('GET request failed: $e');
+      print('GET request error for $endpoint: $e');
+      rethrow;
     }
   }
 
-  // Generic POST request
-  Future<Map<String, dynamic>> post(
-    String endpoint,
-    Map<String, dynamic> body,
-  ) async {
+  // POST request
+  Future<http.Response> post(String endpoint, Map<String, dynamic> body) async {
     try {
-      final headers = await _buildHeaders();
+      final headers = await _getHeaders();
+      final url = Uri.parse('${AppConstants.baseUrl}$endpoint');
+      
       final response = await http.post(
-        Uri.parse('$baseUrl$endpoint'),
+        url,
         headers: headers,
         body: jsonEncode(body),
-      );
-
-      return _handleResponse(response);
+      ).timeout(Duration(seconds: AppConstants.apiTimeout));
+      
+      return response;
     } catch (e) {
-      throw Exception('POST request failed: $e');
+      print('POST request error for $endpoint: $e');
+      rethrow;
     }
   }
 
-  // Generic PUT request
-  Future<Map<String, dynamic>> put(
-    String endpoint,
-    Map<String, dynamic> body,
-  ) async {
+  // PUT request
+  Future<http.Response> put(String endpoint, Map<String, dynamic> body) async {
     try {
-      final headers = await _buildHeaders();
+      final headers = await _getHeaders();
+      final url = Uri.parse('${AppConstants.baseUrl}$endpoint');
+      
       final response = await http.put(
-        Uri.parse('$baseUrl$endpoint'),
+        url,
         headers: headers,
         body: jsonEncode(body),
-      );
-
-      return _handleResponse(response);
+      ).timeout(Duration(seconds: AppConstants.apiTimeout));
+      
+      return response;
     } catch (e) {
-      throw Exception('PUT request failed: $e');
+      print('PUT request error for $endpoint: $e');
+      rethrow;
     }
   }
 
-  // Generic DELETE request
-  Future<Map<String, dynamic>> delete(String endpoint) async {
+  // DELETE request
+  Future<http.Response> delete(String endpoint) async {
     try {
-      final headers = await _buildHeaders();
+      final headers = await _getHeaders();
+      final url = Uri.parse('${AppConstants.baseUrl}$endpoint');
+      
       final response = await http.delete(
-        Uri.parse('$baseUrl$endpoint'),
+        url,
         headers: headers,
-      );
-
-      return _handleResponse(response);
+      ).timeout(Duration(seconds: AppConstants.apiTimeout));
+      
+      return response;
     } catch (e) {
-      throw Exception('DELETE request failed: $e');
+      print('DELETE request error for $endpoint: $e');
+      rethrow;
     }
   }
 
-  // Handle API response
-  Map<String, dynamic> _handleResponse(http.Response response) {
-    final data = jsonDecode(response.body);
+  // PATCH request
+  Future<http.Response> patch(String endpoint, Map<String, dynamic> body) async {
+    try {
+      final headers = await _getHeaders();
+      final url = Uri.parse('${AppConstants.baseUrl}$endpoint');
+      
+      final response = await http.patch(
+        url,
+        headers: headers,
+        body: jsonEncode(body),
+      ).timeout(Duration(seconds: AppConstants.apiTimeout));
+      
+      return response;
+    } catch (e) {
+      print('PATCH request error for $endpoint: $e');
+      rethrow;
+    }
+  }
 
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return data;
-    } else {
-      throw Exception(data['error'] ?? 'Request failed');
+  // Helper method to check if response is successful
+  bool isSuccessful(http.Response response) {
+    return response.statusCode >= 200 && response.statusCode < 300;
+  }
+
+  // Helper method to parse response body
+  Map<String, dynamic> parseResponse(http.Response response) {
+    try {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      print('Error parsing response: $e');
+      return {};
     }
   }
 }

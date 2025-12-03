@@ -1,93 +1,151 @@
-/**
- * Booking Repository - Data access layer for bookings
- * 
- * SOLID Principles:
- * 1. Single Responsibility: Handles only booking data access
- * 2. Dependency Inversion: Depends on ApiService abstraction
- * 
- * Repository Pattern: Separates data access from business logic
- */
-
 import '../models/booking_model.dart';
 import '../services/api_service.dart';
+import '../constants/app_constants.dart';
 
-class BookingRepository {
+/// Repository interface for booking data operations
+/// Implements Dependency Inversion Principle - depend on abstractions
+abstract class IBookingRepository {
+  Future<List<BookingModel>> getUserBookings();
+  Future<List<BookingModel>> getUpcomingBookings();
+  Future<List<BookingModel>> getPastBookings();
+  Future<BookingModel?> createBooking(Map<String, dynamic> bookingData);
+  Future<bool> cancelBooking(String bookingId);
+  Future<BookingModel?> getBookingById(String bookingId);
+}
+
+/// Booking repository implementation
+/// Implements Single Responsibility - only handles booking data operations
+class BookingRepository implements IBookingRepository {
   final ApiService _apiService;
 
-  BookingRepository({ApiService? apiService})
-      : _apiService = apiService ?? ApiService();
+  // Dependency injection through constructor
+  BookingRepository(this._apiService);
 
-  /// Fetch bookings for a specific court
-  Future<List<BookingModel>> getBookingsByCourtId(
-    String courtId, {
-    int? courtNum,
-  }) async {
+  @override
+  Future<List<BookingModel>> getUserBookings() async {
     try {
-      final endpoint = courtNum != null
-          ? '/booking/court/$courtId?courtNum=$courtNum'
-          : '/booking/court/$courtId';
+      final response = await _apiService.get(AppConstants.bookingsEndpoint);
       
-      final response = await _apiService.get(endpoint);
-      final bookings = (response['data']['bookings'] as List)
-          .map((json) => BookingModel.fromJson(json))
-          .toList();
-      return bookings;
+      if (_apiService.isSuccessful(response)) {
+        final data = _apiService.parseResponse(response);
+        final bookingsData = data['data']?['bookings'] ?? 
+                            data['bookings'] ?? 
+                            data['data'] ?? 
+                            [];
+        
+        if (bookingsData is List) {
+          return bookingsData
+              .map((bookingJson) => BookingModel.fromJson(bookingJson as Map<String, dynamic>))
+              .toList();
+        }
+      }
+      
+      return [];
     } catch (e) {
-      throw Exception('Failed to fetch bookings: $e');
+      print('Error fetching user bookings: $e');
+      return [];
     }
   }
 
-  /// Create a new booking
-  Future<BookingModel> createBooking({
-    required String courtId,
-    required int courtNum,
-    required DateTime startTime,
-    required DateTime endTime,
-    required int totalPrice,
-  }) async {
+  @override
+  Future<List<BookingModel>> getUpcomingBookings() async {
     try {
-      final response = await _apiService.post('/booking/book-court', {
-        'courtID': courtId,
-        'courtNum': courtNum,
-        'startTime': startTime.toIso8601String(),
-        'endTime': endTime.toIso8601String(),
-        'totalPrice': totalPrice,
-      });
-      return BookingModel.fromJson(response['data']['booking']);
+      final response = await _apiService.get('${AppConstants.bookingsEndpoint}/upcoming');
+      
+      if (_apiService.isSuccessful(response)) {
+        final data = _apiService.parseResponse(response);
+        final bookingsData = data['data']?['bookings'] ?? data['bookings'] ?? [];
+        
+        if (bookingsData is List) {
+          return bookingsData
+              .map((bookingJson) => BookingModel.fromJson(bookingJson as Map<String, dynamic>))
+              .toList();
+        }
+      }
+      
+      return [];
     } catch (e) {
-      throw Exception('Failed to create booking: $e');
+      print('Error fetching upcoming bookings: $e');
+      return [];
     }
   }
 
-  /// Mark court as unavailable
-  Future<void> markUnavailable({
-    required String courtId,
-    required int courtNum,
-    required DateTime startTime,
-    required DateTime endTime,
-  }) async {
+  @override
+  Future<List<BookingModel>> getPastBookings() async {
     try {
-      await _apiService.post('/booking/mark-unavailable', {
-        'courtID': courtId,
-        'courtNum': courtNum,
-        'startTime': startTime.toIso8601String(),
-        'endTime': endTime.toIso8601String(),
-      });
+      final response = await _apiService.get('${AppConstants.bookingsEndpoint}/past');
+      
+      if (_apiService.isSuccessful(response)) {
+        final data = _apiService.parseResponse(response);
+        final bookingsData = data['data']?['bookings'] ?? data['bookings'] ?? [];
+        
+        if (bookingsData is List) {
+          return bookingsData
+              .map((bookingJson) => BookingModel.fromJson(bookingJson as Map<String, dynamic>))
+              .toList();
+        }
+      }
+      
+      return [];
     } catch (e) {
-      throw Exception('Failed to mark unavailable: $e');
+      print('Error fetching past bookings: $e');
+      return [];
     }
   }
 
-  /// Fetch booking history for the logged-in team
-  Future<List<BookingModel>> getBookingHistory() async {
+  @override
+  Future<BookingModel?> createBooking(Map<String, dynamic> bookingData) async {
     try {
-      final response = await _apiService.get('/booking/booking-history');
-      final bookings = (response['data']['bookings'] as List)
-          .map((json) => BookingModel.fromJson(json))
-          .toList();
-      return bookings;
+      final response = await _apiService.post(
+        AppConstants.bookingsEndpoint,
+        bookingData,
+      );
+      
+      if (_apiService.isSuccessful(response)) {
+        final data = _apiService.parseResponse(response);
+        final bookingResult = data['data']?['booking'] ?? data['booking'] ?? data;
+        
+        if (bookingResult != null && bookingResult is Map<String, dynamic>) {
+          return BookingModel.fromJson(bookingResult);
+        }
+      }
+      
+      return null;
     } catch (e) {
-      throw Exception('Failed to fetch booking history: $e');
+      print('Error creating booking: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<bool> cancelBooking(String bookingId) async {
+    try {
+      final response = await _apiService.delete('${AppConstants.bookingsEndpoint}/$bookingId');
+      return _apiService.isSuccessful(response);
+    } catch (e) {
+      print('Error cancelling booking: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<BookingModel?> getBookingById(String bookingId) async {
+    try {
+      final response = await _apiService.get('${AppConstants.bookingsEndpoint}/$bookingId');
+      
+      if (_apiService.isSuccessful(response)) {
+        final data = _apiService.parseResponse(response);
+        final bookingData = data['data']?['booking'] ?? data['booking'] ?? data;
+        
+        if (bookingData != null && bookingData is Map<String, dynamic>) {
+          return BookingModel.fromJson(bookingData);
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      print('Error fetching booking by ID: $e');
+      return null;
     }
   }
 }

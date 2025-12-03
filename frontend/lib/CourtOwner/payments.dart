@@ -611,16 +611,16 @@ class _PaymentsPageState extends State<PaymentsPage>
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
+          children: [
+            Text(
                         payment['team'] ?? 'Unknown Team',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
                           color: Color(0xFF2E7D32),
                           fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
+              ),
+            ),
+            const SizedBox(height: 4),
                       Row(
                         children: [
                           const Icon(
@@ -629,7 +629,7 @@ class _PaymentsPageState extends State<PaymentsPage>
                             color: Colors.grey,
                           ),
                           const SizedBox(width: 4),
-                          Text(
+            Text(
                             payment['court'] ?? 'Unknown Court',
                             style: const TextStyle(
                               color: Colors.grey,
@@ -656,8 +656,8 @@ class _PaymentsPageState extends State<PaymentsPage>
                     ),
                   ),
                   child: Text(
-                    isPaid ? "Paid" : "Pending",
-                    style: TextStyle(
+              isPaid ? "Paid" : "Pending",
+              style: TextStyle(
                       color: isPaid 
                           ? const Color(0xFF4CAF50) 
                           : Colors.orange,
@@ -728,7 +728,7 @@ class _PaymentsPageState extends State<PaymentsPage>
                       Text(
                         amount.toString(),
                         style: const TextStyle(
-                          fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.bold,
                           color: Color(0xFF2E7D32),
                           fontSize: 18,
                         ),
@@ -772,7 +772,7 @@ class _PaymentsPageState extends State<PaymentsPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
+        appBar: AppBar(
         backgroundColor: const Color(0xFF4CAF50),
         title: const Text(
           "Payments",
@@ -785,17 +785,17 @@ class _PaymentsPageState extends State<PaymentsPage>
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
           tabs: const [
-            Tab(text: "Pending"),
-            Tab(text: "Paid"),
-          ],
+              Tab(text: "Pending"),
+              Tab(text: "Paid"),
+            ],
+          ),
         ),
-      ),
-      body: TabBarView(
+        body: TabBarView(
         controller: _tabController,
-        children: [
-          // -------------------------
+          children: [
+            // -------------------------
           // Pending Payments
-          // -------------------------
+            // -------------------------
           isLoadingPending
               ? const Center(
                   child: CircularProgressIndicator(color: Color(0xFF4CAF50)),
@@ -870,11 +870,11 @@ class _PaymentsPageState extends State<PaymentsPage>
                       ],
                     ],
                   ),
-                ),
+            ),
 
-          // -------------------------
+            // -------------------------
           // Paid Bookings
-          // -------------------------
+            // -------------------------
           isLoadingPaid
               ? const Center(
                   child: CircularProgressIndicator(color: Color(0xFF4CAF50)),
@@ -899,9 +899,9 @@ class _PaymentsPageState extends State<PaymentsPage>
                           'Retry',
                           style: TextStyle(color: Colors.white),
                         ),
-                      ),
-                    ],
-                  ),
+            ),
+          ],
+        ),
                 )
               : paidBookings.isEmpty
               ? const Center(

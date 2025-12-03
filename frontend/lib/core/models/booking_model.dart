@@ -1,115 +1,166 @@
-/**
- * Booking Model - Data entity for bookings
- * 
- * OOP Principles:
- * - Encapsulation: Data structure with validation
- * - Single Responsibility: Only handles booking data
- */
-
+/// Booking data model
+/// Implements OOP principles with encapsulation
 class BookingModel {
-  final String id;
-  final String courtId;
-  final int courtNum;
+  final String? id;
   final String teamId;
   final String teamName;
-  final DateTime startTime;
-  final DateTime endTime;
-  final int totalPrice;
+  final String courtId;
+  final String courtName;
+  final String sport;
+  final DateTime date;
+  final int startSlot;
+  final int endSlot;
+  final int totalAmount;
   final String status;
-  final bool isUnavailable;
-  final String? sportType;
-  final String? matchType; // 'friendly' or 'competitive'
-  final String? guestTeamName;
+  final bool isPaid;
   final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   BookingModel({
-    required this.id,
-    required this.courtId,
-    required this.courtNum,
+    this.id,
     required this.teamId,
     required this.teamName,
-    required this.startTime,
-    required this.endTime,
-    required this.totalPrice,
-    this.status = 'pending',
-    this.isUnavailable = false,
-    this.sportType,
-    this.matchType,
-    this.guestTeamName,
+    required this.courtId,
+    required this.courtName,
+    required this.sport,
+    required this.date,
+    required this.startSlot,
+    required this.endSlot,
+    required this.totalAmount,
+    required this.status,
+    this.isPaid = false,
     this.createdAt,
+    this.updatedAt,
   });
 
+  // Factory constructor for creating instance from JSON
   factory BookingModel.fromJson(Map<String, dynamic> json) {
     return BookingModel(
-      id: json['id'] ?? '',
-      courtId: json['courtID'] ?? json['courtId'] ?? '',
-      courtNum: json['courtNum'] ?? 0,
-      teamId: json['teamID'] ?? json['teamId'] ?? '',
-      teamName: json['teamName'] ?? 'Unknown',
-      startTime: _parseDateTime(json['startTime']),
-      endTime: _parseDateTime(json['endTime']),
-      totalPrice: json['totalPrice'] ?? 0,
-      status: json['status'] ?? 'pending',
-      isUnavailable: json['isUnavailable'] ?? false,
-      sportType: json['sportType'],
-      matchType: json['matchType'],
-      guestTeamName: json['guestTeamName'],
-      createdAt: json['createdAt'] != null 
-          ? _parseDateTime(json['createdAt'])
-          : null,
+      id: json['_id']?.toString() ?? json['id']?.toString(),
+      teamId: json['teamId']?.toString() ?? json['team_id']?.toString() ?? '',
+      teamName: json['teamName']?.toString() ?? json['team_name']?.toString() ?? 'Unknown',
+      courtId: json['courtId']?.toString() ?? json['court_id']?.toString() ?? '',
+      courtName: json['courtName']?.toString() ?? json['court_name']?.toString() ?? 'Unknown',
+      sport: json['sport']?.toString() ?? '',
+      date: _parseDate(json['date']) ?? DateTime.now(),
+      startSlot: _parseInt(json['startSlot']) ?? _parseInt(json['start_slot']) ?? 0,
+      endSlot: _parseInt(json['endSlot']) ?? _parseInt(json['end_slot']) ?? 0,
+      totalAmount: _parseInt(json['totalAmount']) ?? _parseInt(json['total_amount']) ?? 0,
+      status: json['status']?.toString() ?? 'pending',
+      isPaid: json['isPaid'] == true || json['is_paid'] == true,
+      createdAt: _parseDate(json['createdAt']) ?? _parseDate(json['created_at']),
+      updatedAt: _parseDate(json['updatedAt']) ?? _parseDate(json['updated_at']),
     );
   }
 
-  static DateTime _parseDateTime(dynamic value) {
-    if (value == null) return DateTime.now();
-    if (value is DateTime) return value;
-    if (value is String) return DateTime.parse(value);
-    if (value is Map && value.containsKey('_seconds')) {
-      return DateTime.fromMillisecondsSinceEpoch(
-        (value['_seconds'] as int) * 1000
-      );
-    }
-    return DateTime.now();
-  }
-
+  // Convert instance to JSON
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'courtID': courtId,
-      'courtNum': courtNum,
-      'teamID': teamId,
+      if (id != null) 'id': id,
+      'teamId': teamId,
       'teamName': teamName,
-      'startTime': startTime.toIso8601String(),
-      'endTime': endTime.toIso8601String(),
-      'totalPrice': totalPrice,
+      'courtId': courtId,
+      'courtName': courtName,
+      'sport': sport,
+      'date': date.toIso8601String(),
+      'startSlot': startSlot,
+      'endSlot': endSlot,
+      'totalAmount': totalAmount,
       'status': status,
-      'isUnavailable': isUnavailable,
-      'sportType': sportType,
-      'matchType': matchType,
-      'guestTeamName': guestTeamName,
-      'createdAt': createdAt?.toIso8601String(),
+      'isPaid': isPaid,
+      if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
+      if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
     };
   }
 
+  // Helper methods
+  static int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value);
+    if (value is double) return value.toInt();
+    return null;
+  }
+
+  static DateTime? _parseDate(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
+
+  // Copy with method
+  BookingModel copyWith({
+    String? id,
+    String? teamId,
+    String? teamName,
+    String? courtId,
+    String? courtName,
+    String? sport,
+    DateTime? date,
+    int? startSlot,
+    int? endSlot,
+    int? totalAmount,
+    String? status,
+    bool? isPaid,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return BookingModel(
+      id: id ?? this.id,
+      teamId: teamId ?? this.teamId,
+      teamName: teamName ?? this.teamName,
+      courtId: courtId ?? this.courtId,
+      courtName: courtName ?? this.courtName,
+      sport: sport ?? this.sport,
+      date: date ?? this.date,
+      startSlot: startSlot ?? this.startSlot,
+      endSlot: endSlot ?? this.endSlot,
+      totalAmount: totalAmount ?? this.totalAmount,
+      status: status ?? this.status,
+      isPaid: isPaid ?? this.isPaid,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
   // Business logic methods
-  bool isFriendly() => matchType?.toLowerCase() == 'friendly';
-  bool isCompetitive() => matchType?.toLowerCase() == 'competitive';
-  
-  int getDurationInHours() {
-    return endTime.difference(startTime).inHours;
+  int get durationInSlots => endSlot - startSlot;
+
+  String get formattedDate {
+    return '${date.day}/${date.month}/${date.year}';
   }
 
-  bool isPast() {
-    return endTime.isBefore(DateTime.now());
+  String get timeRange {
+    return 'Slot $startSlot - $endSlot';
   }
 
-  bool isActive() {
-    final now = DateTime.now();
-    return startTime.isBefore(now) && endTime.isAfter(now);
+  bool get isUpcoming {
+    return date.isAfter(DateTime.now()) && status == 'confirmed';
   }
 
-  bool isUpcoming() {
-    return startTime.isAfter(DateTime.now());
+  bool get isPending {
+    return status == 'pending';
   }
+
+  bool get isConfirmed {
+    return status == 'confirmed';
+  }
+
+  bool get isCancelled {
+    return status == 'cancelled';
+  }
+
+  @override
+  String toString() => 'BookingModel(id: $id, courtName: $courtName, date: $formattedDate)';
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is BookingModel && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
 }
 

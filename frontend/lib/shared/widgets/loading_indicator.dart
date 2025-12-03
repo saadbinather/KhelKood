@@ -1,21 +1,18 @@
-/**
- * Reusable Loading Indicator Widget
- * 
- * OOP Principles:
- * - Encapsulation: Self-contained widget
- * - Reusability: Can be used across the app
- */
-
 import 'package:flutter/material.dart';
+import '../../core/constants/app_colors.dart';
 
+/// Reusable loading indicator widget
+/// Implements Single Responsibility - displays loading state
 class LoadingIndicator extends StatelessWidget {
-  final Color color;
   final String? message;
+  final Color? color;
+  final double size;
 
   const LoadingIndicator({
     super.key,
-    this.color = Colors.redAccent,
     this.message,
+    this.color,
+    this.size = 40,
   });
 
   @override
@@ -24,12 +21,25 @@ class LoadingIndicator extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(color: color),
+          SizedBox(
+            width: size,
+            height: size,
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(
+                color ?? AppColors.primary,
+              ),
+              strokeWidth: 3,
+            ),
+          ),
           if (message != null) ...[
             const SizedBox(height: 16),
             Text(
               message!,
-              style: const TextStyle(color: Colors.white70),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ],

@@ -14,51 +14,114 @@ class PaymentSummaryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final isTablet = screenWidth > 600;
+    final horizontalPadding = isSmallScreen
+        ? 12.0
+        : isTablet
+        ? 24.0
+        : 20.0;
+
     final int totalAmount = slotCount * ratePerHour;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0E0E0E),
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1B1B1B),
-        title: const Text(
-          "Payment Summary",
-          style: TextStyle(color: Colors.white),
+        backgroundColor: Colors.redAccent,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.receipt_long,
+              color: Colors.white,
+              size: isSmallScreen ? 20 : 24,
+            ),
+            SizedBox(width: isSmallScreen ? 8 : 12),
+            Text(
+              "Payment Summary",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: isSmallScreen ? 16 : 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
-        centerTitle: true,
+        centerTitle: false,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(horizontalPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            SizedBox(height: isSmallScreen ? 16 : 20),
             // ------------------ RECEIPT ------------------
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(isSmallScreen ? 14 : 16),
               decoration: BoxDecoration(
                 color: Colors.grey[900],
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.deepPurpleAccent),
+                border: Border.all(
+                  color: Colors.redAccent.withOpacity(0.3),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.redAccent.withOpacity(0.1),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Booking Summary",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.summarize,
+                        color: Colors.redAccent,
+                        size: isSmallScreen ? 20 : 24,
+                      ),
+                      SizedBox(width: isSmallScreen ? 8 : 12),
+                      Text(
+                        "Booking Summary",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isSmallScreen ? 18 : 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-
-                  _row("Slots Selected:", "$slotCount"),
-                  _row("Rate per Hour:", "Rs $ratePerHour"),
-                  const Divider(color: Colors.white30),
+                  SizedBox(height: isSmallScreen ? 14 : 16),
                   _row(
+                    context,
+                    Icons.schedule,
+                    "Slots Selected:",
+                    "$slotCount",
+                    isSmallScreen,
+                  ),
+                  SizedBox(height: isSmallScreen ? 10 : 12),
+                  _row(
+                    context,
+                    Icons.currency_rupee,
+                    "Rate per Hour:",
+                    "Rs $ratePerHour",
+                    isSmallScreen,
+                  ),
+                  SizedBox(height: isSmallScreen ? 12 : 16),
+                  Divider(color: Colors.white24),
+                  SizedBox(height: isSmallScreen ? 12 : 16),
+                  _row(
+                    context,
+                    Icons.payments,
                     "Total Amount:",
                     "Rs $totalAmount",
+                    isSmallScreen,
                     isBold: true,
                     isLarge: true,
                   ),
@@ -66,16 +129,19 @@ class PaymentSummaryPage extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 40),
+            SizedBox(height: isSmallScreen ? 32 : 40),
 
             // ------------------ ACTION BUTTON ------------------
             Center(
-              child: ElevatedButton(
+              child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurpleAccent,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 40,
-                    vertical: 14,
+                  backgroundColor: Colors.redAccent,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 32 : 40,
+                    vertical: isSmallScreen ? 14 : 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 onPressed: () {
@@ -91,11 +157,21 @@ class PaymentSummaryPage extends StatelessWidget {
                     // =======================
                   }
                 },
-                child: Text(
+                icon: Icon(
+                  actionType == "booking"
+                      ? Icons.check_circle
+                      : Icons.add_circle,
+                  size: isSmallScreen ? 20 : 24,
+                ),
+                label: Text(
                   actionType == "booking"
                       ? "Confirm Booking"
                       : "Create Challenge",
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: isSmallScreen ? 15 : 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -106,30 +182,45 @@ class PaymentSummaryPage extends StatelessWidget {
   }
 
   Widget _row(
+    BuildContext context,
+    IconData icon,
     String label,
-    String value, {
+    String value,
+    bool isSmallScreen, {
     bool isBold = false,
     bool isLarge = false,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white70, fontSize: 16),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: isLarge ? 20 : 16,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Icon(
+              icon,
+              color: Colors.redAccent,
+              size: isSmallScreen ? 16 : 18,
             ),
+            SizedBox(width: isSmallScreen ? 8 : 12),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: isSmallScreen ? 14 : 16,
+              ),
+            ),
+          ],
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: isLarge
+                ? (isSmallScreen ? 18 : 20)
+                : (isSmallScreen ? 14 : 16),
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

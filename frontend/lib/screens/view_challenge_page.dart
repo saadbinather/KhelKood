@@ -12,84 +12,152 @@ class ViewChallengePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final isTablet = screenWidth > 600;
+    final horizontalPadding = isSmallScreen
+        ? 12.0
+        : isTablet
+        ? 24.0
+        : 20.0;
+
     DateTime start = DateTime.parse(challenge["Start_Time"]);
     DateTime end = DateTime.parse(challenge["End_Time"]);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0E0E0E),
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1B1B1B),
-        title: const Text(
-          'Challenge Details',
-          style: TextStyle(color: Colors.white),
+        backgroundColor: Colors.redAccent,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.info_outline,
+              color: Colors.white,
+              size: isSmallScreen ? 20 : 24,
+            ),
+            SizedBox(width: isSmallScreen ? 8 : 12),
+            Text(
+              'Challenge Details',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: isSmallScreen ? 16 : 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
-        centerTitle: true,
+        centerTitle: false,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(horizontalPadding),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
           decoration: BoxDecoration(
-            color: const Color(0xFF1C1C1C),
-            borderRadius: BorderRadius.circular(20),
+            color: Colors.grey[900],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.redAccent.withOpacity(0.3),
+              width: 1.5,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.deepPurpleAccent.withOpacity(0.3),
+                color: Colors.redAccent.withOpacity(0.1),
                 blurRadius: 8,
-                offset: const Offset(0, 3),
+                spreadRadius: 1,
               ),
             ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _infoRow("Date", challenge["Date"]),
+              SizedBox(height: isSmallScreen ? 8 : 12),
               _infoRow(
+                Icons.calendar_today,
+                "Date",
+                challenge["Date"],
+                isSmallScreen,
+              ),
+              SizedBox(height: isSmallScreen ? 12 : 16),
+              _infoRow(
+                Icons.access_time,
                 "Time Slot",
                 "${_formatTime(start)} - ${_formatTime(end)}",
+                isSmallScreen,
               ),
-              _infoRow("Court Name", challenge["Court_Name"]),
-              _infoRow("Host Team", challenge["Host_Team_Name"]),
-              _infoRow("Total Price", "Rs ${challenge["Total_Price"]}"),
+              SizedBox(height: isSmallScreen ? 12 : 16),
+              _infoRow(
+                Icons.sports_soccer,
+                "Court Name",
+                challenge["Court_Name"],
+                isSmallScreen,
+              ),
+              SizedBox(height: isSmallScreen ? 12 : 16),
+              _infoRow(
+                Icons.group,
+                "Host Team",
+                challenge["Host_Team_Name"],
+                isSmallScreen,
+              ),
+              SizedBox(height: isSmallScreen ? 12 : 16),
+              _infoRow(
+                Icons.currency_rupee,
+                "Total Price",
+                "Rs ${challenge["Total_Price"]}",
+                isSmallScreen,
+              ),
 
               const Spacer(),
 
+              SizedBox(height: isSmallScreen ? 20 : 24),
               Center(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isIncoming
-                        ? Colors.green
-                        : Colors.redAccent,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 40,
-                      vertical: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          isIncoming
-                              ? 'Challenge Accepted!'
-                              : 'Challenge Cancelled!',
-                        ),
-                        backgroundColor: isIncoming
-                            ? Colors.green
-                            : Colors.redAccent,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isIncoming
+                          ? Colors.green
+                          : Colors.redAccent,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isSmallScreen ? 24 : 32,
+                        vertical: isSmallScreen ? 14 : 16,
                       ),
-                    );
-                    Navigator.pop(context);
-                  },
-                  child: Text(
-                    isIncoming ? "Accept Challenge" : "Cancel Challenge",
-                    style: const TextStyle(fontSize: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            isIncoming
+                                ? 'Challenge Accepted!'
+                                : 'Challenge Cancelled!',
+                          ),
+                          backgroundColor: isIncoming
+                              ? Colors.green
+                              : Colors.redAccent,
+                        ),
+                      );
+                      Navigator.pop(context);
+                    },
+                    icon: Icon(
+                      isIncoming ? Icons.check_circle : Icons.cancel,
+                      size: isSmallScreen ? 20 : 24,
+                    ),
+                    label: Text(
+                      isIncoming ? "Accept Challenge" : "Cancel Challenge",
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 15 : 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ),
+              SizedBox(height: isSmallScreen ? 12 : 16),
             ],
           ),
         ),
@@ -97,31 +165,43 @@ class ViewChallengePage extends StatelessWidget {
     );
   }
 
-  Widget _infoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Text(
-              "$label:",
-              style: const TextStyle(
-                color: Colors.white70,
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
+  Widget _infoRow(IconData icon, String label, String value, bool isSmallScreen) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          icon,
+          color: Colors.redAccent,
+          size: isSmallScreen ? 18 : 20,
+        ),
+        SizedBox(width: isSmallScreen ? 10 : 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "$label:",
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w600,
+                  fontSize: isSmallScreen ? 13 : 14,
+                ),
               ),
-            ),
+              SizedBox(height: isSmallScreen ? 4 : 6),
+              Text(
+                value,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: isSmallScreen ? 15 : 16,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
-          Expanded(
-            flex: 5,
-            child: Text(
-              value,
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

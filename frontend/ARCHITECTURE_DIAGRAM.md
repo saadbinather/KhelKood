@@ -1,398 +1,421 @@
-# Architecture Diagram
+# KhelKood Frontend Architecture Diagram
 
-## 🏗️ Layered Architecture
+## Layer Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      PRESENTATION LAYER                      │
-│                         (UI Screens)                         │
-├─────────────────────────────────────────────────────────────┤
-│  all_courts_page.dart  │  booking_history_page.dart  │ ...  │
-│                                                               │
-│  Responsibilities:                                            │
-│  - Handle user interactions                                   │
-│  - Display UI                                                 │
-│  - Manage local state                                         │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-                         Uses (DIP) ✅
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    REPOSITORY LAYER                          │
-│                   (Data Access - SRP) ✅                     │
-├─────────────────────────────────────────────────────────────┤
-│  CourtRepository  │  BookingRepository  │  ChallengeRepo    │
-│                                                               │
-│  Responsibilities:                                            │
-│  - Fetch data from API                                        │
-│  - Parse JSON to Models                                       │
-│  - Handle data errors                                         │
-│  - Cache data (future)                                        │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-                         Uses (DIP) ✅
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│                      SERVICE LAYER                           │
-│                  (HTTP Communication - SRP) ✅               │
-├─────────────────────────────────────────────────────────────┤
-│                       ApiService                              │
-│                      (Singleton)                              │
-│                                                               │
-│  Responsibilities:                                            │
-│  - Make HTTP requests (GET, POST, PUT, DELETE)                │
-│  - Manage authentication tokens                               │
-│  - Handle HTTP errors                                         │
-│  - Parse responses                                            │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-                         Talks to
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    BACKEND API SERVER                        │
-│                  (Node.js + Express)                         │
-├─────────────────────────────────────────────────────────────┤
-│  /api/courts/verified                                         │
-│  /api/booking/book-court                                      │
-│  /api/challenges/create                                       │
-│  ...                                                          │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                      PRESENTATION LAYER                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │   Screens    │  │   Sections   │  │   Widgets    │          │
+│  │              │  │              │  │              │          │
+│  │ - Dashboard  │  │ - Team       │  │ - StatCard   │          │
+│  │ - Challenges │  │   Overview   │  │ - CourtCard  │          │
+│  │ - Bookings   │  │ - Quick      │  │ - Challenge  │          │
+│  │ - Profile    │  │   Stats      │  │   Card       │          │
+│  │              │  │ - Courts     │  │ - Loading    │          │
+│  │              │  │ - Leaderboard│  │ - Error      │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+└─────────────────────────────────────────────────────────────────┘
+                            ▲
+                            │ Uses
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    BUSINESS LOGIC LAYER                          │
+│  ┌──────────────────────────────────────────────────────┐       │
+│  │              Dependency Injection                     │       │
+│  │                Service Locator                        │       │
+│  └──────────────────────────────────────────────────────┘       │
+│                            ▲                                     │
+│                            │ Provides                            │
+│                            ▼                                     │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │ Repositories │  │    Models    │  │   Services   │          │
+│  │              │  │              │  │              │          │
+│  │ - Team       │  │ - TeamModel  │  │ - API        │          │
+│  │ - Court      │  │ - CourtModel │  │ - Storage    │          │
+│  │ - Booking    │  │ - Booking    │  │              │          │
+│  │ - Challenge  │  │   Model      │  │              │          │
+│  │              │  │ - Challenge  │  │              │          │
+│  │              │  │   Model      │  │              │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+└─────────────────────────────────────────────────────────────────┘
+                            ▲
+                            │ Uses
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        DATA LAYER                                │
+│  ┌──────────────┐                      ┌──────────────┐         │
+│  │ API Service  │◄────────────────────►│   Storage    │         │
+│  │              │                      │   Service    │         │
+│  │ - HTTP GET   │                      │              │         │
+│  │ - HTTP POST  │                      │ - Save Token │         │
+│  │ - HTTP PUT   │                      │ - Get Token  │         │
+│  │ - HTTP DELETE│                      │ - Clear Data │         │
+│  └──────────────┘                      └──────────────┘         │
+│         │                                      │                 │
+│         ▼                                      ▼                 │
+│  ┌──────────────┐                      ┌──────────────┐         │
+│  │  Backend API │                      │SharedPrefs   │         │
+│  │localhost:5000│                      │ Local Storage│         │
+│  └──────────────┘                      └──────────────┘         │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
----
+## SOLID Principles Application
 
-## 🔄 Data Flow Example
+### 1. Single Responsibility Principle (SRP)
 
-### Fetching Courts
+```
+┌─────────────────────────────────────────────────────────┐
+│ Each class has ONE reason to change                     │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  StorageService ────► Only handles local storage        │
+│                                                          │
+│  ApiService ────────► Only handles HTTP requests        │
+│                                                          │
+│  TeamRepository ───► Only handles team data operations  │
+│                                                          │
+│  StatCard ──────────► Only displays one statistic       │
+│                                                          │
+│  AppConstants ──────► Only manages constants            │
+│                                                          │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 2. Dependency Inversion Principle (DIP)
+
+```
+┌────────────────────────────────────────────────────┐
+│ High-level modules depend on abstractions          │
+│ Not on low-level modules                           │
+└────────────────────────────────────────────────────┘
+
+    High-Level Module
+    ┌──────────────┐
+    │ DashboardPage│
+    └──────┬───────┘
+           │ depends on
+           ▼
+    ┌──────────────────┐  (Interface/Abstract)
+    │ ITeamRepository  │◄─────────────────┐
+    └──────────────────┘                  │
+           ▲                               │
+           │ implements                    │
+           │                               │
+    ┌──────────────┐                      │
+    │TeamRepository│  (Low-Level Module)  │
+    └──────┬───────┘                      │
+           │ depends on                   │
+           ▼                               │
+    ┌──────────────┐                      │
+    │  ApiService  │◄─────────────────────┘
+    └──────────────┘
+        (Injected)
+```
+
+## Data Flow
+
+### Example: Fetching Team Details
 
 ```
 ┌──────────────┐
-│   User Tap   │
+│ User Opens   │
+│  Dashboard   │
 └──────┬───────┘
        │
-       ↓
-┌────────────────────────────┐
-│  AllCourtsPage             │
-│  _loadCourts()             │ ← Presentation Layer
-└──────┬─────────────────────┘
-       │ Calls
-       ↓
-┌────────────────────────────┐
-│  CourtRepository           │
-│  getVerifiedCourts()       │ ← Repository Layer (SRP)
-└──────┬─────────────────────┘
-       │ Uses
-       ↓
-┌────────────────────────────┐
-│  ApiService                │
-│  get('/courts/verified')   │ ← Service Layer (SRP)
-└──────┬─────────────────────┘
-       │ HTTP Request
-       ↓
-┌────────────────────────────┐
-│  Backend API               │
-│  GET /api/courts/verified  │
-└──────┬─────────────────────┘
-       │ JSON Response
-       ↓
-┌────────────────────────────┐
-│  ApiService                │
-│  Parse JSON                │
-└──────┬─────────────────────┘
-       │ Returns data
-       ↓
-┌────────────────────────────┐
-│  CourtRepository           │
-│  Convert to CourtModel     │ ← Type-safe models (OOP)
-└──────┬─────────────────────┘
-       │ Returns List<CourtModel>
-       ↓
-┌────────────────────────────┐
-│  AllCourtsPage             │
-│  Display courts            │
-└────────────────────────────┘
+       ▼
+┌──────────────────────────────────────────┐
+│ DashboardPage                             │
+│   _loadData() {                          │
+│     final repo = ServiceLocator()        │
+│                  .teamRepository;        │
+│     final team = await repo              │
+│                  .getTeamDetails();      │
+│   }                                      │
+└──────┬───────────────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────────────┐
+│ ServiceLocator                            │
+│   Returns: ITeamRepository instance      │
+└──────┬───────────────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────────────┐
+│ TeamRepository                            │
+│   getTeamDetails() {                     │
+│     response = apiService.get(endpoint); │
+│     return TeamModel.fromJson(data);     │
+│   }                                      │
+└──────┬───────────────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────────────┐
+│ ApiService                                │
+│   get(endpoint) {                        │
+│     token = storageService.getToken();   │
+│     return http.get(url, headers);       │
+│   }                                      │
+└──────┬───────────────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────────────┐
+│ Backend API                               │
+│   Returns JSON response                   │
+└──────┬───────────────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────────────┐
+│ TeamModel.fromJson()                      │
+│   Parses JSON → Typed object             │
+│   Validates data                          │
+└──────┬───────────────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────────────┐
+│ DashboardPage                             │
+│   setState(() => team = fetchedTeam);    │
+│   UI updates with team data              │
+└──────────────────────────────────────────┘
 ```
 
----
+## Component Composition
 
-## 🧩 Component Relationships
+### Dashboard Screen Composition
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        MODELS (OOP)                          │
-│                     (Encapsulation) ✅                       │
-├─────────────────────────────────────────────────────────────┤
-│  CourtModel  │  BookingModel  │  ChallengeModel             │
-│                                                               │
-│  Properties:                                                  │
-│  - id, name, location, rates, courts                          │
-│                                                               │
-│  Methods (Business Logic):                                    │
-│  - getCourtsForSport(sport)                                   │
-│  - getRateForSport(sport)                                     │
-│  - isFriendly(), isPast(), etc.                               │
-└─────────────────────────────────────────────────────────────┘
-                              ↑
-                         Used by
+DashboardPage
+│
+├── AppBar
+│   └── Text (team.teamName)
+│
+└── ScrollView
+    │
+    ├── TeamOverviewSection
+    │   ├── CircleAvatar
+    │   ├── Text (teamName)
+    │   └── TeamStatsRow
+    │       ├── StatItem (Wins)
+    │       ├── StatItem (Losses)
+    │       ├── StatItem (Draws)
+    │       └── StatItem (Points)
+    │
+    ├── QuickStatsSection
+    │   ├── SectionHeader
+    │   └── Row
+    │       ├── StatCard (Win Rate)
+    │       └── StatCard (Rank)
+    │
+    ├── VerifiedCourtsSection
+    │   ├── SectionHeader
+    │   └── ListView
+    │       ├── CourtCard (Court 1)
+    │       ├── CourtCard (Court 2)
+    │       └── CourtCard (Court 3)
+    │
+    └── LeaderboardSection
+        ├── SectionHeader
+        └── ListView
+            ├── LeaderboardCard (Rank 1)
+            ├── LeaderboardCard (Rank 2)
+            ├── LeaderboardCard (Rank 3)
+            ├── LeaderboardCard (Rank 4)
+            └── LeaderboardCard (Rank 5)
+```
+
+## Dependency Injection Flow
+
+```
+┌─────────────────────────────────────────┐
+│ main.dart                                │
+│                                          │
+│ void main() async {                     │
+│   await ServiceLocator().initialize();  │
+│   runApp(MyApp());                      │
+│ }                                       │
+└──────┬──────────────────────────────────┘
+       │
+       ▼
+┌─────────────────────────────────────────┐
+│ ServiceLocator.initialize()              │
+│                                          │
+│ 1. Create StorageService ────┐          │
+│ 2. Create ApiService ─────────┼─┐       │
+│ 3. Create TeamRepository ─────┼─┼─┐     │
+│ 4. Create CourtRepository ────┼─┼─┼─┐   │
+│ 5. Create BookingRepository ──┼─┼─┼─┼─┐ │
+│ 6. Create ChallengeRepository─┼─┼─┼─┼─┤ │
+│                               │ │ │ │ │ │
+└───────────────────────────────┼─┼─┼─┼─┼─┘
+                                │ │ │ │ │
+        ┌───────────────────────┘ │ │ │ │
+        │   ┌─────────────────────┘ │ │ │
+        │   │   ┌───────────────────┘ │ │
+        │   │   │   ┌─────────────────┘ │
+        │   │   │   │   ┌───────────────┘
+        ▼   ▼   ▼   ▼   ▼
+┌─────────────────────────────────────────┐
+│ All dependencies ready to use            │
+│                                          │
+│ ServiceLocator().teamRepository         │
+│ ServiceLocator().courtRepository        │
+│ ServiceLocator().bookingRepository      │
+│ ServiceLocator().challengeRepository    │
+│                                          │
+└─────────────────────────────────────────┘
+```
+
+## Reusable Widget System
+
+```
+┌────────────────────────────────────────────────────┐
+│              Shared Widget Library                  │
+├────────────────────────────────────────────────────┤
+│                                                     │
+│  Base Display Components:                          │
+│  ┌─────────────┐  ┌─────────────┐                 │
+│  │  StatCard   │  │ SectionHeader│                 │
+│  └─────────────┘  └─────────────┘                 │
+│                                                     │
+│  Entity Cards:                                     │
+│  ┌─────────────┐  ┌─────────────┐                 │
+│  │ CourtCard   │  │ Challenge   │                 │
+│  │             │  │   Card      │                 │
+│  └─────────────┘  └─────────────┘                 │
+│  ┌─────────────┐  ┌─────────────┐                 │
+│  │ Leaderboard │  │ TeamStats   │                 │
+│  │   Card      │  │   Row       │                 │
+│  └─────────────┘  └─────────────┘                 │
+│                                                     │
+│  State Components:                                 │
+│  ┌─────────────┐  ┌─────────────┐                 │
+│  │  Loading    │  │   Error     │                 │
+│  │  Indicator  │  │  Message    │                 │
+│  └─────────────┘  └─────────────┘                 │
+│  ┌─────────────┐                                   │
+│  │ EmptyState  │                                   │
+│  └─────────────┘                                   │
+│                                                     │
+└────────────────────────────────────────────────────┘
+                     ▲
+                     │ Reused by
+                     │
+        ┌────────────┼────────────┐
+        │            │            │
+        ▼            ▼            ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│  Dashboard  │ │ Challenges  │ │  Bookings   │
+│    Page     │ │    Page     │ │    Page     │
+└─────────────┘ └─────────────┘ └─────────────┘
+```
+
+## Error Handling Flow
+
+```
+User Action
+    ┃
+    ▼
+┌───────────────┐
+│ UI Component  │
+└───────┬───────┘
+        │ try {
+        ▼
+┌───────────────┐
+│  Repository   │
+└───────┬───────┘
+        │
+        ▼
+┌───────────────┐
+│ API Service   │
+└───────┬───────┘
+        │
+        ├─── Success ───► Parse JSON ───► Return Model ───► Update UI
+        │
+        └─── Error ─────► Catch Exception
                               │
-┌─────────────────────────────────────────────────────────────┐
-│                   REUSABLE WIDGETS                           │
-│                 (DRY Principle) ✅                           │
-├─────────────────────────────────────────────────────────────┤
-│  LoadingIndicator  │  ErrorDisplay  │  EmptyState           │
-│  CourtCard  │  CustomButton                                  │
-│                                                               │
-│  Benefits:                                                    │
-│  - Consistent UI across app                                   │
-│  - Single place to update styling                             │
-│  - Reduced code duplication (50%+)                            │
-└─────────────────────────────────────────────────────────────┘
-                              ↑
-                         Used by
-                              │
-┌─────────────────────────────────────────────────────────────┐
-│                       UI SCREENS                             │
-│              (Presentation Layer)                            │
-├─────────────────────────────────────────────────────────────┤
-│  all_courts_page.dart                                         │
-│  booking_history_page.dart                                    │
-│  create_booking_page.dart                                     │
-│  ...                                                          │
-└─────────────────────────────────────────────────────────────┘
+                              ├─── Network Error
+                              ├─── Parse Error
+                              ├─── Auth Error
+                              └─── Server Error
+                                      │
+                                      ▼
+                              Return null/empty
+                                      │
+                                      ▼
+                              UI shows ErrorMessage widget
 ```
 
----
-
-## 🔀 SOLID Principles Visualization
-
-### Single Responsibility (S)
+## Model Transformation
 
 ```
-❌ BEFORE: AllCourtsPage doing EVERYTHING
-
-┌─────────────────────────────┐
-│      AllCourtsPage          │
-├─────────────────────────────┤
-│  - HTTP requests            │
-│  - JSON parsing             │
-│  - Token management         │
-│  - Data filtering           │
-│  - Error handling           │
-│  - UI rendering             │
-│  - Business logic           │
-└─────────────────────────────┘
-    TOO MANY RESPONSIBILITIES!
-
-
-✅ AFTER: Separated into focused classes
-
-┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-│   ApiService     │  │ CourtRepository  │  │  AllCourtsPage   │
-├──────────────────┤  ├──────────────────┤  ├──────────────────┤
-│ - HTTP requests  │  │ - Data fetching  │  │ - UI rendering   │
-│ - Token mgmt     │  │ - JSON parsing   │  │ - User input     │
-│ - HTTP errors    │  │ - Data errors    │  │ - Navigation     │
-└──────────────────┘  └──────────────────┘  └──────────────────┘
-   ONE JOB EACH!          ONE JOB EACH!         ONE JOB EACH!
+Backend API Response (JSON)
+        │
+        │ {"teamName": "Warriors", "wins": 10}
+        │
+        ▼
+┌─────────────────────────┐
+│  Raw HTTP Response      │
+│  response.body          │
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│  JSON Decode            │
+│  Map<String, dynamic>   │
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│  TeamModel.fromJson()   │
+│  - Validate data        │
+│  - Parse types          │
+│  - Set defaults         │
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│  TeamModel Instance     │
+│  - teamName: String     │
+│  - wins: int?           │
+│  - winRate: double      │
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│  UI Display             │
+│  Text(team.teamName)    │
+│  Text(team.winRate)     │
+└─────────────────────────┘
 ```
 
----
-
-### Dependency Inversion (D)
+## Benefits Summary
 
 ```
-❌ BEFORE: Direct dependency on concrete implementation
-
-┌─────────────────────────────┐
-│      AllCourtsPage          │
-│                             │
-│  ↓ Directly depends on      │
-│  http package (concrete)    │
-└─────────────────────────────┘
-         ↓
-┌─────────────────────────────┐
-│      http package           │
-│   (Concrete implementation) │
-└─────────────────────────────┘
-    TIGHTLY COUPLED!
-
-
-✅ AFTER: Depends on abstraction
-
-┌─────────────────────────────┐
-│      AllCourtsPage          │
-│                             │
-│  ↓ Depends on abstraction   │
-│  (Repository interface)     │
-└─────────────────────────────┘
-         ↓
-┌─────────────────────────────┐
-│   CourtRepository           │
-│   (Abstraction/Interface)   │
-└─────────────────────────────┘
-         ↓
-┌─────────────────────────────┐
-│      ApiService             │
-│ (Concrete implementation)   │
-└─────────────────────────────┘
-    LOOSELY COUPLED!
-    EASY TO TEST!
-    EASY TO SWAP!
+┌─────────────────────────────────────────────────────┐
+│                   BEFORE                             │
+├─────────────────────────────────────────────────────┤
+│ ❌ Tightly coupled code                             │
+│ ❌ No type safety (Map<String, dynamic>)            │
+│ ❌ Repeated code across screens                     │
+│ ❌ Hard to test                                     │
+│ ❌ Mixed concerns (UI + API + Storage)              │
+│ ❌ Hard-coded URLs and constants                    │
+└─────────────────────────────────────────────────────┘
+                       │
+                       │ Refactoring
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│                    AFTER                             │
+├─────────────────────────────────────────────────────┤
+│ ✅ Loosely coupled (DI)                             │
+│ ✅ Type-safe models                                 │
+│ ✅ Reusable components (70% reuse)                  │
+│ ✅ Easy to test (mockable)                          │
+│ ✅ Clear separation of concerns                     │
+│ ✅ Centralized constants                            │
+│ ✅ Scalable architecture                            │
+│ ✅ Better error handling                            │
+└─────────────────────────────────────────────────────┘
 ```
-
----
-
-## 🧪 Testing Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      UNIT TESTS                              │
-│                    (Isolated Testing)                        │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  Test Models:                                                 │
-│  ✓ CourtModel.getCourtsForSport('cricket') == 3               │
-│  ✓ BookingModel.isFriendly() == true                          │
-│  ✓ ChallengeModel.isPast() == false                           │
-│                                                               │
-│  Test Utils:                                                  │
-│  ✓ SportUtils.getSportIcon('cricket') == Icons.cricket        │
-│  ✓ DateTimeUtils.formatDate(date) == '15 Jan'                 │
-│                                                               │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│                   INTEGRATION TESTS                          │
-│               (Testing with Mock Data)                       │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  Test Repositories:                                           │
-│  ✓ CourtRepository.getVerifiedCourts()                        │
-│    → Uses MockApiService                                      │
-│    → Returns List<CourtModel>                                 │
-│                                                               │
-│  ┌─────────────────┐         ┌─────────────────┐             │
-│  │ CourtRepository │ ──uses→ │ MockApiService  │             │
-│  │  (Real)         │         │  (Fake)         │             │
-│  └─────────────────┘         └─────────────────┘             │
-│                                                               │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│                   WIDGET TESTS                               │
-│                  (UI Component Testing)                      │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  Test Widgets:                                                │
-│  ✓ LoadingIndicator displays spinner                          │
-│  ✓ ErrorDisplay shows message                                 │
-│  ✓ CourtCard renders correctly                                │
-│  ✓ CustomButton calls onPressed                               │
-│                                                               │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 📂 File Organization
-
-```
-frontend/lib/
-│
-├── core/ ═══════════════════════════════════════════════════════
-│   │                   BUSINESS LOGIC LAYER
-│   │
-│   ├── models/ ─────────────────────── Data Entities (OOP)
-│   │   ├── court_model.dart
-│   │   ├── booking_model.dart
-│   │   └── challenge_model.dart
-│   │
-│   ├── repositories/ ─────────────── Data Access (SRP, DIP)
-│   │   ├── court_repository.dart
-│   │   ├── booking_repository.dart
-│   │   └── challenge_repository.dart
-│   │
-│   ├── services/ ─────────────────── HTTP Layer (SRP)
-│   │   └── api_service.dart
-│   │
-│   ├── constants/ ────────────────── Configuration
-│   │   └── api_constants.dart
-│   │
-│   └── utils/ ────────────────────── Helpers (SRP)
-│       ├── sport_utils.dart
-│       └── date_utils.dart
-│
-├── shared/ ═════════════════════════════════════════════════════
-│   │                   REUSABLE UI COMPONENTS
-│   │
-│   └── widgets/ ──────────────────── Shared Widgets (DRY)
-│       ├── loading_indicator.dart
-│       ├── error_display.dart
-│       ├── court_card.dart
-│       ├── custom_button.dart
-│       └── empty_state.dart
-│
-├── screens/ ════════════════════════════════════════════════════
-│   │                   PRESENTATION LAYER
-│   │
-│   ├── all_courts_page.dart ────── Original
-│   ├── all_courts_page_refactored.dart ── Refactored Example ✅
-│   ├── booking_history_page.dart
-│   └── ... (other screens)
-│
-├── widgets/ ════════════════════════════════════════════════════
-│   │                   FEATURE-SPECIFIC WIDGETS
-│   │
-│   └── time_slot_grid.dart
-│
-├── CourtOwner/ ─────────────────── Court Owner Screens
-├── Admin/ ──────────────────────── Admin Screens
-│
-└── main.dart ───────────────────── App Entry Point
-```
-
----
-
-## 🎯 Benefits Summary
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    OLD ARCHITECTURE                          │
-│                    (Monolithic)                              │
-├─────────────────────────────────────────────────────────────┤
-│  ❌ Tightly coupled code                                      │
-│  ❌ Hard to test                                              │
-│  ❌ Code duplication (50%+)                                   │
-│  ❌ No type safety                                            │
-│  ❌ Hard to maintain                                          │
-│  ❌ Difficult to scale                                        │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-                    REFACTORED TO
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    NEW ARCHITECTURE                          │
-│              (Layered + SOLID + OOP)                         │
-├─────────────────────────────────────────────────────────────┤
-│  ✅ Loosely coupled (DIP)                                     │
-│  ✅ Easy to test (80%+ coverage)                              │
-│  ✅ DRY (50%+ less duplication)                               │
-│  ✅ Type-safe (Models)                                        │
-│  ✅ Easy to maintain (SRP)                                    │
-│  ✅ Easy to scale (Modular)                                   │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🚀 Quick Navigation
-
-- **For Architecture Details**: See `ARCHITECTURE.md`
-- **For Changes Summary**: See `REFACTORING_SUMMARY.md`
-- **For Quick Start**: See `README_SOLID_OOP.md`
-- **For Complete Summary**: See `IMPLEMENTATION_COMPLETE.md`
-
----
-
-**This diagram shows how all pieces fit together!** 🧩
 

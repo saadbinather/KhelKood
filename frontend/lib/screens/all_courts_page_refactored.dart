@@ -18,6 +18,7 @@
 
 import 'package:flutter/material.dart';
 import '../core/models/court_model.dart';
+import '../core/di/service_locator.dart';
 import '../core/repositories/court_repository.dart';
 import '../shared/widgets/loading_indicator.dart';
 import '../shared/widgets/error_display.dart';
@@ -29,23 +30,24 @@ class AllCourtsPageRefactored extends StatefulWidget {
   const AllCourtsPageRefactored({super.key});
 
   @override
-  State<AllCourtsPageRefactored> createState() => _AllCourtsPageRefactoredState();
+  State<AllCourtsPageRefactored> createState() =>
+      _AllCourtsPageRefactoredState();
 }
 
 class _AllCourtsPageRefactoredState extends State<AllCourtsPageRefactored> {
   final TextEditingController _searchController = TextEditingController();
-  final CourtRepository _courtRepository = CourtRepository();
-  
+  late final ICourtRepository _courtRepository;
+
   String _selectedFilter = 'A-Z';
   List<CourtModel> _courts = [];
   List<CourtModel> _allCourts = [];
   bool _isLoading = true;
   String? _errorMessage;
-  String? _teamSport;
 
   @override
   void initState() {
     super.initState();
+    _courtRepository = ServiceLocator().courtRepository;
     _loadCourts();
   }
 
@@ -66,10 +68,10 @@ class _AllCourtsPageRefactoredState extends State<AllCourtsPageRefactored> {
       // Fetch team sport first (for filtering)
       // In a production app, this would be in a TeamRepository
       // For now, keeping minimal changes
-      
+
       // Fetch verified courts
       final courts = await _courtRepository.getVerifiedCourts();
-      
+
       setState(() {
         _allCourts = courts;
         _courts = List.from(_allCourts);
@@ -89,13 +91,13 @@ class _AllCourtsPageRefactoredState extends State<AllCourtsPageRefactored> {
     setState(() {
       switch (_selectedFilter) {
         case 'A-Z':
-          _courts.sort((a, b) => a.name.compareTo(b.name));
+          _courts.sort((a, b) => a.courtName.compareTo(b.courtName));
           break;
         case 'Z-A':
-          _courts.sort((a, b) => b.name.compareTo(a.name));
+          _courts.sort((a, b) => b.courtName.compareTo(a.courtName));
           break;
         case 'Rating':
-          // Rating would come from court model if added
+          _courts.sort((a, b) => (b.rating ?? 0).compareTo(a.rating ?? 0));
           break;
       }
     });
@@ -106,11 +108,12 @@ class _AllCourtsPageRefactoredState extends State<AllCourtsPageRefactored> {
     if (_searchController.text.isEmpty) {
       return _courts;
     }
-    
+
     final query = _searchController.text.toLowerCase();
     return _courts.where((court) {
-      return court.name.toLowerCase().contains(query) ||
-             court.location.toLowerCase().contains(query);
+      return court.courtName.toLowerCase().contains(query) ||
+          (court.location?.toLowerCase().contains(query) ?? false) ||
+          (court.city?.toLowerCase().contains(query) ?? false);
     }).toList();
   }
 
@@ -131,14 +134,14 @@ class _AllCourtsPageRefactoredState extends State<AllCourtsPageRefactored> {
   Map<String, dynamic> _courtToMap(CourtModel court) {
     return {
       'id': court.id,
-      'name': court.name,
-      'address': court.location,
-      'numOfCricketFields': court.cricketCourts,
-      'numOfFutsalFields': court.futsalCourts,
-      'numOfPadelCourts': court.padelCourts,
-      'cricketRate': court.cricketRate,
-      'futsalRate': court.futsalRate,
-      'padelRate': court.padelRate,
+      'name': court.courtName,
+      'address': court.location ?? '',
+      'city': court.city ?? '',
+      'availableSports': court.availableSports,
+      'rates': court.rates ?? {},
+      'cricketRate': court.getRateForSport('cricket') ?? 0,
+      'futsalRate': court.getRateForSport('futsal') ?? 0,
+      'padelRate': court.getRateForSport('padel') ?? 0,
       'isVerified': court.isVerified,
     };
   }
@@ -151,10 +154,7 @@ class _AllCourtsPageRefactoredState extends State<AllCourtsPageRefactored> {
         backgroundColor: Colors.redAccent,
         title: const Text(
           'All Courts',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -169,18 +169,15 @@ class _AllCourtsPageRefactoredState extends State<AllCourtsPageRefactored> {
     }
 
     if (_errorMessage != null) {
-      return ErrorDisplay(
-        message: _errorMessage!,
-        onRetry: _loadCourts,
-      );
+      return ErrorDisplay(message: _errorMessage!, onRetry: _loadCourts);
     }
 
     if (_allCourts.isEmpty) {
       return EmptyState(
         icon: Icons.sports_soccer,
         title: 'No courts available',
-        subtitle: 'Check back later for new courts',
-        actionText: 'Refresh',
+        message: 'Check back later for new courts',
+        actionLabel: 'Refresh',
         onAction: _loadCourts,
       );
     }
@@ -256,13 +253,13 @@ class _AllCourtsPageRefactoredState extends State<AllCourtsPageRefactored> {
   /// Build courts list
   Widget _buildCourtsList() {
     final filteredCourts = _getFilteredCourts();
-    
+
     if (filteredCourts.isEmpty) {
       return const Expanded(
         child: EmptyState(
           icon: Icons.search_off,
           title: 'No courts found',
-          subtitle: 'Try a different search term',
+          message: 'Try a different search term',
         ),
       );
     }
@@ -284,4 +281,3 @@ class _AllCourtsPageRefactoredState extends State<AllCourtsPageRefactored> {
     );
   }
 }
-

@@ -66,6 +66,7 @@ import {
   sendUnauthorizedError,
 } from "../utils/response.js";
 import { validateRequired } from "../utils/validators.js";
+import EmailService from "../utils/emailService.js";
 
 const router = express.Router();
 
@@ -121,6 +122,21 @@ const MatchRepository = {
     return bookingDoc.exists
       ? { id: bookingDoc.id, ...bookingDoc.data() }
       : null;
+  },
+
+  async findTeamById(teamID) {
+    const teamDoc = await db.collection("teams").doc(teamID).get();
+    return teamDoc.exists ? { id: teamDoc.id, ...teamDoc.data() } : null;
+  },
+
+  async findUserByUid(uid) {
+    const userDoc = await db.collection("users").doc(uid).get();
+    return userDoc.exists ? { id: userDoc.id, ...userDoc.data() } : null;
+  },
+
+  async findCourtownerByUserId(courtownerID) {
+    const courtownerDoc = await db.collection("courtowners").doc(courtownerID).get();
+    return courtownerDoc.exists ? { id: courtownerDoc.id, ...courtownerDoc.data() } : null;
   },
 };
 
@@ -229,6 +245,60 @@ const MatchService = {
     await MatchRepository.updateBooking(bookingID, {
       matchID: match.id,
     });
+
+    // Send email notifications
+    try {
+      // Get host team (challenge creator) info
+      const hostTeam = await MatchRepository.findTeamById(challenge.hostTeamID);
+      const hostUser = hostTeam?.userId ? await MatchRepository.findUserByUid(hostTeam.userId) : null;
+      
+      // Get accepting team (guest team) info
+      const acceptingTeam = await MatchRepository.findTeamById(teamID);
+      const guestUser = acceptingTeam?.userId ? await MatchRepository.findUserByUid(acceptingTeam.userId) : null;
+      
+      // Get court name
+      const courtName = court?.name || "Unknown Court";
+      const hostTeamName = challenge.teamName || hostTeam?.teamName || "Unknown Team";
+      const guestTeamName = acceptingTeam?.teamName || "Unknown Team";
+      
+      // Send challenge acceptance notification to creator
+      await EmailService.notifyChallengeCreatorOnAcceptance({
+        creatorEmail: hostUser?.email || hostTeam?.email || null,
+        creatorTeamName: hostTeamName,
+        acceptingTeamName: guestTeamName,
+        sport: sportType,
+        courtName: courtName,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+      });
+
+      // Get court owner email
+      let courtOwnerEmail = null;
+      if (court?.courtownerID) {
+        const courtowner = await MatchRepository.findCourtownerByUserId(court.courtownerID);
+        if (courtowner?.userId) {
+          const courtownerUser = await MatchRepository.findUserByUid(courtowner.userId);
+          courtOwnerEmail = courtownerUser?.email || courtowner?.email || null;
+        }
+      }
+
+      // Send match creation notification to both teams and court owner
+      await EmailService.notifyMatchCreated({
+        hostTeamEmail: hostUser?.email || hostTeam?.email || null,
+        hostTeamName: hostTeamName,
+        guestTeamEmail: guestUser?.email || acceptingTeam?.email || null,
+        guestTeamName: guestTeamName,
+        sport: sportType,
+        courtName: courtName,
+        courtNum: challenge.courtNum,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        courtOwnerEmail: courtOwnerEmail,
+      });
+    } catch (error) {
+      console.error("Error sending email notifications:", error);
+      // Don't throw - email failure shouldn't break match creation
+    }
 
     return {
       match,

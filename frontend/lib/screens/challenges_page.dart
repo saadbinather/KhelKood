@@ -30,6 +30,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
   }
 
   Future<void> _fetchOpenChallenges() async {
+    if (!mounted) return;
     setState(() {
       isLoading = true;
       errorMessage = null;
@@ -40,10 +41,12 @@ class _ChallengesPageState extends State<ChallengesPage> {
       final token = prefs.getString('auth_token');
 
       if (token == null) {
-        setState(() {
-          errorMessage = 'No authentication token found';
-          isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            errorMessage = 'No authentication token found';
+            isLoading = false;
+          });
+        }
         return;
       }
 
@@ -55,28 +58,38 @@ class _ChallengesPageState extends State<ChallengesPage> {
         },
       );
 
+      if (!mounted) return;
+
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
-        setState(() {
-          incomingChallenges = List<Map<String, dynamic>>.from(
-            data['data']?['incoming'] ?? data['incoming'] ?? [],
-          );
-          outgoingChallenges = List<Map<String, dynamic>>.from(
-            data['data']?['outgoing'] ?? data['outgoing'] ?? [],
-          );
-          isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            // Parse incoming challenges
+            final incomingData = data['data']?['incoming'] ?? data['incoming'] ?? [];
+            incomingChallenges = List<Map<String, dynamic>>.from(incomingData);
+            
+            // Parse outgoing challenges
+            final outgoingData = data['data']?['outgoing'] ?? data['outgoing'] ?? [];
+            outgoingChallenges = List<Map<String, dynamic>>.from(outgoingData);
+            
+            isLoading = false;
+          });
+        }
       } else {
+        if (mounted) {
+          setState(() {
+            errorMessage = 'Failed to load challenges';
+            isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         setState(() {
-          errorMessage = 'Failed to load challenges';
+          errorMessage = 'Error: ${e.toString()}';
           isLoading = false;
         });
       }
-    } catch (e) {
-      setState(() {
-        errorMessage = 'Error: ${e.toString()}';
-        isLoading = false;
-      });
     }
   }
 
@@ -864,6 +877,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
 
     if (confirmed != true) return;
 
+    if (!mounted) return;
     setState(() {
       deletingChallengeIds.add(challengeID);
     });
@@ -893,9 +907,11 @@ class _ChallengesPageState extends State<ChallengesPage> {
         },
       );
 
-      setState(() {
-        deletingChallengeIds.remove(challengeID);
-      });
+      if (mounted) {
+        setState(() {
+          deletingChallengeIds.remove(challengeID);
+        });
+      }
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -917,9 +933,11 @@ class _ChallengesPageState extends State<ChallengesPage> {
         );
       }
     } catch (e) {
-      setState(() {
-        deletingChallengeIds.remove(challengeID);
-      });
+      if (mounted) {
+        setState(() {
+          deletingChallengeIds.remove(challengeID);
+        });
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
@@ -996,6 +1014,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
 
     if (confirmed != true) return;
 
+    if (!mounted) return;
     setState(() {
       acceptingChallengeIds.add(challengeID);
     });
@@ -1026,9 +1045,11 @@ class _ChallengesPageState extends State<ChallengesPage> {
         body: jsonEncode({'challengeID': challengeID}),
       );
 
-      setState(() {
-        acceptingChallengeIds.remove(challengeID);
-      });
+      if (mounted) {
+        setState(() {
+          acceptingChallengeIds.remove(challengeID);
+        });
+      }
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -1052,9 +1073,11 @@ class _ChallengesPageState extends State<ChallengesPage> {
         );
       }
     } catch (e) {
-      setState(() {
-        acceptingChallengeIds.remove(challengeID);
-      });
+      if (mounted) {
+        setState(() {
+          acceptingChallengeIds.remove(challengeID);
+        });
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),

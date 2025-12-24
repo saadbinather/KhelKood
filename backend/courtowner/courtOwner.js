@@ -366,7 +366,8 @@ const CourtOwnerService = {
 
       if (!startTime) return; // Skip invalid dates
 
-      if (booking.status === "Pending") {
+      // For incoming bookings: must be Pending status AND start time >= current time
+      if (booking.status === "Pending" && startTime >= now) {
         incoming.push(booking);
       } else if (
         booking.status === "Confirmed" ||

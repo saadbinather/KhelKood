@@ -36,21 +36,41 @@ export class ChallengeService extends BaseService {
       throw new Error("Court not found");
     }
 
-    // Calculate pricing
+    // Parse and validate times - format should be "2025-12-06T09:00:00.000"
+    // Validate that the string format is correct
+    const timeFormatRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}$/;
+    
+    if (!timeFormatRegex.test(startTime)) {
+      throw new Error("Invalid start time format. Expected: YYYY-MM-DDTHH:mm:ss.SSS");
+    }
+    if (!timeFormatRegex.test(endTime)) {
+      throw new Error("Invalid end time format. Expected: YYYY-MM-DDTHH:mm:ss.SSS");
+    }
+
+    // Parse to Date objects for calculations
     const startTimeDate = new Date(startTime);
     const endTimeDate = new Date(endTime);
+    
+    // Validate dates are parseable
+    if (isNaN(startTimeDate.getTime())) {
+      throw new Error("Invalid start time - cannot parse date");
+    }
+    if (isNaN(endTimeDate.getTime())) {
+      throw new Error("Invalid end time - cannot parse date");
+    }
+
     const pricingStrategy = PricingStrategyFactory.getStrategy(sport);
     const pricing = pricingStrategy.calculate(court, startTimeDate, endTimeDate);
 
-    // Create challenge
+    // Create challenge - store times as strings in exact format "2025-12-06T09:00:00.000"
     const challengeEntry = {
       courtFirebaseUID: courtID,
       hostTeamID: teamID,
       teamName,
       sport: sport.toLowerCase(),
       courtNum: parseInt(courtNum),
-      stime: startTimeDate,
-      etime: endTimeDate,
+      stime: startTime, // Store as string in format "2025-12-06T09:00:00.000"
+      etime: endTime,  // Store as string in format "2025-12-06T11:00:00.000"
       Price: pricing.totalAmount,
       createdAt: new Date(),
     };

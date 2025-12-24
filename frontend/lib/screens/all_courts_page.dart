@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'create_booking_or_challenge_page.dart';
+import 'courts_map_page.dart';
 
 class AllCourtsPage extends StatefulWidget {
   const AllCourtsPage({super.key});
@@ -342,6 +343,20 @@ class _AllCourtsPageState extends State<AllCourtsPage> {
           ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.map, color: Colors.white),
+            tooltip: 'View on Map',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CourtsMapPage(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: isLoading
           ? const Center(

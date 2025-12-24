@@ -12,6 +12,7 @@ import {
   validatePhone,
   validateCNIC,
 } from "../utils/validators.js";
+import EmailService from "../utils/emailService.js";
 
 const router = express.Router();
 
@@ -110,6 +111,8 @@ const AuthService = {
       players,
       courtName,
       location,
+      latitude,
+      longitude,
       courtAddress,
       courtTitle,
       numOfCricketFields,
@@ -175,7 +178,10 @@ const AuthService = {
               phone: phone || "",
               cnic: cnic || "",
               courtName: courtName || "",
-              location: location || "",
+              // Location is NOT stored in signupData - it's only in court table
+              // latitude and longitude are for court location (from maps in court form)
+              latitude: latitude || null,
+              longitude: longitude || null,
               courtTitle: courtTitle || "",
               courtAddress: courtAddress || "",
               numOfCricketFields: Number(numOfCricketFields) || 0,
@@ -199,6 +205,26 @@ const AuthService = {
     };
     await AuthRepository.createUser(finalFirebaseUid, userData);
 
+    // Send email notifications
+    try {
+      // Send email to user (pending approval message)
+      await EmailService.notifyUserOnRegistration({
+        email: email,
+        name: name,
+        role: role,
+      });
+
+      // Send email to admin (new registration notification)
+      await EmailService.notifyAdminOnUserRegistration({
+        email: email,
+        name: name,
+        role: role,
+      });
+    } catch (error) {
+      console.error("Error sending registration email notifications:", error);
+      // Don't throw - email failure shouldn't break registration
+    }
+
     // Role-specific handling
     if (role === "courtowner") {
       // Clean phone and CNIC (remove formatting)
@@ -206,6 +232,7 @@ const AuthService = {
       const cleanedCNIC = (cnic || "").trim();
 
       // Always create courtowner document (even if some fields are missing)
+      // Note: Location is NOT stored in courtowner, only in court table
       const courtownerData = {
         userId: finalFirebaseUid,
         name: name || "",
@@ -213,7 +240,6 @@ const AuthService = {
         phone: cleanedPhone,
         cnic: cleanedCNIC,
         courtName: courtName || "",
-        location: location || "",
         createdAt: new Date(),
       };
 
@@ -229,6 +255,12 @@ const AuthService = {
         name: (courtTitle || "Default Sports Arena").trim(),
         address: (courtAddress || "Unknown Location").trim(),
         location: location || "",
+        coordinates: (latitude != null && longitude != null)
+          ? {
+              latitude: Number(latitude),
+              longitude: Number(longitude),
+            }
+          : null,
         courtownerID: finalFirebaseUid,
         numOfCricketFields: Number(numOfCricketFields) || 0,
         numOfPadelCourts: Number(numOfPadelCourts) || 0,
@@ -248,6 +280,10 @@ const AuthService = {
         console.error("Error creating court:", error);
         // Continue anyway - will be recreated during approval if needed
       }
+
+      // Note: Admin notification is already sent in the general notification above
+      // This specific court owner notification is kept for backward compatibility
+      // but the general notifyAdminOnUserRegistration covers all roles
     } else if (role === "team") {
       // Validate required team fields
       if (!teamName || teamName.trim() === "") {

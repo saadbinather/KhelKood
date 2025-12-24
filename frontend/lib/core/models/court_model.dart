@@ -5,6 +5,7 @@ class CourtModel {
   final String courtName;
   final String? location;
   final String? city;
+  final Map<String, double>? coordinates; // {latitude: double, longitude: double}
   final List<String> availableSports;
   final Map<String, int>? rates;
   final bool isVerified;
@@ -19,6 +20,7 @@ class CourtModel {
     required this.courtName,
     this.location,
     this.city,
+    this.coordinates,
     required this.availableSports,
     this.rates,
     this.isVerified = false,
@@ -33,9 +35,13 @@ class CourtModel {
   factory CourtModel.fromJson(Map<String, dynamic> json) {
     return CourtModel(
       id: json['_id']?.toString() ?? json['id']?.toString(),
-      courtName: json['courtName']?.toString() ?? 'Unknown Court',
+      // Use courtName or court_name, avoid 'name' field as it might contain owner name
+      courtName: json['courtName']?.toString() ?? 
+                 json['court_name']?.toString() ?? 
+                 'Unknown Court',
       location: json['location']?.toString(),
       city: json['city']?.toString(),
+      coordinates: _parseCoordinates(json['coordinates']),
       availableSports: _parseStringList(json['availableSports']),
       rates: _parseRates(json['rates']),
       isVerified: json['isVerified'] == true || json['verified'] == true,
@@ -54,6 +60,7 @@ class CourtModel {
       'courtName': courtName,
       if (location != null) 'location': location,
       if (city != null) 'city': city,
+      if (coordinates != null) 'coordinates': coordinates,
       'availableSports': availableSports,
       if (rates != null) 'rates': rates,
       'isVerified': isVerified,
@@ -97,12 +104,28 @@ class CourtModel {
     return null;
   }
 
+  static Map<String, double>? _parseCoordinates(dynamic value) {
+    if (value == null) return null;
+    if (value is Map) {
+      final result = <String, double>{};
+      final lat = _parseDouble(value['latitude']);
+      final lng = _parseDouble(value['longitude']);
+      if (lat != null && lng != null) {
+        result['latitude'] = lat;
+        result['longitude'] = lng;
+        return result;
+      }
+    }
+    return null;
+  }
+
   // Copy with method
   CourtModel copyWith({
     String? id,
     String? courtName,
     String? location,
     String? city,
+    Map<String, double>? coordinates,
     List<String>? availableSports,
     Map<String, int>? rates,
     bool? isVerified,

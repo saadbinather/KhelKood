@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../widgets/time_slot_grid.dart';
+import '../shared/widgets/court_location_map.dart';
 
 class CreateBookingOrChallengePage extends StatefulWidget {
   final String actionType; // "booking", "challenge", or "both"
@@ -69,6 +70,7 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
   Future<void> _fetchReviews() async {
     if (selectedCourtId == null) return;
     
+    if (!mounted) return;
     setState(() {
       isLoadingReviews = true;
     });
@@ -88,16 +90,20 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
-        setState(() {
-          reviews = List<Map<String, dynamic>>.from(
-            data['data']?['reviews'] ?? data['reviews'] ?? [],
-          );
-          isLoadingReviews = false;
-        });
+        if (mounted) {
+          setState(() {
+            reviews = List<Map<String, dynamic>>.from(
+              data['data']?['reviews'] ?? data['reviews'] ?? [],
+            );
+            isLoadingReviews = false;
+          });
+        }
       } else {
-        setState(() {
-          isLoadingReviews = false;
-        });
+        if (mounted) {
+          setState(() {
+            isLoadingReviews = false;
+          });
+        }
       }
     } catch (e) {
       setState(() {
@@ -127,6 +133,7 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
       return;
     }
 
+    if (!mounted) return;
     setState(() {
       isSubmittingReview = true;
     });
@@ -142,9 +149,11 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
             backgroundColor: Colors.red,
           ),
         );
-        setState(() {
-          isSubmittingReview = false;
-        });
+        if (mounted) {
+          setState(() {
+            isSubmittingReview = false;
+          });
+        }
         return;
       }
 
@@ -198,9 +207,11 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
         ),
       );
     } finally {
-      setState(() {
-        isSubmittingReview = false;
-      });
+      if (mounted) {
+        setState(() {
+          isSubmittingReview = false;
+        });
+      }
     }
   }
 
@@ -223,9 +234,11 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
         // API returns: { data: { team: { sports: "football" } } }
         final team = data['data']?['team'] ?? data['team'];
         final sport = team?['sports'] ?? data['data']?['sports'] ?? data['sports'];
-        setState(() {
-          teamSport = sport?.toString().toLowerCase();
-        });
+        if (mounted) {
+          setState(() {
+            teamSport = sport?.toString().toLowerCase();
+          });
+        }
       }
     } catch (e) {
       print('Error fetching team sport: $e');
@@ -263,6 +276,7 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
   }
 
   Future<void> _fetchVerifiedCourts() async {
+    if (!mounted) return;
     setState(() {
       isLoadingCourts = true;
       errorMessage = null;
@@ -273,10 +287,12 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
       final token = prefs.getString('auth_token');
 
       if (token == null) {
-        setState(() {
-          errorMessage = 'No authentication token found';
-          isLoadingCourts = false;
-        });
+        if (mounted) {
+          setState(() {
+            errorMessage = 'No authentication token found';
+            isLoadingCourts = false;
+          });
+        }
         return;
       }
 
@@ -294,8 +310,9 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
           data['data']?['courts'] ?? data['courts'] ?? [],
         );
         // Filter courts by team sport
-        setState(() {
-          verifiedCourts = allCourts.where((court) {
+        if (mounted) {
+          setState(() {
+            verifiedCourts = allCourts.where((court) {
             if (teamSport == null) return true;
             // Filter courts that have fields/courts for the team's sport
             if (teamSport == 'cricket') {
@@ -307,23 +324,29 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
             }
             return true; // Show all if sport not recognized
           }).toList();
-          isLoadingCourts = false;
-        });
+            isLoadingCourts = false;
+          });
+        }
       } else {
+        if (mounted) {
+          setState(() {
+            errorMessage = 'Failed to load courts';
+            isLoadingCourts = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         setState(() {
-          errorMessage = 'Failed to load courts';
+          errorMessage = 'Error: ${e.toString()}';
           isLoadingCourts = false;
         });
       }
-    } catch (e) {
-      setState(() {
-        errorMessage = 'Error: ${e.toString()}';
-        isLoadingCourts = false;
-      });
     }
   }
 
   void _selectCourt(Map<String, dynamic> court) {
+    if (!mounted) return;
     setState(() {
       selectedCourtId = court['id'];
       selectedCourt = court;
@@ -563,6 +586,7 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
       return;
     }
 
+    if (!mounted) return;
     setState(() {
       isCreatingChallenge = true;
     });
@@ -578,10 +602,26 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
             backgroundColor: Colors.red,
           ),
         );
-        setState(() {
-          isCreatingChallenge = false;
-        });
+        if (mounted) {
+          setState(() {
+            isCreatingChallenge = false;
+          });
+        }
         return;
+      }
+
+      // Format datetime to match exact format: "2025-12-06T09:00:00.000"
+      // Format: YYYY-MM-DDTHH:mm:ss.SSS (no timezone)
+      String _formatDateTimeForChallenge(DateTime dt) {
+        // Use local time (not UTC) to match the database format
+        final localDt = dt.toLocal();
+        return '${localDt.year.toString().padLeft(4, '0')}-'
+            '${localDt.month.toString().padLeft(2, '0')}-'
+            '${localDt.day.toString().padLeft(2, '0')}T'
+            '${localDt.hour.toString().padLeft(2, '0')}:'
+            '${localDt.minute.toString().padLeft(2, '0')}:'
+            '${localDt.second.toString().padLeft(2, '0')}.'
+            '${localDt.millisecond.toString().padLeft(3, '0')}';
       }
 
       final response = await http.post(
@@ -592,15 +632,17 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
         },
         body: jsonEncode({
           'courtFirebaseUID': selectedCourtId!,
-          'stime': startDateTime.toIso8601String(),
-          'etime': endDateTime.toIso8601String(),
+          'stime': _formatDateTimeForChallenge(startDateTime),
+          'etime': _formatDateTimeForChallenge(endDateTime),
           'courtNum': selectedCourtNum!,
         }),
       );
 
-      setState(() {
-        isCreatingChallenge = false;
-      });
+      if (mounted) {
+        setState(() {
+          isCreatingChallenge = false;
+        });
+      }
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
@@ -621,9 +663,11 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
         );
       }
     } catch (e) {
-      setState(() {
-        isCreatingChallenge = false;
-      });
+      if (mounted) {
+        setState(() {
+          isCreatingChallenge = false;
+        });
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
@@ -1101,6 +1145,45 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
         iconTheme: const IconThemeData(color: Colors.white),
         actions: isBoth && selectedCourtId != null
           ? [
+              // Map view button
+              if (selectedCourt != null && 
+                  selectedCourt!['coordinates'] != null)
+                Builder(
+                  builder: (context) {
+                    final coords = selectedCourt!['coordinates'];
+                    double? lat, lng;
+                    
+                    if (coords is Map) {
+                      lat = (coords['latitude'] is num) 
+                          ? coords['latitude'].toDouble() 
+                          : double.tryParse(coords['latitude']?.toString() ?? '');
+                      lng = (coords['longitude'] is num) 
+                          ? coords['longitude'].toDouble() 
+                          : double.tryParse(coords['longitude']?.toString() ?? '');
+                    }
+                    
+                    if (lat != null && lng != null) {
+                      return IconButton(
+                        icon: const Icon(Icons.map, color: Colors.white),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CourtLocationMap(
+                                courtLatitude: lat!,
+                                courtLongitude: lng!,
+                                courtName: selectedCourt!['name'] ?? 'Court',
+                                courtAddress: selectedCourt!['address'],
+                              ),
+                            ),
+                          );
+                        },
+                        tooltip: 'View on Map',
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
               IconButton(
                 icon: const Icon(Icons.reviews, color: Colors.white),
                 onPressed: () {

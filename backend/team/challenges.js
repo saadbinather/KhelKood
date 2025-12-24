@@ -4,6 +4,7 @@ import { verifyToken } from "../middleware/verifyToken.js";
 import { ChallengeRepository } from "../src/repositories/ChallengeRepository.js";
 import { ChallengeService } from "../src/services/ChallengeService.js";
 import { ChallengeController } from "../src/controllers/ChallengeController.js";
+import EmailService from "../utils/emailService.js";
 
 const router = express.Router();
 
@@ -49,6 +50,29 @@ router.post("/create", verifyToken(["team"]), async (req, res) => {
       challengeData
     );
 
+    // Send email notification to challenge creator
+    try {
+      // Get court info
+      const court = await challengeRepository.findCourtById(courtFirebaseUID);
+      const courtName = court?.name || "Unknown Court";
+      
+      // Get user email
+      const userDoc = await db.collection("users").doc(teamID).get();
+      const userEmail = userDoc.exists ? userDoc.data().email : null;
+
+      await EmailService.notifyChallengeCreated({
+        creatorEmail: userEmail || team.email || null,
+        creatorTeamName: team.teamName || "Your Team",
+        sport: team.sports || "football",
+        courtName: courtName,
+        startTime: stime,
+        endTime: etime,
+      });
+    } catch (error) {
+      console.error("Error sending challenge creation email notification:", error);
+      // Don't throw - email failure shouldn't break challenge creation
+    }
+
     return res.status(201).json({
       success: true,
       message: "Challenge created successfully ✅",
@@ -83,10 +107,6 @@ router.get("/open", verifyToken(["team"]), async (req, res) => {
       });
     }
 
-    // Get team's own challenges (outgoing)
-    const outgoingChallenges = await challengeService.getTeamChallenges(teamID);
-
-    // Get all open challenges from other teams (incoming)
     // Get team info first
     const team = await challengeRepository.findTeamByUserId(teamID);
     if (!team) {
@@ -96,39 +116,78 @@ router.get("/open", verifyToken(["team"]), async (req, res) => {
       });
     }
 
-    // Get all challenges and filter
+    // Get team's own challenges (outgoing)
+    const outgoingChallenges = await challengeService.getTeamChallenges(teamID);
+
+    // Simple fetch: Get all challenges from database
     const allChallenges = await challengeRepository.findAll();
     const allMatches = await challengeRepository.findAllMatches();
+    const now = new Date();
 
-    // Filter for incoming challenges (not from this team, not matched, same sport)
-    const incomingChallenges = await Promise.all(
-      allChallenges
+    // Simple filter for incoming challenges
+    const incomingChallenges = [];
+    
+    for (const challenge of allChallenges) {
+      // Skip if it's my challenge
+      if (challenge.hostTeamID === team.id) continue;
+      
+      // Skip if already matched
+      const isMatched = allMatches.some(match => match.Challenge_ID === challenge.id);
+      if (isMatched) continue;
+      
+      // Skip if different sport
+      if (challenge.sport?.toLowerCase() !== team.sports?.toLowerCase()) continue;
+      
+      // Skip if past date/time
+      if (challenge.stime) {
+        const challengeStartTime = new Date(challenge.stime);
+        if (challengeStartTime < now) continue;
+      }
+      
+      // Get court and host team info
+      const court = await challengeRepository.findCourtById(challenge.courtFirebaseUID);
+      const hostTeam = await challengeRepository.findTeamById(challenge.hostTeamID);
+      
+      incomingChallenges.push({
+        challengeID: challenge.id,
+        id: challenge.id,
+        Court_Name: court?.name || "Unknown Court",
+        Court_Address: court?.address || "",
+        Court_Rating: court?.rating || 0,
+        Host_Team_Name: hostTeam?.teamName || challenge.teamName || "Unknown Team",
+        Host_Team_Points: hostTeam?.points || 0,
+        Sport: challenge.sport || "",
+        Start_Time: challenge.stime,
+        End_Time: challenge.etime,
+        Date: challenge.stime ? new Date(challenge.stime).toLocaleDateString() : "",
+        Price: challenge.Price || 0,
+        Total_Price: challenge.Price || 0,
+      });
+    }
+
+    // Format outgoing challenges (also filter by date/time for consistency)
+    const formattedOutgoing = await Promise.all(
+      outgoingChallenges
         .filter((challenge) => {
-          const isNotMyChallenge = challenge.hostTeamID !== team.id;
-          const isNotMatched = !allMatches.find(
-            (match) => match.Challenge_ID === challenge.id
-          );
-          const isSameSport =
-            challenge.sport?.toLowerCase() === team.sports?.toLowerCase();
-          return isNotMyChallenge && isNotMatched && isSameSport;
+          // Filter by date/time: start time must be after or equal to current time
+          if (challenge.stime) {
+            const challengeStartTime = new Date(challenge.stime);
+            return challengeStartTime >= now;
+          }
+          return true; // Include if no start time (shouldn't happen, but safe fallback)
         })
         .map(async (challenge) => {
           const court = await challengeRepository.findCourtById(
             challenge.courtFirebaseUID
           );
-          const hostTeam = await challengeRepository.findTeamById(
-            challenge.hostTeamID
-          );
-
           return {
             challengeID: challenge.id,
             id: challenge.id,
             Court_Name: court?.name || "Unknown Court",
             Court_Address: court?.address || "",
             Court_Rating: court?.rating || 0,
-            Host_Team_Name:
-              hostTeam?.teamName || challenge.teamName || "Unknown Team",
-            Host_Team_Points: hostTeam?.points || 0,
+            Host_Team_Name: team.teamName,
+            Host_Team_Points: team.points || 0,
             Sport: challenge.sport || "",
             Start_Time: challenge.stime,
             End_Time: challenge.etime,
@@ -139,32 +198,6 @@ router.get("/open", verifyToken(["team"]), async (req, res) => {
             Total_Price: challenge.Price || 0,
           };
         })
-    );
-
-    // Format outgoing challenges
-    const formattedOutgoing = await Promise.all(
-      outgoingChallenges.map(async (challenge) => {
-        const court = await challengeRepository.findCourtById(
-          challenge.courtFirebaseUID
-        );
-        return {
-          challengeID: challenge.id,
-          id: challenge.id,
-          Court_Name: court?.name || "Unknown Court",
-          Court_Address: court?.address || "",
-          Court_Rating: court?.rating || 0,
-          Host_Team_Name: team.teamName,
-          Host_Team_Points: team.points || 0,
-          Sport: challenge.sport || "",
-          Start_Time: challenge.stime,
-          End_Time: challenge.etime,
-          Date: challenge.stime
-            ? new Date(challenge.stime).toLocaleDateString()
-            : "",
-          Price: challenge.Price || 0,
-          Total_Price: challenge.Price || 0,
-        };
-      })
     );
 
     return res.status(200).json({

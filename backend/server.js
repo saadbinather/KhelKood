@@ -1,3 +1,12 @@
+// MUST BE FIRST - Load environment variables before anything else
+import dotenv from "dotenv";
+dotenv.config();
+
+// Test environment variables
+console.log("🔍 Environment Check:");
+console.log("SMTP_USER =", process.env.SMTP_USER || "❌ NOT SET");
+console.log("SMTP_PASS =", process.env.SMTP_PASS ? "***SET***" : "❌ NOT SET");
+
 import express from "express";
 import cors from "cors";
 import authRoutes from "./Auth/auth.js";

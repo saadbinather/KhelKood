@@ -90,6 +90,8 @@ const CourtsService = {
             id: court.id,
             name: court.name || "",
             address: court.address || "",
+            location: court.location || "",
+            coordinates: court.coordinates || null,
             courtownerID: court.courtownerID,
             rating: court.rating || 0,
             cricketRate: court.cricketRate || 0,

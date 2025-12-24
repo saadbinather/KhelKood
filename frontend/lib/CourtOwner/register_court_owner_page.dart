@@ -23,7 +23,6 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
   final TextEditingController passwordCtrl = TextEditingController();
   final TextEditingController phoneCtrl = TextEditingController();
   final TextEditingController cnicCtrl = TextEditingController();
-  final TextEditingController locationCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -33,15 +32,15 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
     }
   }
 
+
   void goToCourtRegister() {
     if (nameCtrl.text.isEmpty ||
         emailCtrl.text.isEmpty ||
         phoneCtrl.text.isEmpty ||
-        cnicCtrl.text.isEmpty ||
-        locationCtrl.text.isEmpty) {
+        cnicCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("All fields are required"),
+          content: Text("All fields are required."),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -77,7 +76,6 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
           ownerPassword: widget.fromGoogle ? "" : passwordCtrl.text.trim(),
           ownerPhone: phoneCtrl.text,
           ownerCnic: cnicCtrl.text,
-          ownerLocation: locationCtrl.text.trim(),
           firebaseUid: widget.firebaseUid,
           fromGoogle: widget.fromGoogle,
         ),
@@ -133,8 +131,6 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
             _buildTextField("Phone Number", phoneCtrl, isNumber: true),
             const SizedBox(height: 20),
             _buildTextField("CNIC", cnicCtrl, isNumber: true),
-            const SizedBox(height: 20),
-            _buildTextField("Location", locationCtrl),
             const SizedBox(height: 40),
             Center(
               child: ElevatedButton(
@@ -210,4 +206,5 @@ class _RegisterCourtOwnerPageState extends State<RegisterCourtOwnerPage> {
       ),
     );
   }
+
 }

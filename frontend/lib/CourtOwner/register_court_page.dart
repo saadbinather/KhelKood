@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../shared/widgets/location_picker.dart';
 
 class RegisterCourtPage extends StatefulWidget {
   final String ownerName;
@@ -8,7 +9,6 @@ class RegisterCourtPage extends StatefulWidget {
   final String ownerPassword;
   final String ownerPhone;
   final String ownerCnic;
-  final String ownerLocation;
   final String? firebaseUid;
   final bool fromGoogle;
 
@@ -19,7 +19,6 @@ class RegisterCourtPage extends StatefulWidget {
     required this.ownerPassword,
     required this.ownerPhone,
     required this.ownerCnic,
-    required this.ownerLocation,
     this.firebaseUid,
     this.fromGoogle = false,
   });
@@ -30,7 +29,7 @@ class RegisterCourtPage extends StatefulWidget {
 
 class _RegisterCourtPageState extends State<RegisterCourtPage> {
   final TextEditingController courtTitleCtrl = TextEditingController();
-  final TextEditingController addressCtrl = TextEditingController();
+  final TextEditingController locationCtrl = TextEditingController();
   final TextEditingController openingCtrl = TextEditingController();
   final TextEditingController closingCtrl = TextEditingController();
   final TextEditingController cricketRateCtrl = TextEditingController();
@@ -40,14 +39,38 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
   final TextEditingController padelCourtsCtrl = TextEditingController();
   final TextEditingController futsalFieldsCtrl = TextEditingController();
 
+  double? _latitude;
+  double? _longitude;
+
   bool isLoading = false;
   String? lastErrorMessage;
+
+  void _selectLocation() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LocationPicker(
+          initialLatitude: _latitude,
+          initialLongitude: _longitude,
+          onLocationSelected: (latitude, longitude, address) {
+            setState(() {
+              _latitude = latitude;
+              _longitude = longitude;
+              locationCtrl.text = address;
+            });
+          },
+        ),
+      ),
+    );
+  }
 
   Future<bool> registerCourtOwner() async {
     lastErrorMessage = null;
     try {
       if (courtTitleCtrl.text.trim().isEmpty ||
-          addressCtrl.text.trim().isEmpty ||
+          locationCtrl.text.trim().isEmpty ||
+          _latitude == null ||
+          _longitude == null ||
           openingCtrl.text.trim().isEmpty ||
           closingCtrl.text.trim().isEmpty ||
           cricketRateCtrl.text.trim().isEmpty ||
@@ -56,7 +79,7 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
           cricketFieldsCtrl.text.trim().isEmpty ||
           padelCourtsCtrl.text.trim().isEmpty ||
           futsalFieldsCtrl.text.trim().isEmpty) {
-        lastErrorMessage = "All fields are required";
+        lastErrorMessage = "All fields are required. Please select a location on the map.";
         return false;
       }
 
@@ -73,10 +96,11 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
               : {}),
           "phone": widget.ownerPhone,
           "cnic": widget.ownerCnic,
-          "courtName": widget.ownerLocation,
-          "location": widget.ownerLocation,
+          "latitude": _latitude,
+          "longitude": _longitude,
+          "location": locationCtrl.text.trim(),
           "courtTitle": courtTitleCtrl.text.trim(),
-          "courtAddress": addressCtrl.text.trim(),
+          "courtAddress": locationCtrl.text.trim(), // Use location as address
           "openingTime": int.parse(openingCtrl.text.trim()),
           "closingTime": int.parse(closingCtrl.text.trim()),
           "cricketRate": int.parse(cricketRateCtrl.text.trim()),
@@ -107,7 +131,9 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
 
   void handleSubmit() async {
     if (courtTitleCtrl.text.isEmpty ||
-        addressCtrl.text.isEmpty ||
+        locationCtrl.text.isEmpty ||
+        _latitude == null ||
+        _longitude == null ||
         openingCtrl.text.isEmpty ||
         closingCtrl.text.isEmpty ||
         cricketRateCtrl.text.isEmpty ||
@@ -118,7 +144,7 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
         futsalFieldsCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("All fields are required"),
+          content: Text("All fields are required. Please select a location on the map."),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -206,7 +232,7 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
             const SizedBox(height: 32),
             _buildTextField("Court Title/Name", courtTitleCtrl),
             const SizedBox(height: 20),
-            _buildTextField("Court Address", addressCtrl),
+            _buildLocationField(),
             const SizedBox(height: 20),
             Row(
               children: [
@@ -359,6 +385,43 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
           borderSide: const BorderSide(color: Colors.redAccent, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+    );
+  }
+
+  Widget _buildLocationField() {
+    return TextField(
+      controller: locationCtrl,
+      readOnly: true,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: "Court Location",
+        labelStyle: const TextStyle(color: Colors.white54),
+        filled: true,
+        fillColor: Colors.grey[900],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[800]!, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+        suffixIcon: IconButton(
+          icon: const Icon(Icons.map, color: Colors.redAccent),
+          onPressed: _selectLocation,
+          tooltip: "Pick location on map",
+        ),
+        hintText: "Tap the map icon to select location",
+        hintStyle: const TextStyle(color: Colors.white38),
       ),
     );
   }

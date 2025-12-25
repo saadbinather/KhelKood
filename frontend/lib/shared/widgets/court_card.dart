@@ -8,12 +8,14 @@ class CourtCard extends StatelessWidget {
   final CourtModel court;
   final VoidCallback? onTap;
   final bool isCompact;
+  final double? distanceKm; // Distance in kilometers from user location
 
   const CourtCard({
     super.key,
     required this.court,
     this.onTap,
     this.isCompact = false,
+    this.distanceKm,
   });
 
   @override
@@ -50,7 +52,7 @@ class CourtCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (court.city != null) ...[
+                      if (court.location != null || court.city != null) ...[
                         const SizedBox(height: 4),
                         Row(
                           children: [
@@ -62,13 +64,34 @@ class CourtCard extends StatelessWidget {
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                court.city!,
+                                court.location ?? court.city ?? '',
                                 style: const TextStyle(
                                   color: AppColors.textSecondary,
                                   fontSize: 14,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (distanceKm != null) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.near_me,
+                              color: Colors.blue,
+                              size: 14,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${distanceKm!.toStringAsFixed(1)} km away',
+                              style: const TextStyle(
+                                color: Colors.blue,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../utils/map_icons.dart';
 
 /// Simple map widget showing court location and user's current location
 class CourtLocationMap extends StatefulWidget {
@@ -35,8 +36,18 @@ class _CourtLocationMapState extends State<CourtLocationMap> {
     _updateMarkers();
     _getCurrentLocation();
   }
+  
+  // Note: initState cannot be async, so _updateMarkers() is called without await here
+  // It will update when user location is available
 
-  void _updateMarkers() {
+  Future<void> _updateMarkers() async {
+    BitmapDescriptor? userLocationIcon;
+    
+    // Create blue circle icon for user location
+    if (_userLocation != null) {
+      userLocationIcon = await MapIcons.createBlueCircleIcon();
+    }
+    
     setState(() {
       _markers.clear();
       
@@ -53,13 +64,13 @@ class _CourtLocationMapState extends State<CourtLocationMap> {
         ),
       );
       
-      // User location marker
-      if (_userLocation != null) {
+      // User location marker (blue circle)
+      if (_userLocation != null && userLocationIcon != null) {
         _markers.add(
           Marker(
             markerId: const MarkerId('user_location'),
             position: _userLocation!,
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+            icon: userLocationIcon,
             infoWindow: const InfoWindow(title: 'Your Location'),
           ),
         );
@@ -104,7 +115,7 @@ class _CourtLocationMapState extends State<CourtLocationMap> {
         _userLocation = LatLng(position.latitude, position.longitude);
         _isLoadingLocation = false;
       });
-      _updateMarkers();
+      await _updateMarkers();
     } catch (e) {
       setState(() {
         _isLoadingLocation = false;

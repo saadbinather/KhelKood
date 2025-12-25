@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'create_booking_or_challenge_page.dart';
 import 'courts_map_page.dart';
 
@@ -20,12 +22,72 @@ class _AllCourtsPageState extends State<AllCourtsPage> {
   bool isLoading = true;
   String? errorMessage;
   String? teamSport; // Team's sport type
+  LatLng? _userLocation; // User's current location
 
   @override
   void initState() {
     super.initState();
+    _getCurrentLocation();
     _fetchTeamSport();
     _fetchVerifiedCourts();
+  }
+
+  /// Get user's current location
+  Future<void> _getCurrentLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return;
+      }
+
+      if (permission == LocationPermission.deniedForever) return;
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      setState(() {
+        _userLocation = LatLng(position.latitude, position.longitude);
+      });
+      
+      // Re-apply filters to sort by distance if selected
+      _applyFilters();
+    } catch (e) {
+      print('Error getting location: $e');
+    }
+  }
+
+  /// Calculate distance between two points in kilometers
+  double _calculateDistance(LatLng point1, LatLng point2) {
+    return Geolocator.distanceBetween(
+      point1.latitude,
+      point1.longitude,
+      point2.latitude,
+      point2.longitude,
+    ) / 1000; // Convert to kilometers
+  }
+
+  /// Get distance from user location to court
+  double? _getCourtDistance(Map<String, dynamic> court) {
+    if (_userLocation == null || court['coordinates'] == null) return null;
+    
+    final coords = court['coordinates'] as Map<String, dynamic>?;
+    if (coords == null) return null;
+    
+    final lat = coords['latitude'];
+    final lng = coords['longitude'];
+    if (lat == null || lng == null) return null;
+    
+    final courtCoords = LatLng(
+      lat is num ? lat.toDouble() : double.tryParse(lat.toString()) ?? 0.0,
+      lng is num ? lng.toDouble() : double.tryParse(lng.toString()) ?? 0.0,
+    );
+    
+    return _calculateDistance(_userLocation!, courtCoords);
   }
 
   Future<void> _fetchTeamSport() async {
@@ -138,6 +200,22 @@ class _AllCourtsPageState extends State<AllCourtsPage> {
           break;
         case 'Rating':
           _courts.sort((a, b) => ((b['rating'] ?? 0) as num).compareTo((a['rating'] ?? 0) as num));
+          break;
+        case 'Nearest':
+          if (_userLocation != null) {
+            _courts.sort((a, b) {
+              final distA = _getCourtDistance(a);
+              final distB = _getCourtDistance(b);
+              // Courts without coordinates go to the end
+              if (distA == null && distB == null) return 0;
+              if (distA == null) return 1;
+              if (distB == null) return -1;
+              return distA.compareTo(distB);
+            });
+          } else {
+            // If no location, fall back to A-Z
+            _courts.sort((a, b) => (a['name'] ?? '').compareTo(b['name'] ?? ''));
+          }
           break;
       }
     });
@@ -252,6 +330,28 @@ class _AllCourtsPageState extends State<AllCourtsPage> {
               ),
                           ],
                         ),
+                        // Distance from user location
+                        if (_getCourtDistance(court) != null) ...[
+                          SizedBox(height: isSmallScreen ? 4 : 6),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.near_me,
+                                color: Colors.blue,
+                                size: isSmallScreen ? 14 : 16,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                '${_getCourtDistance(court)!.toStringAsFixed(1)} km away',
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  fontSize: isSmallScreen ? 11 : 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                         SizedBox(height: isSmallScreen ? 4 : 6),
               Row(
                 children: [
@@ -503,6 +603,7 @@ class _AllCourtsPageState extends State<AllCourtsPage> {
                                     DropdownMenuItem(value: 'A-Z', child: Text('A-Z')),
                                     DropdownMenuItem(value: 'Z-A', child: Text('Z-A')),
                                     DropdownMenuItem(value: 'Rating', child: Text('Rating')),
+                                    DropdownMenuItem(value: 'Nearest', child: Text('Nearest')),
                                   ],
                                   onChanged: (value) {
                                     setState(() {

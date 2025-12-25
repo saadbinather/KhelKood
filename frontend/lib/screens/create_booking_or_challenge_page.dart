@@ -39,6 +39,9 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
   bool isSubmittingReview = false;
   final TextEditingController _reviewController = TextEditingController();
   int _selectedRating = 0;
+  
+  // Scroll controller for auto-scrolling when court is selected
+  final ScrollController _scrollController = ScrollController();
 
   bool get isBooking => widget.actionType == "booking";
   bool get isChallenge => widget.actionType == "challenge";
@@ -64,6 +67,7 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
   @override
   void dispose() {
     _reviewController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -358,6 +362,18 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
     if (isBoth) {
       _fetchReviews();
     }
+    // Scroll to bottom where fields are displayed after UI updates
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted && _scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    });
   }
 
   List<DateTime> _getNext7Days() {
@@ -1143,9 +1159,9 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
           ),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
-        actions: isBoth && selectedCourtId != null
+        actions: selectedCourtId != null
           ? [
-              // Map view button
+              // Map view button - show for all action types when court is selected
               if (selectedCourt != null && 
                   selectedCourt!['coordinates'] != null)
                 Builder(
@@ -1184,16 +1200,18 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
                     return const SizedBox.shrink();
                   },
                 ),
-              IconButton(
-                icon: const Icon(Icons.reviews, color: Colors.white),
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => _buildReviewDialog(),
-                  );
-                },
-                tooltip: 'Add Review',
-              ),
+              // Reviews button - only for "both" action type
+              if (isBoth)
+                IconButton(
+                  icon: const Icon(Icons.reviews, color: Colors.white),
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => _buildReviewDialog(),
+                    );
+                  },
+                  tooltip: 'Add Review',
+                ),
             ]
           : null,
       ),
@@ -1223,6 +1241,7 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
                   ),
                 )
               : SingleChildScrollView(
+                  controller: _scrollController,
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

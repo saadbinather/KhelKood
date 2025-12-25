@@ -17,6 +17,8 @@
  */
 
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../core/models/court_model.dart';
 import '../core/di/service_locator.dart';
 import '../core/repositories/court_repository.dart';
@@ -43,12 +45,77 @@ class _AllCourtsPageRefactoredState extends State<AllCourtsPageRefactored> {
   List<CourtModel> _allCourts = [];
   bool _isLoading = true;
   String? _errorMessage;
+  LatLng? _userLocation;
+  bool _isLoadingLocation = false;
 
   @override
   void initState() {
     super.initState();
     _courtRepository = ServiceLocator().courtRepository;
+    _getCurrentLocation();
     _loadCourts();
+  }
+
+  /// Get user's current location
+  Future<void> _getCurrentLocation() async {
+    setState(() => _isLoadingLocation = true);
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        setState(() => _isLoadingLocation = false);
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() => _isLoadingLocation = false);
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        setState(() => _isLoadingLocation = false);
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      setState(() {
+        _userLocation = LatLng(position.latitude, position.longitude);
+        _isLoadingLocation = false;
+      });
+      
+      // Re-apply filters to sort by distance if selected
+      _applyFilters();
+    } catch (e) {
+      setState(() => _isLoadingLocation = false);
+    }
+  }
+
+  /// Calculate distance between two points in kilometers
+  double _calculateDistance(LatLng point1, LatLng point2) {
+    return Geolocator.distanceBetween(
+      point1.latitude,
+      point1.longitude,
+      point2.latitude,
+      point2.longitude,
+    ) / 1000; // Convert to kilometers
+  }
+
+  /// Get distance from user location to court
+  double? _getCourtDistance(CourtModel court) {
+    if (_userLocation == null || court.coordinates == null) return null;
+    
+    final courtCoords = LatLng(
+      court.coordinates!['latitude']!,
+      court.coordinates!['longitude']!,
+    );
+    
+    return _calculateDistance(_userLocation!, courtCoords);
   }
 
   @override
@@ -99,6 +166,22 @@ class _AllCourtsPageRefactoredState extends State<AllCourtsPageRefactored> {
         case 'Rating':
           _courts.sort((a, b) => (b.rating ?? 0).compareTo(a.rating ?? 0));
           break;
+        case 'Nearest':
+          if (_userLocation != null) {
+            _courts.sort((a, b) {
+              final distA = _getCourtDistance(a);
+              final distB = _getCourtDistance(b);
+              // Courts without coordinates go to the end
+              if (distA == null && distB == null) return 0;
+              if (distA == null) return 1;
+              if (distB == null) return -1;
+              return distA.compareTo(distB);
+            });
+          } else {
+            // If no location, fall back to A-Z
+            _courts.sort((a, b) => a.courtName.compareTo(b.courtName));
+          }
+          break;
       }
     });
   }
@@ -137,6 +220,7 @@ class _AllCourtsPageRefactoredState extends State<AllCourtsPageRefactored> {
       'name': court.courtName,
       'address': court.location ?? '',
       'city': court.city ?? '',
+      'coordinates': court.coordinates,
       'availableSports': court.availableSports,
       'rates': court.rates ?? {},
       'cricketRate': court.getRateForSport('cricket') ?? 0,
@@ -238,6 +322,7 @@ class _AllCourtsPageRefactoredState extends State<AllCourtsPageRefactored> {
             DropdownMenuItem(value: 'A-Z', child: Text('A-Z')),
             DropdownMenuItem(value: 'Z-A', child: Text('Z-A')),
             DropdownMenuItem(value: 'Rating', child: Text('Rating')),
+            DropdownMenuItem(value: 'Nearest', child: Text('Nearest')),
           ],
           onChanged: (value) {
             setState(() {
@@ -269,10 +354,12 @@ class _AllCourtsPageRefactoredState extends State<AllCourtsPageRefactored> {
         itemCount: filteredCourts.length,
         itemBuilder: (context, index) {
           final court = filteredCourts[index];
+          final distance = _getCourtDistance(court);
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: CourtCard(
               court: court,
+              distanceKm: distance,
               onTap: () => _navigateToCourtDetails(court),
             ),
           );

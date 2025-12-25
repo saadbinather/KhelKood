@@ -889,11 +889,10 @@
 //   }
 // }
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
+import '../../services/google_maps_service.dart';
 
 class LocationPicker extends StatefulWidget {
   final Function(double latitude, double longitude, String placeName)
@@ -921,8 +920,6 @@ class _LocationPickerState extends State<LocationPicker> {
   String? _plusCode;
   bool _isLoadingAddress = false;
   double _zoom = 15.0;
-
-  static const String _googleApiKey = "YOUR_API_KEY";
 
   CameraPosition? _currentCameraPosition;
 
@@ -985,22 +982,18 @@ class _LocationPickerState extends State<LocationPicker> {
 
     setState(() => _isSearching = true);
 
-    final url = Uri.parse(
-      "https://maps.googleapis.com/maps/api/place/autocomplete/json"
-      "?input=${Uri.encodeComponent(query)}"
-      "&key=$_googleApiKey"
-      "&language=en"
-      "&components=country:pk",
-    );
-
-    final res = await http.get(url);
-    final data = json.decode(res.body);
+    // Call backend API instead of Google directly
+    final result = await GoogleMapsService.searchPlaces(query);
 
     if (!mounted) return;
 
     setState(() {
-      _searchSuggestions =
-          List<Map<String, dynamic>>.from(data["predictions"] ?? []);
+      if (result != null && result["predictions"] != null) {
+        _searchSuggestions =
+            List<Map<String, dynamic>>.from(result["predictions"] ?? []);
+      } else {
+        _searchSuggestions = [];
+      }
       _isSearching = false;
     });
   }
@@ -1012,29 +1005,25 @@ class _LocationPickerState extends State<LocationPicker> {
     setState(() {});
 
     final placeId = p["place_id"];
-    final url = Uri.parse(
-      "https://maps.googleapis.com/maps/api/place/details/json"
-      "?place_id=$placeId"
-      "&key=$_googleApiKey"
-      "&fields=geometry",
-    );
-
-    final res = await http.get(url);
-    final data = json.decode(res.body);
+    
+    // Call backend API instead of Google directly
+    final result = await GoogleMapsService.getPlaceDetails(placeId);
 
     if (!mounted) return;
 
-    final loc = data["result"]["geometry"]["location"];
-    final latLng = LatLng(loc["lat"], loc["lng"]);
+    if (result != null && result["result"] != null) {
+      final loc = result["result"]["geometry"]["location"];
+      final latLng = LatLng(loc["lat"], loc["lng"]);
 
-    _selectedLocation = latLng;
-    _updateMarker();
+      _selectedLocation = latLng;
+      _updateMarker();
 
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(latLng, 17),
-    );
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(latLng, 17),
+      );
 
-    _getPlaceFromCoordinates(latLng);
+      _getPlaceFromCoordinates(latLng);
+    }
   }
 
   // ===================== GEOCODING =====================
@@ -1043,18 +1032,19 @@ class _LocationPickerState extends State<LocationPicker> {
     if (!mounted) return;
     setState(() => _isLoadingAddress = true);
 
-    final url = Uri.parse(
-      "https://maps.googleapis.com/maps/api/geocode/json"
-      "?latlng=${pos.latitude},${pos.longitude}"
-      "&key=$_googleApiKey",
+    // Call backend API instead of Google directly
+    final result = await GoogleMapsService.getAddressFromCoords(
+      pos.latitude,
+      pos.longitude,
     );
 
-    final res = await http.get(url);
-    final data = json.decode(res.body);
-
     if (!mounted) return;
-    if (data["results"].isNotEmpty) {
-      _placeName = data["results"][0]["formatted_address"];
+    
+    if (result != null && result["results"] != null) {
+      final results = result["results"] as List;
+      if (results.isNotEmpty) {
+        _placeName = results[0]["formatted_address"] ?? "Unknown location";
+      }
     }
 
     if (!mounted) return;

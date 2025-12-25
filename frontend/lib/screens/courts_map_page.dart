@@ -5,6 +5,7 @@ import '../core/models/court_model.dart';
 import '../core/repositories/court_repository.dart';
 import '../core/services/api_service.dart';
 import '../core/constants/app_constants.dart';
+import '../utils/map_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -29,15 +30,99 @@ class _CourtsMapPageState extends State<CourtsMapPage> {
   CourtModel? _selectedCourt;
   final Set<Marker> _markers = {};
 
-  // 🔍 Search + filter for courts
+  // 🔍 Search for courts
   final TextEditingController _searchController = TextEditingController();
-  String _selectedFilter = 'Distance'; // Distance, Rating, A-Z
+  final FocusNode _searchFocusNode = FocusNode();
+  List<CourtModel> _searchResults = [];
+  bool _showSearchResults = false;
 
   @override
   void initState() {
     super.initState();
     _getCurrentLocation();
     _fetchCourts();
+    
+    // Listen to search text changes for real-time filtering
+    _searchController.addListener(_onSearchChanged);
+    _searchFocusNode.addListener(() {
+      if (_searchFocusNode.hasFocus) {
+        // Show all courts when search field is focused (even if empty)
+        if (_searchController.text.isEmpty) {
+          setState(() {
+            _searchResults = List.from(_courts); // Show all courts
+            _showSearchResults = true;
+          });
+        } else {
+          setState(() {
+            _showSearchResults = true;
+          });
+        }
+      }
+    });
+  }
+  
+  void _onSearchChanged() {
+    final query = _searchController.text.trim().toLowerCase();
+    
+    if (query.isEmpty) {
+      // If field is focused, show all courts; otherwise hide dropdown
+      if (_searchFocusNode.hasFocus) {
+        setState(() {
+          _searchResults = List.from(_courts); // Show all courts
+          _showSearchResults = true;
+        });
+      } else {
+        setState(() {
+          _searchResults = [];
+          _showSearchResults = false;
+        });
+      }
+      _updateMarkers(); // Show all courts on map
+      return;
+    }
+    
+    // Filter courts in real-time
+    final filtered = _courts.where((court) {
+      final name = court.courtName.toLowerCase();
+      final location = (court.location ?? '').toLowerCase();
+      final city = (court.city ?? '').toLowerCase();
+      return name.contains(query) ||
+          location.contains(query) ||
+          city.contains(query);
+    }).toList();
+    
+    // Sort by rating (default when searching)
+    filtered.sort((a, b) => (b.rating ?? 0).compareTo(a.rating ?? 0));
+    
+    setState(() {
+      _searchResults = filtered;
+      _showSearchResults = true;
+    });
+    
+    // Update markers to show only filtered courts
+    _updateMarkers();
+  }
+  
+  void _selectCourtFromSearch(CourtModel court) {
+    _searchController.clear();
+    _searchFocusNode.unfocus();
+    setState(() {
+      _showSearchResults = false;
+    });
+    
+    // Center map on selected court
+    if (court.coordinates != null && _mapController != null) {
+      final coords = LatLng(
+        court.coordinates!['latitude']!,
+        court.coordinates!['longitude']!,
+      );
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(coords, 16.0),
+      );
+      
+      // Show court info
+      _selectCourt(court);
+    }
   }
 
   Future<String?> _getAuthToken() async {
@@ -91,7 +176,7 @@ class _CourtsMapPageState extends State<CourtsMapPage> {
         _zoom = 15.0;
       });
 
-      _updateMarkers();
+      await _updateMarkers();
 
       // Move map to user location
       _mapController?.animateCamera(
@@ -133,14 +218,19 @@ class _CourtsMapPageState extends State<CourtsMapPage> {
         final data = jsonDecode(response.body);
         final courtsData = data['data']?['courts'] ?? [];
         
+        final allCourts = (courtsData as List)
+            .map((courtJson) => CourtModel.fromJson(courtJson as Map<String, dynamic>))
+            .where((court) => court.coordinates != null) // Only courts with coordinates
+            .toList();
+        
+        // Sort by rating by default (when no search)
+        allCourts.sort((a, b) => (b.rating ?? 0).compareTo(a.rating ?? 0));
+        
         setState(() {
-          _courts = (courtsData as List)
-              .map((courtJson) => CourtModel.fromJson(courtJson as Map<String, dynamic>))
-              .where((court) => court.coordinates != null) // Only courts with coordinates
-              .toList();
+          _courts = allCourts;
           _isLoadingCourts = false;
         });
-        _updateMarkers();
+        await _updateMarkers();
       } else {
         setState(() {
           _errorMessage = 'Failed to fetch courts';
@@ -155,17 +245,24 @@ class _CourtsMapPageState extends State<CourtsMapPage> {
     }
   }
 
-  void _updateMarkers() {
+  Future<void> _updateMarkers() async {
+    BitmapDescriptor? userLocationIcon;
+    
+    // Create blue circle icon for user location
+    if (_userLocation != null) {
+      userLocationIcon = await MapIcons.createBlueCircleIcon();
+    }
+    
     setState(() {
       _markers.clear();
       
-      // User location marker (blue point)
-      if (_userLocation != null) {
+      // User location marker (blue circle)
+      if (_userLocation != null && userLocationIcon != null) {
         _markers.add(
           Marker(
             markerId: const MarkerId('user_location'),
             position: _userLocation!,
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+            icon: userLocationIcon,
             infoWindow: const InfoWindow(title: 'Your Location'),
           ),
         );
@@ -206,56 +303,19 @@ class _CourtsMapPageState extends State<CourtsMapPage> {
     );
   }
 
-  /// 🔢 Filter + sort courts based on search + selected filter
+  /// 🔢 Filter courts based on search (for markers)
   List<CourtModel> _getVisibleCourts() {
-    List<CourtModel> visible = List<CourtModel>.from(_courts);
-
-    // Text search (name, location, city)
     final query = _searchController.text.trim().toLowerCase();
-    if (query.isNotEmpty) {
-      visible = visible.where((court) {
-        final name = court.courtName.toLowerCase();
-        final location = (court.location ?? '').toLowerCase();
-        final city = (court.city ?? '').toLowerCase();
-        return name.contains(query) ||
-            location.contains(query) ||
-            city.contains(query);
-      }).toList();
+    
+    // If no search query, show all courts sorted by rating (default)
+    if (query.isEmpty) {
+      final allCourts = List<CourtModel>.from(_courts);
+      allCourts.sort((a, b) => (b.rating ?? 0).compareTo(a.rating ?? 0));
+      return allCourts;
     }
-
-    // Sorting
-    switch (_selectedFilter) {
-      case 'A-Z':
-        visible.sort((a, b) => a.courtName.compareTo(b.courtName));
-        break;
-      case 'Z-A':
-        visible.sort((a, b) => b.courtName.compareTo(a.courtName));
-        break;
-      case 'Rating':
-        visible.sort((a, b) => (b.rating ?? 0).compareTo(a.rating ?? 0));
-        break;
-      case 'Distance':
-      default:
-        if (_userLocation != null) {
-          visible.sort((a, b) {
-            if (a.coordinates == null || b.coordinates == null) return 0;
-            final aCoords = LatLng(
-              a.coordinates!['latitude']!,
-              a.coordinates!['longitude']!,
-            );
-            final bCoords = LatLng(
-              b.coordinates!['latitude']!,
-              b.coordinates!['longitude']!,
-            );
-            final distA = _calculateDistance(_userLocation!, aCoords);
-            final distB = _calculateDistance(_userLocation!, bCoords);
-            return distA.compareTo(distB);
-          });
-        }
-        break;
-    }
-
-    return visible;
+    
+    // Filter by search query
+    return _searchResults;
   }
 
   /// Alias for backward compatibility
@@ -400,9 +460,11 @@ class _CourtsMapPageState extends State<CourtsMapPage> {
               zoom: _zoom,
             ),
             onTap: (LatLng position) {
-              // Close court info if tapping on map
+              // Close court info and search results if tapping on map
               setState(() {
                 _selectedCourt = null;
+                _showSearchResults = false;
+                _searchFocusNode.unfocus();
               });
             },
             markers: _markers,
@@ -412,7 +474,7 @@ class _CourtsMapPageState extends State<CourtsMapPage> {
             mapType: MapType.normal,
           ),
 
-          // 🔍 Search + Filter row
+          // 🔍 Search Bar with Suggestions
           Positioned(
             top: 12,
             left: 12,
@@ -433,16 +495,21 @@ class _CourtsMapPageState extends State<CourtsMapPage> {
                   ),
                   child: TextField(
                     controller: _searchController,
+                    focusNode: _searchFocusNode,
                     style: const TextStyle(color: Colors.black87),
                     decoration: InputDecoration(
-                      hintText: 'Search courts or areas...',
+                      hintText: 'Search courts...',
                       prefixIcon: const Icon(Icons.search, color: Colors.grey),
                       suffixIcon: _searchController.text.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear, color: Colors.grey),
                               onPressed: () {
                                 _searchController.clear();
-                                setState(() {});
+                                _searchFocusNode.unfocus();
+                                setState(() {
+                                  _showSearchResults = false;
+                                });
+                                _updateMarkers();
                               },
                             )
                           : null,
@@ -452,13 +519,107 @@ class _CourtsMapPageState extends State<CourtsMapPage> {
                         vertical: 12,
                       ),
                     ),
-                    onChanged: (_) {
-                      setState(() {
-                        _updateMarkers(); // Update markers when search changes
-                      });
+                    onTap: () {
+                      // Show all courts when search field is clicked (even if empty)
+                      if (_searchController.text.isEmpty) {
+                        setState(() {
+                          _searchResults = List.from(_courts); // Show all courts
+                          _showSearchResults = true;
+                        });
+                      } else {
+                        setState(() {
+                          _showSearchResults = true;
+                        });
+                      }
                     },
                   ),
                 ),
+                // Search Results Dropdown
+                if (_showSearchResults && _searchResults.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    constraints: const BoxConstraints(maxHeight: 300),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _searchResults.length,
+                      itemBuilder: (context, index) {
+                        final court = _searchResults[index];
+                        final distance = _userLocation != null && court.coordinates != null
+                            ? _calculateDistance(
+                                _userLocation!,
+                                LatLng(
+                                  court.coordinates!['latitude']!,
+                                  court.coordinates!['longitude']!,
+                                ),
+                              ) / 1000
+                            : null;
+                        
+                        return ListTile(
+                          leading: const Icon(Icons.sports_soccer, color: Colors.redAccent),
+                          title: Text(
+                            court.courtName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (court.location != null)
+                                Text(
+                                  court.location!,
+                                  style: const TextStyle(fontSize: 12),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              if (distance != null) ...[
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.near_me, size: 12, color: Colors.blue),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${distance.toStringAsFixed(1)} km',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.blue,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                          trailing: court.rating != null
+                              ? Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.star, size: 16, color: Colors.amber),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      court.rating!.toStringAsFixed(1),
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                  ],
+                                )
+                              : null,
+                          onTap: () => _selectCourtFromSearch(court),
+                        );
+                      },
+                    ),
+                  ),
               ],
             ),
           ),
@@ -562,7 +723,9 @@ class _CourtsMapPageState extends State<CourtsMapPage> {
   @override
   void dispose() {
     _mapController?.dispose();
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 }

@@ -1,7 +1,21 @@
 // truncate_collections.js
 import { db } from "../config/firebase.js";
 
-const collectionsToTruncate = ["challenges"];
+// All collections to truncate (except admins)
+const collectionsToTruncate = [
+  "bookings",
+  "challenges",
+  "courtowners",
+  "courts",
+  "matches",
+  "payments",
+  "players",
+  "results",
+  "reviews",
+  "teams",
+  "users",
+  "verifications"
+];
 
 async function truncateCollection(collectionName) {
   try {

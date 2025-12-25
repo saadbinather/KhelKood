@@ -23,6 +23,7 @@ import userRoutes from "./user/user.js";
 import courtsRoutes from "./courtowner/courts.js";
 import reviewsRoutes from "./team/reviews.js";
 import leaderboardRoutes from "./team/leaderboard.js";
+import googleMapsRoutes from "./utils/googleMapsRoutes.js";
 import { sendSuccess, sendError, sendNotFoundError } from "./utils/response.js";
 
 const app = express();
@@ -42,6 +43,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/courts", courtsRoutes);
 app.use("/api/reviews", reviewsRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
+app.use("/api/google-maps", googleMapsRoutes);
 
 // ==================== ADDITIONAL ROUTES ====================
 // Example protected route

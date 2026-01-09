@@ -178,10 +178,16 @@ class _CourtsMapPageState extends State<CourtsMapPage> {
 
       await _updateMarkers();
 
-      // Move map to user location
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(_userLocation!, _zoom),
-      );
+      // Move map to user location - use a slight delay to ensure map is ready
+      if (_mapController != null && _userLocation != null) {
+        // Small delay to ensure map controller is fully initialized
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (mounted && _mapController != null) {
+          _mapController!.animateCamera(
+            CameraUpdate.newLatLngZoom(_userLocation!, _zoom),
+          );
+        }
+      }
     } catch (e) {
       setState(() {
         _isLoadingLocation = false;
@@ -435,7 +441,30 @@ class _CourtsMapPageState extends State<CourtsMapPage> {
 
   @override
   Widget build(BuildContext context) {
-    final initialLocation = _userLocation ?? const LatLng(33.6844, 73.0479); // Default: Islamabad
+    // Wait for location before showing map, or use a very wide default that won't show a specific country
+    // If location is still loading, show loading indicator
+    if (_isLoadingLocation && _userLocation == null) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          title: const Text(
+            "Find Courts",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(
+            color: Colors.redAccent,
+          ),
+        ),
+      );
+    }
+
+    // Use user location if available, otherwise use a neutral default (center of world map)
+    final initialLocation = _userLocation ?? const LatLng(0.0, 0.0);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -454,10 +483,21 @@ class _CourtsMapPageState extends State<CourtsMapPage> {
           GoogleMap(
             onMapCreated: (GoogleMapController controller) {
               _mapController = controller;
+              // If we already have user location, animate to it immediately
+              if (_userLocation != null) {
+                // Small delay to ensure map controller is fully initialized
+                Future.delayed(const Duration(milliseconds: 100), () {
+                  if (mounted && _mapController != null && _userLocation != null) {
+                    _mapController!.animateCamera(
+                      CameraUpdate.newLatLngZoom(_userLocation!, _zoom),
+                    );
+                  }
+                });
+              }
             },
             initialCameraPosition: CameraPosition(
               target: initialLocation,
-              zoom: _zoom,
+              zoom: _userLocation != null ? _zoom : 2.0, // Wide zoom if no location
             ),
             onTap: (LatLng position) {
               // Close court info and search results if tapping on map

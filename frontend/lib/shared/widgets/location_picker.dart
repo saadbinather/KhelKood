@@ -1016,10 +1016,15 @@ class _LocationPickerState extends State<LocationPicker> {
       _updateMarker();
       _getPlaceFromCoordinates(_selectedLocation!);
       
+      // Animate camera to user location - use a delay to ensure map controller is ready
       if (_mapController != null) {
-        _mapController!.animateCamera(
-          CameraUpdate.newLatLngZoom(_selectedLocation!, 16),
-        );
+        // Small delay to ensure map controller is fully initialized
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (mounted && _mapController != null && _selectedLocation != null) {
+          _mapController!.animateCamera(
+            CameraUpdate.newLatLngZoom(_selectedLocation!, 16),
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -1133,9 +1138,14 @@ class _LocationPickerState extends State<LocationPicker> {
               _mapController = c;
               // If we already have location, animate to it
               if (_selectedLocation != null) {
-                c.animateCamera(
-                  CameraUpdate.newLatLngZoom(_selectedLocation!, _zoom),
-                );
+                // Small delay to ensure map controller is fully initialized
+                Future.delayed(const Duration(milliseconds: 100), () {
+                  if (mounted && _mapController != null && _selectedLocation != null) {
+                    _mapController!.animateCamera(
+                      CameraUpdate.newLatLngZoom(_selectedLocation!, _zoom),
+                    );
+                  }
+                });
               }
             },
             initialCameraPosition: CameraPosition(

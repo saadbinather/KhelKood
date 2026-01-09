@@ -9,6 +9,7 @@ import '../CourtOwner/dash_board.dart';
 import 'dashboard_page.dart';
 import 'choose_register_page.dart';
 import '../config/google_auth_config.dart';
+import '../core/constants/app_constants.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -70,7 +71,7 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       final response = await http.post(
-        Uri.parse("http://localhost:5000/api/auth/google-login"),
+        Uri.parse("${AppConstants.baseUrl}/auth/google-login"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"token": token}),
       );
@@ -154,7 +155,7 @@ class _LoginPageState extends State<LoginPage> {
   Future<Map<String, dynamic>> authenticateUser(String email, String password) async {
     try {
       final response = await http.post(
-        Uri.parse("http://localhost:5000/api/auth/login"),
+        Uri.parse("${AppConstants.baseUrl}/auth/login"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"email": email, "password": password}),
       );

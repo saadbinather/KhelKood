@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../core/constants/app_constants.dart';
 
-const String baseUrl = 'http://localhost:5000/api';
+// Use AppConstants.baseUrl for platform-aware base URL
+final String baseUrl = AppConstants.baseUrl;
 
 Future<String?> _getAuthToken() async {
   try {
@@ -39,7 +41,9 @@ class _PaymentsPageState extends State<PaymentsPage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
-      if (_tabController.index == 0 && pendingBookings.isEmpty && pendingMatches.isEmpty) {
+      if (_tabController.index == 0 &&
+          pendingBookings.isEmpty &&
+          pendingMatches.isEmpty) {
         _fetchPendingPayments();
       } else if (_tabController.index == 1 && paidBookings.isEmpty) {
         _fetchPaidBookings();
@@ -84,7 +88,7 @@ class _PaymentsPageState extends State<PaymentsPage>
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final dataObj = data['data'] as Map<String, dynamic>?;
-        
+
         // Handle bookings
         final bookingsList = dataObj?['bookings'] as List<dynamic>? ?? [];
         final bookings = bookingsList.map((item) {
@@ -92,7 +96,7 @@ class _PaymentsPageState extends State<PaymentsPage>
           final booking = payment?['booking'] as Map<String, dynamic>?;
           final team = payment?['team'] as Map<String, dynamic>?;
           final court = payment?['court'] as Map<String, dynamic>?;
-          
+
           return {
             'id': payment?['id']?.toString() ?? '',
             'amount': payment?['amount'] ?? 0,
@@ -112,7 +116,7 @@ class _PaymentsPageState extends State<PaymentsPage>
           final hostTeam = payment?['hostTeam'] as Map<String, dynamic>?;
           final guestTeam = payment?['guestTeam'] as Map<String, dynamic>?;
           final court = payment?['court'] as Map<String, dynamic>?;
-          
+
           return {
             'id': payment?['id']?.toString() ?? '',
             'amount': payment?['amount'] ?? 0,
@@ -123,7 +127,8 @@ class _PaymentsPageState extends State<PaymentsPage>
             'guestTeam': guestTeam?['teamName']?.toString() ?? 'Unknown',
             'hostTeamID': match?['Host_Team_ID']?.toString() ?? '',
             'guestTeamID': match?['Guest_Team_ID']?.toString() ?? '',
-            'team': '${hostTeam?['teamName'] ?? 'Unknown'} vs ${guestTeam?['teamName'] ?? 'Unknown'}',
+            'team':
+                '${hostTeam?['teamName'] ?? 'Unknown'} vs ${guestTeam?['teamName'] ?? 'Unknown'}',
             'court': court?['name']?.toString() ?? 'Unknown Court',
             'startTime': match?['StartTime'],
             'endTime': match?['EndTime'],
@@ -139,7 +144,8 @@ class _PaymentsPageState extends State<PaymentsPage>
         final errorData = jsonDecode(response.body) as Map<String, dynamic>?;
         setState(() {
           errorMessagePending =
-              errorData?['error']?.toString() ?? 'Failed to fetch pending payments';
+              errorData?['error']?.toString() ??
+              'Failed to fetch pending payments';
           isLoadingPending = false;
         });
       }
@@ -187,7 +193,7 @@ class _PaymentsPageState extends State<PaymentsPage>
             final payment = item['payment'] as Map<String, dynamic>?;
             final team = item['team'] as Map<String, dynamic>?;
             final court = item['court'] as Map<String, dynamic>?;
-            
+
             return {
               'id': booking?['id']?.toString() ?? '',
               'amount': payment?['amount'] ?? 0,
@@ -203,7 +209,8 @@ class _PaymentsPageState extends State<PaymentsPage>
         final errorData = jsonDecode(response.body) as Map<String, dynamic>?;
         setState(() {
           errorMessagePaid =
-              errorData?['error']?.toString() ?? 'Failed to fetch paid bookings';
+              errorData?['error']?.toString() ??
+              'Failed to fetch paid bookings';
           isLoadingPaid = false;
         });
       }
@@ -215,7 +222,11 @@ class _PaymentsPageState extends State<PaymentsPage>
     }
   }
 
-  Future<void> _markAsPaid(String paymentID, {String? matchID, String? sport}) async {
+  Future<void> _markAsPaid(
+    String paymentID, {
+    String? matchID,
+    String? sport,
+  }) async {
     try {
       final token = await _getAuthToken();
       if (token == null) {
@@ -251,7 +262,7 @@ class _PaymentsPageState extends State<PaymentsPage>
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Payment marked as paid successfully!'),
-              backgroundColor: Color(0xFF4CAF50),
+              backgroundColor: Colors.redAccent,
             ),
           );
           await _fetchPendingPayments();
@@ -262,7 +273,9 @@ class _PaymentsPageState extends State<PaymentsPage>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(errorData?['error']?.toString() ?? 'Failed to update payment'),
+              content: Text(
+                errorData?['error']?.toString() ?? 'Failed to update payment',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -289,7 +302,7 @@ class _PaymentsPageState extends State<PaymentsPage>
       (p) => p['id']?.toString() == paymentID,
       orElse: () => <String, dynamic>{},
     );
-    
+
     final hostTeamID = payment['hostTeamID']?.toString() ?? '';
     final guestTeamID = payment['guestTeamID']?.toString() ?? '';
     final hostTeamName = payment['hostTeam']?.toString() ?? 'Host Team';
@@ -297,111 +310,121 @@ class _PaymentsPageState extends State<PaymentsPage>
 
     showDialog(
       context: context,
-        builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext) => StatefulBuilder(
         builder: (buildContext, setDialogState) => AlertDialog(
-          backgroundColor: Colors.white,
+          backgroundColor: Colors.grey[900],
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
           title: const Text(
             'Select Match Winner',
-            style: TextStyle(
-              color: Color(0xFF2E7D32),
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2E7D32).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      payment['team']?.toString() ?? 'Match',
-                      style: const TextStyle(
-                        color: Color(0xFF2E7D32),
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    payment['team']?.toString() ?? 'Match',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  if (sport.toLowerCase() == 'futsal' || sport.toLowerCase() == 'football') ...[
-                    RadioListTile<String>(
-                      title: Text('$hostTeamName (Host)', style: const TextStyle(color: Color(0xFF2E7D32))),
-                      value: 'host',
-                      groupValue: isTie ? null : (selectedWinner ?? ''),
-                      activeColor: const Color(0xFF4CAF50),
-                      onChanged: (value) {
-                        setDialogState(() {
-                          selectedWinner = value ?? '';
-                          isTie = false;
-                        });
-                      },
+                ),
+                const SizedBox(height: 16),
+                if (sport.toLowerCase() == 'futsal' ||
+                    sport.toLowerCase() == 'football') ...[
+                  RadioListTile<String>(
+                    title: Text(
+                      '$hostTeamName (Host)',
+                      style: const TextStyle(color: Colors.white),
                     ),
-                    RadioListTile<String>(
-                      title: Text('$guestTeamName (Guest)', style: const TextStyle(color: Color(0xFF2E7D32))),
-                      value: 'guest',
-                      groupValue: isTie ? null : (selectedWinner ?? ''),
-                      activeColor: const Color(0xFF4CAF50),
-                      onChanged: (value) {
-                        setDialogState(() {
-                          selectedWinner = value ?? '';
-                          isTie = false;
-                        });
-                      },
+                    value: 'host',
+                    groupValue: isTie ? null : (selectedWinner ?? ''),
+                    activeColor: Colors.redAccent,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedWinner = value ?? '';
+                        isTie = false;
+                      });
+                    },
+                  ),
+                  RadioListTile<String>(
+                    title: Text(
+                      '$guestTeamName (Guest)',
+                      style: const TextStyle(color: Colors.white),
                     ),
-                    CheckboxListTile(
-                      title: const Text('Tie', style: TextStyle(color: Color(0xFF2E7D32))),
-                      value: isTie,
-                      activeColor: const Color(0xFF4CAF50),
-                      onChanged: (value) {
-                        setDialogState(() {
-                          isTie = value ?? false;
-                          if (isTie) selectedWinner = null;
-                        });
-                      },
+                    value: 'guest',
+                    groupValue: isTie ? null : (selectedWinner ?? ''),
+                    activeColor: Colors.redAccent,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedWinner = value ?? '';
+                        isTie = false;
+                      });
+                    },
+                  ),
+                  CheckboxListTile(
+                    title: const Text(
+                      'Tie',
+                      style: TextStyle(color: Colors.white),
                     ),
-                  ] else ...[
-                    RadioListTile<String>(
-                      title: Text('$hostTeamName (Host)', style: const TextStyle(color: Color(0xFF2E7D32))),
-                      value: 'host',
-                      groupValue: selectedWinner ?? '',
-                      activeColor: const Color(0xFF4CAF50),
-                      onChanged: (value) {
-                        setDialogState(() {
-                          selectedWinner = value ?? '';
-                          isTie = false;
-                        });
-                      },
+                    value: isTie,
+                    activeColor: Colors.redAccent,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        isTie = value ?? false;
+                        if (isTie) selectedWinner = null;
+                      });
+                    },
+                  ),
+                ] else ...[
+                  RadioListTile<String>(
+                    title: Text(
+                      '$hostTeamName (Host)',
+                      style: const TextStyle(color: Colors.white),
                     ),
-                    RadioListTile<String>(
-                      title: Text('$guestTeamName (Guest)', style: const TextStyle(color: Color(0xFF2E7D32))),
-                      value: 'guest',
-                      groupValue: selectedWinner ?? '',
-                      activeColor: const Color(0xFF4CAF50),
-                      onChanged: (value) {
-                        setDialogState(() {
-                          selectedWinner = value ?? '';
-                          isTie = false;
-                        });
-                      },
+                    value: 'host',
+                    groupValue: selectedWinner ?? '',
+                    activeColor: Colors.redAccent,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedWinner = value ?? '';
+                        isTie = false;
+                      });
+                    },
+                  ),
+                  RadioListTile<String>(
+                    title: Text(
+                      '$guestTeamName (Guest)',
+                      style: const TextStyle(color: Colors.white),
                     ),
-                  ],
+                    value: 'guest',
+                    groupValue: selectedWinner ?? '',
+                    activeColor: Colors.redAccent,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedWinner = value ?? '';
+                        isTie = false;
+                      });
+                    },
+                  ),
                 ],
-              ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.grey),
-              ),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
               onPressed: (selectedWinner == null && !isTie)
@@ -419,7 +442,7 @@ class _PaymentsPageState extends State<PaymentsPage>
                       }
                     },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4CAF50),
+                backgroundColor: Colors.redAccent,
               ),
               child: const Text(
                 'Confirm',
@@ -480,8 +503,10 @@ class _PaymentsPageState extends State<PaymentsPage>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Payment updated and winner selected successfully!'),
-              backgroundColor: Color(0xFF4CAF50),
+              content: Text(
+                'Payment updated and winner selected successfully!',
+              ),
+              backgroundColor: Colors.redAccent,
             ),
           );
           await _fetchPendingPayments();
@@ -492,7 +517,9 @@ class _PaymentsPageState extends State<PaymentsPage>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(errorData?['error']?.toString() ?? 'Failed to update payment'),
+              content: Text(
+                errorData?['error']?.toString() ?? 'Failed to update payment',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -573,14 +600,12 @@ class _PaymentsPageState extends State<PaymentsPage>
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      color: Colors.white,
+      color: Colors.grey[900],
       elevation: 3,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: (isPaid 
-              ? const Color(0xFF4CAF50) 
-              : Colors.orange).withOpacity(0.2),
+          color: (isPaid ? Colors.redAccent : Colors.orange).withOpacity(0.2),
           width: 1,
         ),
       ),
@@ -594,16 +619,13 @@ class _PaymentsPageState extends State<PaymentsPage>
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: (isPaid 
-                        ? const Color(0xFF4CAF50) 
-                        : Colors.orange).withOpacity(0.1),
+                    color: (isPaid ? Colors.redAccent : Colors.orange)
+                        .withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     isMatch ? Icons.sports_soccer : Icons.event,
-                    color: isPaid 
-                        ? const Color(0xFF4CAF50) 
-                        : Colors.orange,
+                    color: isPaid ? Colors.redAccent : Colors.orange,
                     size: 24,
                   ),
                 ),
@@ -611,28 +633,28 @@ class _PaymentsPageState extends State<PaymentsPage>
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
+                    children: [
+                      Text(
                         payment['team'] ?? 'Unknown Team',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                          color: Color(0xFF2E7D32),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                           fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 4),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
                       Row(
                         children: [
                           const Icon(
                             Icons.location_on,
                             size: 14,
-                            color: Colors.grey,
+                            color: Colors.white70,
                           ),
                           const SizedBox(width: 4),
-            Text(
+                          Text(
                             payment['court'] ?? 'Unknown Court',
                             style: const TextStyle(
-                              color: Colors.grey,
+                              color: Colors.white70,
                               fontSize: 13,
                             ),
                           ),
@@ -642,25 +664,23 @@ class _PaymentsPageState extends State<PaymentsPage>
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: (isPaid 
-                        ? const Color(0xFF4CAF50) 
-                        : Colors.orange).withOpacity(0.1),
+                    color: (isPaid ? Colors.redAccent : Colors.orange)
+                        .withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isPaid 
-                          ? const Color(0xFF4CAF50) 
-                          : Colors.orange,
+                      color: isPaid ? Colors.redAccent : Colors.orange,
                       width: 1,
                     ),
                   ),
                   child: Text(
-              isPaid ? "Paid" : "Pending",
-              style: TextStyle(
-                      color: isPaid 
-                          ? const Color(0xFF4CAF50) 
-                          : Colors.orange,
+                    isPaid ? "Paid" : "Pending",
+                    style: TextStyle(
+                      color: isPaid ? Colors.redAccent : Colors.orange,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -674,29 +694,19 @@ class _PaymentsPageState extends State<PaymentsPage>
                 const Icon(
                   Icons.calendar_today,
                   size: 16,
-                  color: Colors.grey,
+                  color: Colors.white70,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   date,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 13,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
                 ),
                 const SizedBox(width: 16),
-                const Icon(
-                  Icons.access_time,
-                  size: 16,
-                  color: Colors.grey,
-                ),
+                const Icon(Icons.access_time, size: 16, color: Colors.white70),
                 const SizedBox(width: 6),
                 Text(
                   time,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 13,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
                 ),
               ],
             ),
@@ -705,12 +715,15 @@ class _PaymentsPageState extends State<PaymentsPage>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2E7D32).withOpacity(0.1),
+                    color: Colors.redAccent.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: const Color(0xFF2E7D32).withOpacity(0.3),
+                      color: Colors.redAccent.withOpacity(0.3),
                       width: 1,
                     ),
                   ),
@@ -721,15 +734,15 @@ class _PaymentsPageState extends State<PaymentsPage>
                         'Rs. ',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF2E7D32),
+                          color: Colors.white,
                           fontSize: 18,
                         ),
                       ),
                       Text(
                         amount.toString(),
                         style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                          color: Color(0xFF2E7D32),
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                           fontSize: 18,
                         ),
                       ),
@@ -749,9 +762,12 @@ class _PaymentsPageState extends State<PaymentsPage>
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4CAF50),
+                      backgroundColor: Colors.redAccent,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -771,13 +787,10 @@ class _PaymentsPageState extends State<PaymentsPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-        appBar: AppBar(
-        backgroundColor: const Color(0xFF4CAF50),
-        title: const Text(
-          "Payments",
-          style: TextStyle(color: Colors.white),
-        ),
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        title: const Text("Payments", style: TextStyle(color: Colors.white)),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
@@ -785,20 +798,20 @@ class _PaymentsPageState extends State<PaymentsPage>
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
           tabs: const [
-              Tab(text: "Pending"),
-              Tab(text: "Paid"),
-            ],
-          ),
+            Tab(text: "Pending"),
+            Tab(text: "Paid"),
+          ],
         ),
-        body: TabBarView(
+      ),
+      body: TabBarView(
         controller: _tabController,
-          children: [
-            // -------------------------
+        children: [
+          // -------------------------
           // Pending Payments
-            // -------------------------
+          // -------------------------
           isLoadingPending
               ? const Center(
-                  child: CircularProgressIndicator(color: Color(0xFF4CAF50)),
+                  child: CircularProgressIndicator(color: Colors.redAccent),
                 )
               : errorMessagePending != null
               ? Center(
@@ -807,14 +820,14 @@ class _PaymentsPageState extends State<PaymentsPage>
                     children: [
                       Text(
                         errorMessagePending!,
-                        style: const TextStyle(color: Color(0xFF2E7D32)),
+                        style: const TextStyle(color: Colors.white),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _fetchPendingPayments,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4CAF50),
+                          backgroundColor: Colors.redAccent,
                         ),
                         child: const Text(
                           'Retry',
@@ -833,7 +846,7 @@ class _PaymentsPageState extends State<PaymentsPage>
                 )
               : RefreshIndicator(
                   onRefresh: _fetchPendingPayments,
-                  color: const Color(0xFF4CAF50),
+                  color: Colors.redAccent,
                   child: ListView(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     children: [
@@ -844,13 +857,15 @@ class _PaymentsPageState extends State<PaymentsPage>
                           child: Text(
                             'Bookings (Friendly Matches)',
                             style: const TextStyle(
-                              color: Color(0xFF2E7D32),
+                              color: Colors.white,
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-                        ...pendingBookings.map((payment) => buildPaymentCard(payment, false)),
+                        ...pendingBookings.map(
+                          (payment) => buildPaymentCard(payment, false),
+                        ),
                         const SizedBox(height: 8),
                       ],
                       // Matches/Challenges Section
@@ -860,24 +875,26 @@ class _PaymentsPageState extends State<PaymentsPage>
                           child: Text(
                             'Challenges (Competitive Matches)',
                             style: const TextStyle(
-                              color: Color(0xFF2E7D32),
+                              color: Colors.white,
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-                        ...pendingMatches.map((payment) => buildPaymentCard(payment, false)),
+                        ...pendingMatches.map(
+                          (payment) => buildPaymentCard(payment, false),
+                        ),
                       ],
                     ],
                   ),
-            ),
+                ),
 
-            // -------------------------
+          // -------------------------
           // Paid Bookings
-            // -------------------------
+          // -------------------------
           isLoadingPaid
               ? const Center(
-                  child: CircularProgressIndicator(color: Color(0xFF4CAF50)),
+                  child: CircularProgressIndicator(color: Colors.redAccent),
                 )
               : errorMessagePaid != null
               ? Center(
@@ -886,22 +903,22 @@ class _PaymentsPageState extends State<PaymentsPage>
                     children: [
                       Text(
                         errorMessagePaid!,
-                        style: const TextStyle(color: Color(0xFF2E7D32)),
+                        style: const TextStyle(color: Colors.white),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _fetchPaidBookings,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4CAF50),
+                          backgroundColor: Colors.redAccent,
                         ),
                         child: const Text(
                           'Retry',
                           style: TextStyle(color: Colors.white),
                         ),
-            ),
-          ],
-        ),
+                      ),
+                    ],
+                  ),
                 )
               : paidBookings.isEmpty
               ? const Center(
@@ -912,7 +929,7 @@ class _PaymentsPageState extends State<PaymentsPage>
                 )
               : RefreshIndicator(
                   onRefresh: _fetchPaidBookings,
-                  color: const Color(0xFF4CAF50),
+                  color: Colors.redAccent,
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: paidBookings.length,

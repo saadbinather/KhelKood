@@ -1,3 +1,5 @@
+import 'app_constants.dart';
+
 /**
  * API Constants
  * 
@@ -5,7 +7,8 @@
  */
 
 class ApiConstants {
-  static const String baseUrl = 'http://localhost:5000/api';
+  // Use AppConstants.baseUrl for platform-aware base URL
+  static String get baseUrl => AppConstants.baseUrl;
   
   // Auth endpoints
   static const String login = '/auth/login';

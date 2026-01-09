@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../core/constants/app_constants.dart';
 
-const String baseUrl = 'http://localhost:5000/api';
+// Use AppConstants.baseUrl for platform-aware base URL
+final String baseUrl = AppConstants.baseUrl;
 
 Future<String?> _getAuthToken() async {
   try {
@@ -207,11 +209,11 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
           index < rating ? Icons.star : Icons.star_border,
           color: index < rating
               ? (rating >= 8
-                    ? const Color(0xFF4CAF50)
+                    ? Colors.redAccent
                     : rating >= 5
                     ? Colors.orange
                     : Colors.red)
-              : Colors.grey[300],
+              : Colors.grey[700],
           size: 18,
         ),
       ),
@@ -229,14 +231,14 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      color: Colors.white,
+      color: Colors.grey[900],
       elevation: 3,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
           color:
               (isHighRating
-                      ? const Color(0xFF4CAF50)
+                      ? Colors.redAccent
                       : isMediumRating
                       ? Colors.orange
                       : Colors.red)
@@ -257,7 +259,7 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                   decoration: BoxDecoration(
                     color:
                         (isHighRating
-                                ? const Color(0xFF4CAF50)
+                                ? Colors.redAccent
                                 : isMediumRating
                                 ? Colors.orange
                                 : Colors.red)
@@ -267,7 +269,7 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                   child: Icon(
                     Icons.person,
                     color: isHighRating
-                        ? const Color(0xFF4CAF50)
+                        ? Colors.redAccent
                         : isMediumRating
                         ? Colors.orange
                         : Colors.red,
@@ -284,7 +286,7 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
-                          color: Color(0xFF2E7D32),
+                          color: Colors.white,
                         ),
                       ),
                       if (court != null) ...[
@@ -294,14 +296,14 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                             const Icon(
                               Icons.location_on,
                               size: 14,
-                              color: Colors.grey,
+                              color: Colors.white70,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               court['name'] ?? 'Unknown Court',
                               style: const TextStyle(
                                 fontSize: 13,
-                                color: Colors.grey,
+                                color: Colors.white70,
                               ),
                             ),
                           ],
@@ -317,14 +319,14 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: Colors.grey[800],
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       _formatDate(feedback['publishedAt']),
                       style: const TextStyle(
                         fontSize: 11,
-                        color: Colors.grey,
+                        color: Colors.white70,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -344,7 +346,7 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                   decoration: BoxDecoration(
                     color:
                         (isHighRating
-                                ? const Color(0xFF4CAF50)
+                                ? Colors.redAccent
                                 : isMediumRating
                                 ? Colors.orange
                                 : Colors.red)
@@ -352,7 +354,7 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: isHighRating
-                          ? const Color(0xFF4CAF50)
+                          ? Colors.redAccent
                           : isMediumRating
                           ? Colors.orange
                           : Colors.red,
@@ -365,7 +367,7 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
                       color: isHighRating
-                          ? const Color(0xFF4CAF50)
+                          ? Colors.redAccent
                           : isMediumRating
                           ? Colors.orange
                           : Colors.red,
@@ -380,7 +382,7 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey[50],
+                  color: Colors.grey[800],
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: Colors.grey[200]!, width: 1),
                 ),
@@ -388,7 +390,7 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                   feedback['comment'] ?? "No comment provided.",
                   style: const TextStyle(
                     fontSize: 14,
-                    color: Colors.grey,
+                    color: Colors.white70,
                     height: 1.4,
                   ),
                 ),
@@ -398,14 +400,14 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey[50],
+                  color: Colors.grey[800],
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Text(
                   "No comment provided.",
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey,
+                    color: Colors.white70,
                     fontStyle: FontStyle.italic,
                   ),
                 ),
@@ -423,18 +425,18 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text(
           "Court Feedback",
           style: TextStyle(color: Colors.white),
         ),
-        backgroundColor: const Color(0xFF4CAF50),
+        backgroundColor: Colors.transparent,
         centerTitle: true,
       ),
       body: isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF4CAF50)),
+              child: CircularProgressIndicator(color: Colors.redAccent),
             )
           : errorMessage != null
           ? Center(
@@ -443,14 +445,14 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                 children: [
                   Text(
                     errorMessage!,
-                    style: const TextStyle(color: Color(0xFF2E7D32)),
+                    style: const TextStyle(color: Colors.white),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _fetchReviews,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4CAF50),
+                      backgroundColor: Colors.redAccent,
                     ),
                     child: const Text(
                       'Retry',
@@ -465,7 +467,7 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                 // Filter Section
                 Container(
                   padding: const EdgeInsets.all(16),
-                  color: Colors.white,
+                  color: Colors.grey[900],
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -474,7 +476,7 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF2E7D32),
+                          color: Colors.white,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -487,10 +489,10 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                                 horizontal: 12,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.grey[50],
+                                color: Colors.grey[800],
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: Colors.grey[300]!,
+                                  color: Colors.grey[700]!,
                                   width: 1,
                                 ),
                               ),
@@ -504,7 +506,7 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                                   ),
                                   icon: const Icon(
                                     Icons.filter_list,
-                                    color: Color(0xFF2E7D32),
+                                    color: Colors.redAccent,
                                   ),
                                   items: const [
                                     DropdownMenuItem(
@@ -538,10 +540,10 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                           // Date Sort Filter
                           Container(
                             decoration: BoxDecoration(
-                              color: Colors.grey[50],
+                              color: Colors.grey[800],
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                color: Colors.grey[300]!,
+                                color: Colors.grey[700]!,
                                 width: 1,
                               ),
                             ),
@@ -567,14 +569,14 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                                         sortByLatest
                                             ? Icons.arrow_downward
                                             : Icons.arrow_upward,
-                                        color: const Color(0xFF2E7D32),
+                                        color: Colors.redAccent,
                                         size: 18,
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
                                         sortByLatest ? 'Latest' : 'Oldest',
                                         style: const TextStyle(
-                                          color: Color(0xFF2E7D32),
+                                          color: Colors.white,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -607,7 +609,7 @@ class _CourtFeedbackPageState extends State<CourtFeedbackPage> {
                         )
                       : RefreshIndicator(
                           onRefresh: _fetchReviews,
-                          color: const Color(0xFF4CAF50),
+                          color: Colors.redAccent,
                           child: ListView.builder(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             itemCount: filteredFeedbackList.length,

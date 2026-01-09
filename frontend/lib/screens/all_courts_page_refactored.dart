@@ -88,7 +88,7 @@ class _AllCourtsPageRefactoredState extends State<AllCourtsPageRefactored> {
         _userLocation = LatLng(position.latitude, position.longitude);
         _isLoadingLocation = false;
       });
-      
+
       // Re-apply filters to sort by distance if selected
       _applyFilters();
     } catch (e) {
@@ -99,22 +99,23 @@ class _AllCourtsPageRefactoredState extends State<AllCourtsPageRefactored> {
   /// Calculate distance between two points in kilometers
   double _calculateDistance(LatLng point1, LatLng point2) {
     return Geolocator.distanceBetween(
-      point1.latitude,
-      point1.longitude,
-      point2.latitude,
-      point2.longitude,
-    ) / 1000; // Convert to kilometers
+          point1.latitude,
+          point1.longitude,
+          point2.latitude,
+          point2.longitude,
+        ) /
+        1000; // Convert to kilometers
   }
 
   /// Get distance from user location to court
   double? _getCourtDistance(CourtModel court) {
     if (_userLocation == null || court.coordinates == null) return null;
-    
+
     final courtCoords = LatLng(
       court.coordinates!['latitude']!,
       court.coordinates!['longitude']!,
     );
-    
+
     return _calculateDistance(_userLocation!, courtCoords);
   }
 

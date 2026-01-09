@@ -913,12 +913,13 @@ class LocationPicker extends StatefulWidget {
 
 class _LocationPickerState extends State<LocationPicker> {
   GoogleMapController? _mapController;
-  LatLng _selectedLocation = const LatLng(33.6844, 73.0479);
+  LatLng? _selectedLocation;
   final Set<Marker> _markers = {};
 
   String _placeName = "Tap on map to select location";
   String? _plusCode;
   bool _isLoadingAddress = false;
+  bool _isLoadingLocation = true;
   double _zoom = 15.0;
 
   CameraPosition? _currentCameraPosition;
@@ -938,8 +939,9 @@ class _LocationPickerState extends State<LocationPicker> {
     if (widget.initialLatitude != null && widget.initialLongitude != null) {
       _selectedLocation =
           LatLng(widget.initialLatitude!, widget.initialLongitude!);
+      _isLoadingLocation = false;
       _updateMarker();
-      _getPlaceFromCoordinates(_selectedLocation);
+      _getPlaceFromCoordinates(_selectedLocation!);
     } else {
       _getCurrentLocation();
     }
@@ -948,12 +950,14 @@ class _LocationPickerState extends State<LocationPicker> {
   // ===================== LOCATION =====================
 
   void _updateMarker() {
+    if (_selectedLocation == null) return;
+    
     _markers
       ..clear()
       ..add(
         Marker(
           markerId: const MarkerId("selected"),
-          position: _selectedLocation,
+          position: _selectedLocation!,
           icon: BitmapDescriptor.defaultMarkerWithHue(
             BitmapDescriptor.hueRed,
           ),
@@ -964,14 +968,66 @@ class _LocationPickerState extends State<LocationPicker> {
 
   Future<void> _getCurrentLocation() async {
     if (!mounted) return;
-    final pos = await Geolocator.getCurrentPosition();
-    if (!mounted) return;
-    _selectedLocation = LatLng(pos.latitude, pos.longitude);
-    _updateMarker();
-    _getPlaceFromCoordinates(_selectedLocation);
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(_selectedLocation, 16),
-    );
+    setState(() => _isLoadingLocation = true);
+    
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (!mounted) return;
+        setState(() {
+          _isLoadingLocation = false;
+          _selectedLocation = const LatLng(33.6844, 73.0479); // Fallback to Islamabad
+        });
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (!mounted) return;
+          setState(() {
+            _isLoadingLocation = false;
+            _selectedLocation = const LatLng(33.6844, 73.0479); // Fallback to Islamabad
+          });
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (!mounted) return;
+        setState(() {
+          _isLoadingLocation = false;
+          _selectedLocation = const LatLng(33.6844, 73.0479); // Fallback to Islamabad
+        });
+        return;
+      }
+
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      
+      if (!mounted) return;
+      setState(() {
+        _selectedLocation = LatLng(pos.latitude, pos.longitude);
+        _isLoadingLocation = false;
+      });
+      
+      _updateMarker();
+      _getPlaceFromCoordinates(_selectedLocation!);
+      
+      if (_mapController != null) {
+        _mapController!.animateCamera(
+          CameraUpdate.newLatLngZoom(_selectedLocation!, 16),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingLocation = false;
+        _selectedLocation = const LatLng(33.6844, 73.0479); // Fallback to Islamabad
+      });
+    }
   }
 
   // ===================== SEARCH =====================
@@ -1015,7 +1071,9 @@ class _LocationPickerState extends State<LocationPicker> {
       final loc = result["result"]["geometry"]["location"];
       final latLng = LatLng(loc["lat"], loc["lng"]);
 
-      _selectedLocation = latLng;
+      setState(() {
+        _selectedLocation = latLng;
+      });
       _updateMarker();
 
       _mapController?.animateCamera(
@@ -1055,20 +1113,42 @@ class _LocationPickerState extends State<LocationPicker> {
 
   @override
   Widget build(BuildContext context) {
+    // Wait for location before showing map
+    if (_isLoadingLocation || _selectedLocation == null) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: const Center(
+          child: CircularProgressIndicator(
+            color: Colors.redAccent,
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Stack(
         children: [
           GoogleMap(
-            onMapCreated: (c) => _mapController = c,
+            onMapCreated: (c) {
+              _mapController = c;
+              // If we already have location, animate to it
+              if (_selectedLocation != null) {
+                c.animateCamera(
+                  CameraUpdate.newLatLngZoom(_selectedLocation!, _zoom),
+                );
+              }
+            },
             initialCameraPosition: CameraPosition(
-              target: _selectedLocation,
+              target: _selectedLocation!,
               zoom: _zoom,
             ),
             markers: _markers,
             onTap: (p) {
               _showSuggestions = false;
               _searchFocusNode.unfocus();
-              _selectedLocation = p;
+              setState(() {
+                _selectedLocation = p;
+              });
               _updateMarker();
               _getPlaceFromCoordinates(p);
             },
@@ -1076,7 +1156,9 @@ class _LocationPickerState extends State<LocationPicker> {
             onCameraIdle: () {
               if (_currentCameraPosition != null) {
                 final c = _currentCameraPosition!.target;
-                _selectedLocation = c;
+                setState(() {
+                  _selectedLocation = c;
+                });
                 _updateMarker();
                 _getPlaceFromCoordinates(c);
               }
@@ -1187,12 +1269,12 @@ class _LocationPickerState extends State<LocationPicker> {
                   ),
                   const SizedBox(height: 12),
                   ElevatedButton(
-                    onPressed: _isLoadingAddress
+                    onPressed: (_isLoadingAddress || _selectedLocation == null)
                         ? null
                         : () {
                             widget.onLocationSelected(
-                              _selectedLocation.latitude,
-                              _selectedLocation.longitude,
+                              _selectedLocation!.latitude,
+                              _selectedLocation!.longitude,
                               _placeName,
                             );
                             Navigator.pop(context);

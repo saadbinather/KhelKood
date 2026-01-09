@@ -39,7 +39,7 @@
         <!-- SECURITY: API key is replaced by build script - never commit actual keys! -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="GOOGLE_MAPS_API_KEY_PLACEHOLDER" />
+            android:value="AIzaSyAQIdwLkxglIBj1IpXnR0eVcj-P_EhZfFo" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../screens/login_page.dart';
+import '../core/constants/app_constants.dart';
 
 /// ADMIN PAGES
 /// - AdminDashboard
 /// - PendingRegistrationsPage (+ UserDetailPage)
 
-const String baseUrl = 'http://localhost:5000/api';
+// Use AppConstants.baseUrl for platform-aware base URL
+final String baseUrl = AppConstants.baseUrl;
 
 // Helper function to get auth token
 Future<String?> _getAuthToken() async {

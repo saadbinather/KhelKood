@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import '../core/constants/app_constants.dart';
 
 class LeaderboardPage extends StatefulWidget {
   const LeaderboardPage({super.key});
@@ -42,7 +43,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
       }
 
       final response = await http.get(
-        Uri.parse('http://localhost:5000/api/leaderboard'),
+        Uri.parse('${AppConstants.baseUrl}/leaderboard'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

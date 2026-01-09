@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../core/constants/app_constants.dart';
 
 class MatchHistoryPage extends StatefulWidget {
   const MatchHistoryPage({super.key});
@@ -42,7 +43,7 @@ class _MatchHistoryPageState extends State<MatchHistoryPage> {
 
       // Get match history for the logged-in team
       final matchResponse = await http.get(
-        Uri.parse('http://localhost:5000/api/team/match-history'),
+        Uri.parse('${AppConstants.baseUrl}/team/match-history'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

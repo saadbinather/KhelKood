@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import '../core/constants/app_constants.dart';
 
 class TimeSlotGrid extends StatefulWidget {
   final Map<String, dynamic>? selectedCourt;
@@ -76,12 +77,12 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
 
       // Build URLs with courtNum query parameter if provided
       final bookingUrl = courtNum != null
-          ? 'http://localhost:5000/api/booking/court/$courtID?courtNum=$courtNum'
-          : 'http://localhost:5000/api/booking/court/$courtID';
+          ? '${AppConstants.baseUrl}/booking/court/$courtID?courtNum=$courtNum'
+          : '${AppConstants.baseUrl}/booking/court/$courtID';
 
       final challengeUrl = courtNum != null
-          ? 'http://localhost:5000/api/challenges/court/$courtID?courtNum=$courtNum'
-          : 'http://localhost:5000/api/challenges/court/$courtID';
+          ? '${AppConstants.baseUrl}/challenges/court/$courtID?courtNum=$courtNum'
+          : '${AppConstants.baseUrl}/challenges/court/$courtID';
 
       // Fetch bookings and challenges in parallel
       final bookingResponse = await http.get(
@@ -764,7 +765,7 @@ class _TimeSlotGridState extends State<TimeSlotGrid> {
       }
 
       final response = await http.post(
-        Uri.parse('http://localhost:5000/api/match/create'),
+        Uri.parse('${AppConstants.baseUrl}/match/create'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import '../core/constants/app_constants.dart';
 import '../widgets/time_slot_grid.dart';
 import '../shared/widgets/court_location_map.dart';
 
@@ -85,7 +86,7 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
       if (token == null) return;
 
       final response = await http.get(
-        Uri.parse('http://localhost:5000/api/reviews/court/$selectedCourtId'),
+        Uri.parse('${AppConstants.baseUrl}/reviews/court/$selectedCourtId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -162,7 +163,7 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
       }
 
       final response = await http.post(
-        Uri.parse('http://localhost:5000/api/reviews'),
+        Uri.parse('${AppConstants.baseUrl}/reviews'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -226,7 +227,7 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
       if (token == null) return;
 
       final response = await http.get(
-        Uri.parse('http://localhost:5000/api/team/profile'),
+        Uri.parse('${AppConstants.baseUrl}/team/profile'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -301,7 +302,7 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
       }
 
       final response = await http.get(
-        Uri.parse('http://localhost:5000/api/courts/verified'),
+        Uri.parse('${AppConstants.baseUrl}/courts/verified'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -510,7 +511,7 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
       }
 
       final response = await http.post(
-        Uri.parse('http://localhost:5000/api/booking/book-court'),
+        Uri.parse('${AppConstants.baseUrl}/booking/book-court'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -641,7 +642,7 @@ class _CreateBookingOrChallengePageState extends State<CreateBookingOrChallengeP
       }
 
       final response = await http.post(
-        Uri.parse('http://localhost:5000/api/challenges/create'),
+        Uri.parse('${AppConstants.baseUrl}/challenges/create'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

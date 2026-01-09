@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../core/constants/app_constants.dart';
 
-const String baseUrl = 'http://localhost:5000/api';
+// Use AppConstants.baseUrl for platform-aware base URL
+final String baseUrl = AppConstants.baseUrl;
 
 Future<String?> _getAuthToken() async {
   try {
@@ -89,7 +91,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
     return bookings.map((booking) {
       final startTime = _parseTimestamp(booking['startTime']);
       final endTime = _parseTimestamp(booking['endTime']);
-      
+
       return {
         'id': booking['id'],
         'court': booking['court']?['name'] ?? 'Unknown Court',
@@ -109,10 +111,14 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
     try {
       if (timestamp is Map) {
         if (timestamp.containsKey('_seconds')) {
-          return DateTime.fromMillisecondsSinceEpoch(timestamp['_seconds'] * 1000);
+          return DateTime.fromMillisecondsSinceEpoch(
+            timestamp['_seconds'] * 1000,
+          );
         }
         if (timestamp.containsKey('seconds')) {
-          return DateTime.fromMillisecondsSinceEpoch(timestamp['seconds'] * 1000);
+          return DateTime.fromMillisecondsSinceEpoch(
+            timestamp['seconds'] * 1000,
+          );
         }
       }
       if (timestamp is String) {
@@ -150,11 +156,11 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
   // -----------------------------
   Future<void> acceptBooking(Map<String, dynamic> booking) async {
     final bookingID = booking['id'];
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Accepting booking...'),
-        backgroundColor: Color(0xFF4CAF50),
+        backgroundColor: Colors.redAccent,
       ),
     );
 
@@ -193,7 +199,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Booking accepted successfully'),
-            backgroundColor: Color(0xFF4CAF50),
+            backgroundColor: Colors.redAccent,
           ),
         );
       } else {
@@ -218,18 +224,16 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
 
   Future<void> rejectBooking(Map<String, dynamic> booking) async {
     final bookingID = booking['id'];
-    
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        backgroundColor: Colors.grey[900],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           'Reject Booking',
           style: TextStyle(
-            color: Color(0xFF2E7D32),
+            color: Colors.redAccent,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -240,17 +244,11 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.grey),
-            ),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              'Reject',
-              style: TextStyle(color: Colors.red),
-            ),
+            child: const Text('Reject', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -331,61 +329,52 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        backgroundColor: Colors.grey[900],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           "Add Result for ${booking['sport']}",
           style: const TextStyle(
-            color: Color(0xFF2E7D32),
+            color: Colors.redAccent,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: TextField(
           controller: resultController,
-          style: const TextStyle(color: Color(0xFF2E7D32)),
+          style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             labelText: booking['sport'] == "Cricket"
                 ? "Runs scored / Winner"
                 : booking['sport'] == "Football"
-                    ? "Score (Team A - Team B)"
-                    : "Padel Result",
+                ? "Score (Team A - Team B)"
+                : "Padel Result",
             labelStyle: const TextStyle(color: Colors.grey),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: BorderSide(color: Colors.grey[700]!),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+              borderSide: const BorderSide(color: Colors.redAccent, width: 2),
             ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: Colors.grey[900],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
-              "Cancel",
-              style: TextStyle(color: Colors.grey),
-            ),
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () {
               // Send result to backend later
               print(
-                  "Result for booking ${booking['id']}: ${resultController.text}");
+                "Result for booking ${booking['id']}: ${resultController.text}",
+              );
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4CAF50),
-            ),
-            child: const Text(
-              "Submit",
-              style: TextStyle(color: Colors.white),
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text("Submit", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -402,20 +391,17 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
     final fontSize = isSmallScreen ? 14.0 : 16.0;
     final smallFontSize = isSmallScreen ? 12.0 : 14.0;
     final iconSize = isSmallScreen ? 18.0 : 20.0;
-    
+
     return Card(
       margin: EdgeInsets.symmetric(
         horizontal: isSmallScreen ? 4 : 8,
         vertical: isSmallScreen ? 4 : 6,
       ),
-      color: Colors.white,
+      color: Colors.grey[900],
       elevation: 3,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: const Color(0xFF2E7D32).withOpacity(0.1),
-          width: 1,
-        ),
+        side: BorderSide(color: Colors.redAccent.withOpacity(0.1), width: 1),
       ),
       child: Padding(
         padding: EdgeInsets.all(padding),
@@ -427,12 +413,12 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                 Container(
                   padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2E7D32).withOpacity(0.1),
+                    color: Colors.redAccent.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.schedule,
-                    color: const Color(0xFF2E7D32),
+                    color: Colors.redAccent,
                     size: iconSize,
                   ),
                 ),
@@ -444,7 +430,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                       Text(
                         "${booking['court']} - ${booking['sport']}",
                         style: TextStyle(
-                          color: const Color(0xFF2E7D32),
+                          color: Colors.redAccent,
                           fontWeight: FontWeight.bold,
                           fontSize: fontSize,
                         ),
@@ -455,7 +441,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                       Text(
                         booking['team'],
                         style: TextStyle(
-                          color: Colors.grey,
+                          color: Colors.white70,
                           fontSize: smallFontSize,
                         ),
                         maxLines: 1,
@@ -477,13 +463,13 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                     Icon(
                       Icons.calendar_today,
                       size: isSmallScreen ? 14 : 16,
-                      color: Colors.grey,
+                      color: Colors.white70,
                     ),
                     SizedBox(width: isSmallScreen ? 4 : 6),
                     Text(
                       booking['date'],
                       style: TextStyle(
-                        color: Colors.grey,
+                        color: Colors.white70,
                         fontSize: isSmallScreen ? 11 : 13,
                       ),
                     ),
@@ -495,14 +481,14 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                     Icon(
                       Icons.access_time,
                       size: isSmallScreen ? 14 : 16,
-                      color: Colors.grey,
+                      color: Colors.white70,
                     ),
                     SizedBox(width: isSmallScreen ? 4 : 6),
                     Flexible(
                       child: Text(
                         "${booking['time']} - ${booking['endTime']}",
                         style: TextStyle(
-                          color: Colors.grey,
+                          color: Colors.white70,
                           fontSize: isSmallScreen ? 11 : 13,
                         ),
                         maxLines: 1,
@@ -521,7 +507,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                   child: ElevatedButton(
                     onPressed: () => rejectBooking(booking),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
+                      backgroundColor: Colors.grey[900],
                       foregroundColor: Colors.red,
                       side: const BorderSide(color: Colors.red, width: 1.5),
                       padding: EdgeInsets.symmetric(
@@ -546,7 +532,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                   child: ElevatedButton(
                     onPressed: () => acceptBooking(booking),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4CAF50),
+                      backgroundColor: Colors.redAccent,
                       padding: EdgeInsets.symmetric(
                         horizontal: isSmallScreen ? 12 : 20,
                         vertical: isSmallScreen ? 8 : 10,
@@ -558,7 +544,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                     child: Text(
                       "Accept",
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Colors.grey[900],
                         fontWeight: FontWeight.bold,
                         fontSize: isSmallScreen ? 12 : 14,
                       ),
@@ -576,7 +562,10 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
   // ----------------------------------
   // Build Booking Card
   // ----------------------------------
-  Widget buildBookingCard(Map<String, dynamic> booking, {bool isUpcoming = true}) {
+  Widget buildBookingCard(
+    Map<String, dynamic> booking, {
+    bool isUpcoming = true,
+  }) {
     final isConfirmed = booking['status'] == 'Confirmed';
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
@@ -584,18 +573,20 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
     final fontSize = isSmallScreen ? 14.0 : 16.0;
     final smallFontSize = isSmallScreen ? 12.0 : 14.0;
     final iconSize = isSmallScreen ? 18.0 : 20.0;
-    
+
     return Card(
       margin: EdgeInsets.symmetric(
         horizontal: isSmallScreen ? 4 : 8,
         vertical: isSmallScreen ? 4 : 6,
       ),
-      color: Colors.white,
+      color: Colors.grey[900],
       elevation: 3,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: (isConfirmed ? const Color(0xFF4CAF50) : Colors.orange).withOpacity(0.2),
+          color: (isConfirmed ? Colors.redAccent : Colors.orange).withOpacity(
+            0.2,
+          ),
           width: 1,
         ),
       ),
@@ -609,14 +600,13 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                 Container(
                   padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
                   decoration: BoxDecoration(
-                    color: (isConfirmed 
-                        ? const Color(0xFF4CAF50) 
-                        : Colors.orange).withOpacity(0.1),
+                    color: (isConfirmed ? Colors.redAccent : Colors.orange)
+                        .withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     isUpcoming ? Icons.event : Icons.history,
-                    color: isConfirmed ? const Color(0xFF4CAF50) : Colors.orange,
+                    color: isConfirmed ? Colors.redAccent : Colors.orange,
                     size: iconSize,
                   ),
                 ),
@@ -628,7 +618,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                       Text(
                         "${booking['court']} - ${booking['sport']}",
                         style: TextStyle(
-                          color: const Color(0xFF2E7D32),
+                          color: Colors.redAccent,
                           fontWeight: FontWeight.bold,
                           fontSize: fontSize,
                         ),
@@ -639,7 +629,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                       Text(
                         booking['team'],
                         style: TextStyle(
-                          color: Colors.grey,
+                          color: Colors.white70,
                           fontSize: smallFontSize,
                         ),
                         maxLines: 1,
@@ -654,23 +644,18 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                     vertical: isSmallScreen ? 4 : 6,
                   ),
                   decoration: BoxDecoration(
-                    color: (isConfirmed 
-                        ? const Color(0xFF4CAF50) 
-                        : Colors.orange).withOpacity(0.1),
+                    color: (isConfirmed ? Colors.redAccent : Colors.orange)
+                        .withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isConfirmed 
-                          ? const Color(0xFF4CAF50) 
-                          : Colors.orange,
+                      color: isConfirmed ? Colors.redAccent : Colors.orange,
                       width: 1,
                     ),
                   ),
                   child: Text(
                     booking['status'],
                     style: TextStyle(
-                      color: isConfirmed 
-                          ? const Color(0xFF4CAF50) 
-                          : Colors.orange,
+                      color: isConfirmed ? Colors.redAccent : Colors.orange,
                       fontWeight: FontWeight.bold,
                       fontSize: isSmallScreen ? 10 : 12,
                     ),
@@ -689,13 +674,13 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                     Icon(
                       Icons.calendar_today,
                       size: isSmallScreen ? 14 : 16,
-                      color: Colors.grey,
+                      color: Colors.white70,
                     ),
                     SizedBox(width: isSmallScreen ? 4 : 6),
                     Text(
                       booking['date'],
                       style: TextStyle(
-                        color: Colors.grey,
+                        color: Colors.white70,
                         fontSize: isSmallScreen ? 11 : 13,
                       ),
                     ),
@@ -707,14 +692,14 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                     Icon(
                       Icons.access_time,
                       size: isSmallScreen ? 14 : 16,
-                      color: Colors.grey,
+                      color: Colors.white70,
                     ),
                     SizedBox(width: isSmallScreen ? 4 : 6),
                     Flexible(
                       child: Text(
                         "${booking['time']} - ${booking['endTime']}",
                         style: TextStyle(
-                          color: Colors.grey,
+                          color: Colors.white70,
                           fontSize: isSmallScreen ? 11 : 13,
                         ),
                         maxLines: 1,
@@ -737,7 +722,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isUpcoming ? Colors.red : const Color(0xFF4CAF50),
+                  backgroundColor: isUpcoming ? Colors.red : Colors.redAccent,
                   padding: EdgeInsets.symmetric(
                     horizontal: isSmallScreen ? 16 : 24,
                     vertical: isSmallScreen ? 10 : 12,
@@ -750,7 +735,7 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
                 child: Text(
                   isUpcoming ? "Cancel" : "Add Result",
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Colors.grey[900],
                     fontWeight: FontWeight.bold,
                     fontSize: isSmallScreen ? 12 : 14,
                   ),
@@ -772,24 +757,24 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
     final isSmallScreen = screenWidth < 360;
     final titleFontSize = isSmallScreen ? 18.0 : 20.0;
     final padding = isSmallScreen ? 8.0 : 12.0;
-    
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Colors.black,
       appBar: AppBar(
         title: Text(
           "Manage Bookings",
           style: TextStyle(
-            color: Colors.white,
+            color: Colors.grey[900],
             fontSize: isSmallScreen ? 18 : 20,
           ),
         ),
-        backgroundColor: const Color(0xFF4CAF50),
+        backgroundColor: Colors.transparent,
         centerTitle: true,
         actions: [
           IconButton(
             icon: Icon(
               Icons.refresh,
-              color: Colors.white,
+              color: Colors.grey[900],
               size: isSmallScreen ? 20 : 24,
             ),
             onPressed: _fetchBookings,
@@ -799,141 +784,160 @@ class _BookingManagementPageState extends State<BookingManagementPage> {
       ),
       body: isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF4CAF50)),
+              child: CircularProgressIndicator(color: Colors.redAccent),
             )
           : errorMessage != null
-              ? Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(padding * 2),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          errorMessage!,
-                          style: TextStyle(
-                            color: const Color(0xFF2E7D32),
-                            fontSize: isSmallScreen ? 14 : 16,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: isSmallScreen ? 12 : 16),
-                        ElevatedButton(
-                          onPressed: _fetchBookings,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF4CAF50),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isSmallScreen ? 16 : 24,
-                              vertical: isSmallScreen ? 10 : 12,
-                            ),
-                          ),
-                          child: Text(
-                            'Retry',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: isSmallScreen ? 14 : 16,
-                            ),
-                          ),
-                        ),
-                      ],
+          ? Center(
+              child: Padding(
+                padding: EdgeInsets.all(padding * 2),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      errorMessage!,
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: isSmallScreen ? 14 : 16,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
-                )
-              : SingleChildScrollView(
-                  child: Padding(
-                    padding: EdgeInsets.all(padding),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // -----------------------------
-                        // Incoming Bookings
-                        // -----------------------------
-                        Text(
-                          "Incoming Bookings",
-                          style: TextStyle(
-                            fontSize: titleFontSize,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF2E7D32),
-                          ),
+                    SizedBox(height: isSmallScreen ? 12 : 16),
+                    ElevatedButton(
+                      onPressed: _fetchBookings,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 16 : 24,
+                          vertical: isSmallScreen ? 10 : 12,
                         ),
-                        SizedBox(height: isSmallScreen ? 6 : 8),
-                        incomingBookings.isEmpty
-                            ? Padding(
-                                padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
-                                child: Text(
-                                  'No incoming bookings',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: isSmallScreen ? 14 : 16,
-                                  ),
-                                ),
-                              )
-                            : Column(
-                                children: incomingBookings
-                                    .map((booking) => buildIncomingBookingCard(booking))
-                                    .toList(),
-                              ),
-                        SizedBox(height: isSmallScreen ? 16 : 20),
-                        // -----------------------------
-                        // Upcoming Bookings
-                        // -----------------------------
-                        Text(
-                          "Upcoming Bookings",
-                          style: TextStyle(
-                            fontSize: titleFontSize,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF2E7D32),
-                          ),
+                      ),
+                      child: Text(
+                        'Retry',
+                        style: TextStyle(
+                          color: Colors.grey[900],
+                          fontSize: isSmallScreen ? 14 : 16,
                         ),
-                        SizedBox(height: isSmallScreen ? 6 : 8),
-                        upcomingBookings.isEmpty
-                            ? Padding(
-                                padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
-                                child: Text(
-                                  'No upcoming bookings',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: isSmallScreen ? 14 : 16,
-                                  ),
-                                ),
-                              )
-                            : Column(
-                                children: upcomingBookings
-                                    .map((booking) => buildBookingCard(booking, isUpcoming: true))
-                                    .toList(),
-                              ),
-                        SizedBox(height: isSmallScreen ? 16 : 20),
-                        // -----------------------------
-                        // Past Bookings
-                        // -----------------------------
-                        Text(
-                          "Past Bookings",
-                          style: TextStyle(
-                            fontSize: titleFontSize,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF2E7D32),
-                          ),
-                        ),
-                        SizedBox(height: isSmallScreen ? 6 : 8),
-                        pastBookings.isEmpty
-                            ? Padding(
-                                padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
-                                child: Text(
-                                  'No past bookings',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: isSmallScreen ? 14 : 16,
-                                  ),
-                                ),
-                              )
-                            : Column(
-                                children: pastBookings
-                                    .map((booking) => buildBookingCard(booking, isUpcoming: false))
-                                    .toList(),
-                              ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
+              ),
+            )
+          : SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.all(padding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // -----------------------------
+                    // Incoming Bookings
+                    // -----------------------------
+                    Text(
+                      "Incoming Bookings",
+                      style: TextStyle(
+                        fontSize: titleFontSize,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                    SizedBox(height: isSmallScreen ? 6 : 8),
+                    incomingBookings.isEmpty
+                        ? Padding(
+                            padding: EdgeInsets.all(
+                              isSmallScreen ? 12.0 : 16.0,
+                            ),
+                            child: Text(
+                              'No incoming bookings',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: isSmallScreen ? 14 : 16,
+                              ),
+                            ),
+                          )
+                        : Column(
+                            children: incomingBookings
+                                .map(
+                                  (booking) =>
+                                      buildIncomingBookingCard(booking),
+                                )
+                                .toList(),
+                          ),
+                    SizedBox(height: isSmallScreen ? 16 : 20),
+                    // -----------------------------
+                    // Upcoming Bookings
+                    // -----------------------------
+                    Text(
+                      "Upcoming Bookings",
+                      style: TextStyle(
+                        fontSize: titleFontSize,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                    SizedBox(height: isSmallScreen ? 6 : 8),
+                    upcomingBookings.isEmpty
+                        ? Padding(
+                            padding: EdgeInsets.all(
+                              isSmallScreen ? 12.0 : 16.0,
+                            ),
+                            child: Text(
+                              'No upcoming bookings',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: isSmallScreen ? 14 : 16,
+                              ),
+                            ),
+                          )
+                        : Column(
+                            children: upcomingBookings
+                                .map(
+                                  (booking) => buildBookingCard(
+                                    booking,
+                                    isUpcoming: true,
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                    SizedBox(height: isSmallScreen ? 16 : 20),
+                    // -----------------------------
+                    // Past Bookings
+                    // -----------------------------
+                    Text(
+                      "Past Bookings",
+                      style: TextStyle(
+                        fontSize: titleFontSize,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                    SizedBox(height: isSmallScreen ? 6 : 8),
+                    pastBookings.isEmpty
+                        ? Padding(
+                            padding: EdgeInsets.all(
+                              isSmallScreen ? 12.0 : 16.0,
+                            ),
+                            child: Text(
+                              'No past bookings',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: isSmallScreen ? 14 : 16,
+                              ),
+                            ),
+                          )
+                        : Column(
+                            children: pastBookings
+                                .map(
+                                  (booking) => buildBookingCard(
+                                    booking,
+                                    isUpcoming: false,
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                  ],
+                ),
+              ),
+            ),
     );
   }
 }

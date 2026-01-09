@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../core/constants/app_constants.dart';
 import 'create_booking_or_challenge_page.dart';
 import 'courts_map_page.dart';
 
@@ -97,7 +98,7 @@ class _AllCourtsPageState extends State<AllCourtsPage> {
       if (token == null) return;
 
       final response = await http.get(
-        Uri.parse('http://localhost:5000/api/team/profile'),
+        Uri.parse('${AppConstants.baseUrl}/team/profile'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -157,7 +158,7 @@ class _AllCourtsPageState extends State<AllCourtsPage> {
       }
 
       final response = await http.get(
-        Uri.parse('http://localhost:5000/api/courts/verified'),
+        Uri.parse('${AppConstants.baseUrl}/courts/verified'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import '../core/constants/app_constants.dart';
 
 class PaymentPage extends StatefulWidget {
   const PaymentPage({super.key});
@@ -44,7 +45,7 @@ class _PaymentPageState extends State<PaymentPage> {
       }
 
       final response = await http.get(
-        Uri.parse('http://localhost:5000/api/payments/pending-payments'),
+        Uri.parse('${AppConstants.baseUrl}/payments/pending-payments'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -132,7 +133,7 @@ class _PaymentPageState extends State<PaymentPage> {
 
       final response = await http.put(
         Uri.parse(
-          'http://localhost:5000/api/payments/update-payment/$paymentID',
+          '${AppConstants.baseUrl}/payments/update-payment/$paymentID',
         ),
         headers: {
           'Content-Type': 'application/json',

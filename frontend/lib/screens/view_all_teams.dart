@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../core/constants/app_constants.dart';
 import 'team_details_page.dart';
 
 class ViewAllTeamsPage extends StatefulWidget {
@@ -38,7 +39,7 @@ class _ViewAllTeamsPageState extends State<ViewAllTeamsPage> {
 
       // Get current team's sport
       final response = await http.get(
-        Uri.parse('http://localhost:5000/api/team/profile'),
+        Uri.parse('${AppConstants.baseUrl}/team/profile'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -85,7 +86,7 @@ class _ViewAllTeamsPageState extends State<ViewAllTeamsPage> {
       }
 
       final response = await http.get(
-        Uri.parse('http://localhost:5000/api/team/all-teams?sport=$sport'),
+        Uri.parse('${AppConstants.baseUrl}/team/all-teams?sport=$sport'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

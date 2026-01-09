@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../core/constants/app_constants.dart';
 import '../shared/widgets/location_picker.dart';
 
 class RegisterCourtPage extends StatefulWidget {
@@ -79,12 +80,13 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
           cricketFieldsCtrl.text.trim().isEmpty ||
           padelCourtsCtrl.text.trim().isEmpty ||
           futsalFieldsCtrl.text.trim().isEmpty) {
-        lastErrorMessage = "All fields are required. Please select a location on the map.";
+        lastErrorMessage =
+            "All fields are required. Please select a location on the map.";
         return false;
       }
 
       final response = await http.post(
-        Uri.parse("http://localhost:5000/api/auth/signup"),
+        Uri.parse("${AppConstants.baseUrl}/auth/signup"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "name": widget.ownerName,
@@ -117,7 +119,8 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
       } else {
         try {
           final errorData = jsonDecode(response.body);
-          lastErrorMessage = errorData['error'] ?? "Registration failed. Please try again.";
+          lastErrorMessage =
+              errorData['error'] ?? "Registration failed. Please try again.";
         } catch (e) {
           lastErrorMessage = "Registration failed. Please try again.";
         }
@@ -144,7 +147,9 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
         futsalFieldsCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("All fields are required. Please select a location on the map."),
+          content: Text(
+            "All fields are required. Please select a location on the map.",
+          ),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -162,7 +167,9 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
         openingTime >= closingTime) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Invalid time range. Opening time must be less than closing time (0-23)"),
+          content: Text(
+            "Invalid time range. Opening time must be less than closing time (0-23)",
+          ),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -178,7 +185,9 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Court Owner Registered Successfully! Please wait for admin verification."),
+            content: Text(
+              "Court Owner Registered Successfully! Please wait for admin verification.",
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -186,7 +195,10 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(lastErrorMessage ?? "Could not register court owner. Please try again."),
+            content: Text(
+              lastErrorMessage ??
+                  "Could not register court owner. Please try again.",
+            ),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -258,17 +270,11 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(
-                  child: _buildNumberField("Cricket", cricketRateCtrl),
-                ),
+                Expanded(child: _buildNumberField("Cricket", cricketRateCtrl)),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: _buildNumberField("Futsal", futsalRateCtrl),
-                ),
+                Expanded(child: _buildNumberField("Futsal", futsalRateCtrl)),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: _buildNumberField("Padel", padelRateCtrl),
-                ),
+                Expanded(child: _buildNumberField("Padel", padelRateCtrl)),
               ],
             ),
             const SizedBox(height: 20),
@@ -304,7 +310,10 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.redAccent,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 48,
+                    vertical: 14,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -357,7 +366,10 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: Colors.redAccent, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
       ),
     );
   }
@@ -384,7 +396,10 @@ class _RegisterCourtPageState extends State<RegisterCourtPage> {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: Colors.redAccent, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }

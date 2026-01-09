@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../core/constants/app_constants.dart';
 
 class RegisterTeamPage extends StatefulWidget {
   final String? firebaseUid;
@@ -130,7 +131,7 @@ class _RegisterTeamPageState extends State<RegisterTeamPage> {
 
     try {
       final response = await http.post(
-        Uri.parse("http://localhost:5000/api/auth/signup"),
+        Uri.parse("${AppConstants.baseUrl}/auth/signup"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "name": name,

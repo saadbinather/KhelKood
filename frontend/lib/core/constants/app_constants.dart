@@ -1,3 +1,5 @@
+import 'dart:io';
+
 /// Application-wide constants
 /// Implements Single Responsibility Principle - manages only constants
 class AppConstants {
@@ -5,7 +7,14 @@ class AppConstants {
   AppConstants._();
 
   // API Configuration
-  static const String baseUrl = 'http://localhost:5000/api';
+  // Use 10.0.2.2 for Android emulator (maps to host machine's localhost)
+  // Use localhost for web and iOS simulator
+  static String get baseUrl {
+    if (Platform.isAndroid) {
+      return 'http://10.0.2.2:5000/api';
+    }
+    return 'http://localhost:5000/api';
+  }
   
   // API Endpoints
   static const String courtsEndpoint = '/courts/verified';

@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../screens/login_page.dart';
+import '../core/constants/app_constants.dart';
 import 'court_management_page.dart';
 import 'booking_management_page.dart';
 import 'feedback.dart'; // Court Feedback Page
@@ -24,6 +26,11 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
   late Animation<Offset> _slideAnimation;
   bool _showWelcomeMessage = true;
   Timer? _welcomeTimer;
+
+  // Stats data
+  int _activeCourtsCount = 0;
+  int _upcomingBookingsCount = 0;
+  bool _isLoadingStats = true;
 
   @override
   void initState() {
@@ -63,6 +70,186 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
         });
       }
     });
+
+    // Fetch stats data
+    _fetchStats();
+  }
+
+  Future<String?> _getAuthToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('auth_token');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> _fetchStats() async {
+    setState(() {
+      _isLoadingStats = true;
+    });
+
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        if (mounted) {
+          setState(() {
+            _isLoadingStats = false;
+          });
+        }
+        return;
+      }
+
+      // Fetch courts and bookings in parallel
+      await Future.wait([
+        _fetchActiveCourts(token),
+        _fetchUpcomingBookings(token),
+      ]);
+    } catch (e) {
+      // Handle error silently
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingStats = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _fetchActiveCourts(String token) async {
+    try {
+      // Fetch courts and bookings in parallel
+      final courtsResponse = await http.get(
+        Uri.parse('${AppConstants.baseUrl}/courtowner/courts'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final bookingsResponse = await http.get(
+        Uri.parse('${AppConstants.baseUrl}/courtowner/bookings'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (mounted && courtsResponse.statusCode == 200) {
+        final courtsData = jsonDecode(courtsResponse.body);
+        final courts = courtsData['data']?['courts'] ?? [];
+
+        // Calculate total number of courts (sum of all fields)
+        int totalCourts = 0;
+        for (var court in courts) {
+          totalCourts += (court['numOfCricketFields'] ?? 0) as int;
+          totalCourts += (court['numOfFutsalFields'] ?? 0) as int;
+          totalCourts += (court['numOfPadelCourts'] ?? 0) as int;
+        }
+
+        // Count unavailable courts for today
+        int unavailableToday = 0;
+        if (bookingsResponse.statusCode == 200) {
+          final bookingsData = jsonDecode(bookingsResponse.body);
+          final allBookings = <Map<String, dynamic>>[];
+
+          // Collect all bookings from all categories
+          final incoming = bookingsData['data']?['incoming'] ?? [];
+          final upcoming = bookingsData['data']?['upcoming'] ?? [];
+          final past = bookingsData['data']?['past'] ?? [];
+
+          allBookings.addAll(List<Map<String, dynamic>>.from(incoming));
+          allBookings.addAll(List<Map<String, dynamic>>.from(upcoming));
+          allBookings.addAll(List<Map<String, dynamic>>.from(past));
+
+          // Get today's date
+          final now = DateTime.now();
+
+          // Track unique unavailable court numbers for today
+          final unavailableCourtNumbers = <String>{};
+
+          for (var booking in allBookings) {
+            // Check if booking is marked as unavailable
+            if (booking['isUnavailable'] == true) {
+              // Parse start time
+              DateTime? startTime;
+              try {
+                final startTimeData = booking['startTime'];
+                if (startTimeData is Map) {
+                  if (startTimeData.containsKey('_seconds')) {
+                    startTime = DateTime.fromMillisecondsSinceEpoch(
+                      startTimeData['_seconds'] * 1000,
+                    );
+                  } else if (startTimeData.containsKey('seconds')) {
+                    startTime = DateTime.fromMillisecondsSinceEpoch(
+                      startTimeData['seconds'] * 1000,
+                    );
+                  }
+                } else if (startTimeData is String) {
+                  startTime = DateTime.parse(startTimeData);
+                }
+
+                // Check if unavailable booking is for today (same year, month, day)
+                if (startTime != null &&
+                    startTime.year == now.year &&
+                    startTime.month == now.month &&
+                    startTime.day == now.day) {
+                  // Create unique key: courtID + courtNum
+                  final courtID = booking['courtID']?.toString() ?? '';
+                  final courtNum = booking['courtNum']?.toString() ?? '';
+                  unavailableCourtNumbers.add('$courtID-$courtNum');
+                }
+              } catch (e) {
+                // Skip if date parsing fails
+                continue;
+              }
+            }
+          }
+
+          unavailableToday = unavailableCourtNumbers.length;
+        }
+
+        // Active courts = total courts - unavailable today
+        final activeCount = totalCourts - unavailableToday;
+
+        if (mounted) {
+          setState(() {
+            _activeCourtsCount = activeCount > 0 ? activeCount : 0;
+          });
+        }
+      }
+    } catch (e) {
+      // Handle error silently
+    }
+  }
+
+  Future<void> _fetchUpcomingBookings(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConstants.baseUrl}/courtowner/bookings'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (mounted && response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final bookingsData = data['data'] ?? {};
+
+        // Count upcoming bookings
+        final upcoming = bookingsData['upcoming'] ?? [];
+        final incoming = bookingsData['incoming'] ?? [];
+
+        if (mounted) {
+          setState(() {
+            _upcomingBookingsCount = (upcoming.length + incoming.length);
+          });
+        }
+      }
+    } catch (e) {
+      // Handle error silently
+    }
   }
 
   @override
@@ -77,12 +264,12 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.grey[900],
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           'Logout',
           style: TextStyle(
-            color: Color(0xFF2E7D32),
+            color: Colors.redAccent,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -100,7 +287,7 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
             child: const Text(
               'Logout',
               style: TextStyle(
-                color: Color(0xFF2E7D32),
+                color: Colors.redAccent,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -117,7 +304,7 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
 
         if (token != null) {
           await http.post(
-            Uri.parse('http://localhost:5000/api/auth/logout'),
+            Uri.parse('${AppConstants.baseUrl}/auth/logout'),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',
@@ -160,10 +347,10 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
         : 20.0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Colors.black,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: const Color(0xFF2E7D32),
+        backgroundColor: Colors.transparent,
         centerTitle: true,
         title: AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
@@ -222,9 +409,9 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
                 index: 0,
                 title: "Manage Courts",
                 icon: Icons.sports_tennis,
-                color: const Color(0xFF2E7D32),
+                color: Colors.redAccent,
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                  colors: [Colors.redAccent, Colors.deepOrange],
                 ),
                 onTap: () {
                   Navigator.push(
@@ -248,9 +435,9 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
                 index: 1,
                 title: "Booking Management",
                 icon: Icons.calendar_today,
-                color: const Color(0xFF388E3C),
+                color: Colors.redAccent,
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF388E3C), Color(0xFF4CAF50)],
+                  colors: [Colors.redAccent, Colors.deepOrange],
                 ),
                 onTap: () {
                   Navigator.push(
@@ -274,9 +461,9 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
                 index: 2,
                 title: "View Feedback",
                 icon: Icons.feedback,
-                color: const Color(0xFF43A047),
+                color: Colors.redAccent,
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF43A047), Color(0xFF66BB6A)],
+                  colors: [Colors.redAccent, Colors.deepOrange],
                 ),
                 onTap: () {
                   Navigator.push(
@@ -300,9 +487,9 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
                 index: 3,
                 title: "Payments",
                 icon: Icons.payments,
-                color: const Color(0xFF2E7D32),
+                color: Colors.redAccent,
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                  colors: [Colors.redAccent, Colors.deepOrange],
                 ),
                 onTap: () {
                   Navigator.push(
@@ -326,9 +513,9 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
                 index: 4,
                 title: "Profile Settings",
                 icon: Icons.settings,
-                color: const Color(0xFF388E3C),
+                color: Colors.redAccent,
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF388E3C), Color(0xFF4CAF50)],
+                  colors: [Colors.redAccent, Colors.deepOrange],
                 ),
                 onTap: () {
                   Navigator.push(
@@ -361,12 +548,12 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+          colors: [Colors.redAccent, Colors.deepOrange],
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2E7D32).withOpacity(0.3),
+            color: Colors.redAccent.withOpacity(0.3),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -421,18 +608,18 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
         Expanded(
           child: _buildStatCard(
             "Active Courts",
-            "12",
+            _isLoadingStats ? "..." : _activeCourtsCount.toString(),
             Icons.sports_tennis,
-            const Color(0xFF2E7D32),
+            Colors.redAccent,
           ),
         ),
         SizedBox(width: spacing),
         Expanded(
           child: _buildStatCard(
-            "Bookings",
-            "48",
+            "Upcoming Bookings",
+            _isLoadingStats ? "..." : _upcomingBookingsCount.toString(),
             Icons.event,
-            const Color(0xFF4CAF50),
+            Colors.deepOrange,
           ),
         ),
       ],
@@ -458,7 +645,7 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
             : 12,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.grey[900],
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -515,7 +702,7 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
                   : isTablet
                   ? 13
                   : 11,
-              color: Colors.grey[600],
+              color: Colors.white70,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

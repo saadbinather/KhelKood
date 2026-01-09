@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/time_slot_grid.dart';
+import '../core/constants/app_constants.dart';
 
-const String baseUrl = 'http://localhost:5000/api';
+// Use AppConstants.baseUrl for platform-aware base URL
+final String baseUrl = AppConstants.baseUrl;
 
 Future<String?> _getAuthToken() async {
   try {
@@ -313,12 +315,12 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.grey[900],
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           "Add Field",
           style: TextStyle(
-            color: Color(0xFF2E7D32),
+            color: Colors.redAccent,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -327,8 +329,8 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
           children: [
             DropdownButtonFormField<String>(
               initialValue: _selectedSport,
-              dropdownColor: Colors.white,
-              style: const TextStyle(color: Color(0xFF2E7D32)),
+              dropdownColor: Colors.grey[900],
+              style: const TextStyle(color: Colors.white),
               items: ["Cricket", "Football", "Padel"]
                   .map(
                     (sport) =>
@@ -346,10 +348,10 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                 labelText: "Sport Type",
                 labelStyle: const TextStyle(color: Colors.grey),
                 enabledBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.grey[300]!),
+                  borderSide: BorderSide(color: Colors.grey[700]!),
                 ),
                 focusedBorder: const UnderlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFF2E7D32), width: 2),
+                  borderSide: BorderSide(color: Colors.redAccent, width: 2),
                 ),
               ),
             ),
@@ -362,9 +364,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
           ),
           ElevatedButton(
             onPressed: isSaving ? null : _addField,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4CAF50),
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             child: isSaving
                 ? const SizedBox(
                     height: 16,
@@ -658,7 +658,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
           const Text(
             'Cricket Fields',
             style: TextStyle(
-              color: Color(0xFF2E7D32),
+              color: Colors.redAccent,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -685,7 +685,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
           const Text(
             'Futsal Fields',
             style: TextStyle(
-              color: Color(0xFF2E7D32),
+              color: Colors.redAccent,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -712,7 +712,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
           const Text(
             'Padel Courts',
             style: TextStyle(
-              color: Color(0xFF2E7D32),
+              color: Colors.redAccent,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -756,17 +756,17 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
         ),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF2E7D32).withOpacity(0.1)
-              : Colors.white,
+              ? Colors.redAccent.withOpacity(0.1)
+              : Colors.grey[900],
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? const Color(0xFF2E7D32) : Colors.grey[300]!,
+            color: isSelected ? Colors.redAccent : Colors.grey[700]!,
             width: isSelected ? 2.5 : 1,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: const Color(0xFF2E7D32).withOpacity(0.2),
+                    color: Colors.redAccent.withOpacity(0.2),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -782,7 +782,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? const Color(0xFF2E7D32) : Colors.grey[700],
+            color: isSelected ? Colors.redAccent : Colors.grey[400]!,
             fontSize: isSmallScreen ? 12 : 14,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
@@ -800,16 +800,16 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F5F5),
+        backgroundColor: Colors.black,
         appBar: AppBar(
           title: Text(
             "Court Management",
             style: TextStyle(
-              color: Colors.white,
+              color: Colors.grey[900],
               fontSize: isSmallScreen ? 18 : 20,
             ),
           ),
-          backgroundColor: const Color(0xFF4CAF50),
+          backgroundColor: Colors.transparent,
           centerTitle: true,
           bottom: TabBar(
             indicatorColor: Colors.white,
@@ -824,7 +824,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
         ),
         body: isLoading
             ? const Center(
-                child: CircularProgressIndicator(color: Color(0xFF4CAF50)),
+                child: CircularProgressIndicator(color: Colors.redAccent),
               )
             : errorMessage != null
             ? Center(
@@ -833,14 +833,14 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                   children: [
                     Text(
                       errorMessage!,
-                      style: const TextStyle(color: Color(0xFF2E7D32)),
+                      style: const TextStyle(color: Colors.white),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: _fetchCourtData,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4CAF50),
+                        backgroundColor: Colors.redAccent,
                       ),
                       child: const Text('Retry'),
                     ),
@@ -872,7 +872,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                         Text(
                           courtData!['name'] ?? 'Court',
                           style: TextStyle(
-                            color: const Color(0xFF2E7D32),
+                            color: Colors.redAccent,
                             fontSize: isSmallScreen
                                 ? 20
                                 : isTablet
@@ -887,7 +887,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                         Text(
                           courtData!['address'] ?? 'No address',
                           style: TextStyle(
-                            color: Colors.grey,
+                            color: Colors.white70,
                             fontSize: isSmallScreen
                                 ? 14
                                 : isTablet
@@ -909,7 +909,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                         Text(
                           'Field Counts',
                           style: TextStyle(
-                            color: const Color(0xFF2E7D32),
+                            color: Colors.redAccent,
                             fontSize: isSmallScreen
                                 ? 18
                                 : isTablet
@@ -948,7 +948,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                         Text(
                           'Per Hour Rates',
                           style: TextStyle(
-                            color: const Color(0xFF2E7D32),
+                            color: Colors.redAccent,
                             fontSize: isSmallScreen
                                 ? 18
                                 : isTablet
@@ -982,7 +982,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                         ElevatedButton(
                           onPressed: isSaving ? null : _updateRates,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF4CAF50),
+                            backgroundColor: Colors.redAccent,
                             padding: EdgeInsets.symmetric(
                               vertical: isSmallScreen ? 12 : 16,
                             ),
@@ -1003,7 +1003,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                               : Text(
                                   'Update Rates',
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: Colors.grey[900],
                                     fontSize: isSmallScreen
                                         ? 14
                                         : isTablet
@@ -1032,10 +1032,10 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                         Container(
                           padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Colors.grey[900],
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: const Color(0xFF2E7D32).withOpacity(0.3),
+                              color: Colors.redAccent.withOpacity(0.3),
                               width: 1.5,
                             ),
                             boxShadow: [
@@ -1052,7 +1052,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                               Text(
                                 'Mark Time Slots as Unavailable',
                                 style: TextStyle(
-                                  color: const Color(0xFF2E7D32),
+                                  color: Colors.redAccent,
                                   fontSize: isSmallScreen
                                       ? 16
                                       : isTablet
@@ -1065,7 +1065,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                               Text(
                                 'Select 2-3 consecutive time slots on the same day to mark them as unavailable. These slots will be blocked for all bookings and challenges.',
                                 style: TextStyle(
-                                  color: Colors.grey,
+                                  color: Colors.white70,
                                   fontSize: isSmallScreen
                                       ? 12
                                       : isTablet
@@ -1089,7 +1089,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                           Text(
                             'Select Court/Field Number',
                             style: TextStyle(
-                              color: const Color(0xFF2E7D32),
+                              color: Colors.redAccent,
                               fontSize: isSmallScreen
                                   ? 16
                                   : isTablet
@@ -1102,7 +1102,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                           Text(
                             'Choose which court/field to mark as unavailable',
                             style: TextStyle(
-                              color: Colors.grey,
+                              color: Colors.white70,
                               fontSize: isSmallScreen
                                   ? 12
                                   : isTablet
@@ -1126,10 +1126,10 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                           Container(
                             padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: Colors.grey[900],
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: const Color(0xFF2E7D32).withOpacity(0.2),
+                                color: Colors.redAccent.withOpacity(0.2),
                                 width: 1,
                               ),
                               boxShadow: [
@@ -1171,7 +1171,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                                     ? null
                                     : _markUnavailable,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF4CAF50),
+                                  backgroundColor: Colors.redAccent,
                                   padding: EdgeInsets.symmetric(
                                     vertical: isSmallScreen ? 12 : 16,
                                   ),
@@ -1192,7 +1192,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
                                     : Text(
                                         'Mark as Unavailable',
                                         style: TextStyle(
-                                          color: Colors.white,
+                                          color: Colors.grey[900],
                                           fontSize: isSmallScreen
                                               ? 14
                                               : isTablet
@@ -1211,11 +1211,11 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
               ),
         floatingActionButton: FloatingActionButton(
           onPressed: showAddFieldDialog,
-          backgroundColor: const Color(0xFF4CAF50),
+          backgroundColor: Colors.redAccent,
           mini: isSmallScreen,
           child: Icon(
             Icons.add,
-            color: Colors.white,
+            color: Colors.grey[900],
             size: isSmallScreen ? 20 : 24,
           ),
         ),
@@ -1228,33 +1228,33 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
     final isSmallScreen = screenWidth < 360;
 
     return Card(
-      color: Colors.white,
+      color: Colors.grey[900],
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: Container(
           padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF2E7D32).withOpacity(0.1),
+            color: Colors.redAccent.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
             icon,
-            color: const Color(0xFF2E7D32),
+            color: Colors.redAccent,
             size: isSmallScreen ? 20 : 24,
           ),
         ),
         title: Text(
           label,
           style: TextStyle(
-            color: const Color(0xFF2E7D32),
+            color: Colors.redAccent,
             fontSize: isSmallScreen ? 14 : 16,
           ),
         ),
         trailing: Text(
           count.toString(),
           style: TextStyle(
-            color: const Color(0xFF2E7D32),
+            color: Colors.redAccent,
             fontSize: isSmallScreen ? 18 : 20,
             fontWeight: FontWeight.bold,
           ),
@@ -1272,7 +1272,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
       controller: controller,
       keyboardType: TextInputType.number,
       style: TextStyle(
-        color: const Color(0xFF2E7D32),
+        color: Colors.redAccent,
         fontSize: isSmallScreen
             ? 14
             : isTablet
@@ -1291,7 +1291,7 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
         ),
         prefixText: 'Rs. ',
         prefixStyle: TextStyle(
-          color: const Color(0xFF2E7D32),
+          color: Colors.redAccent,
           fontSize: isSmallScreen
               ? 14
               : isTablet
@@ -1300,22 +1300,22 @@ class _CourtManagementPageState extends State<CourtManagementPage> {
           fontWeight: FontWeight.w600,
         ),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: Colors.grey[900],
         contentPadding: EdgeInsets.symmetric(
           horizontal: isSmallScreen ? 12 : 16,
           vertical: isSmallScreen ? 14 : 16,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[300]!),
+          borderSide: BorderSide(color: Colors.grey[700]!),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[300]!),
+          borderSide: BorderSide(color: Colors.grey[700]!),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
         ),
       ),
     );

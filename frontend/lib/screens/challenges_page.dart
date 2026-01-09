@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import '../core/constants/app_constants.dart';
 
 import 'view_challenge_page.dart';
 import 'create_booking_or_challenge_page.dart';
@@ -51,7 +52,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
       }
 
       final response = await http.get(
-        Uri.parse('http://localhost:5000/api/challenges/open'),
+        Uri.parse('${AppConstants.baseUrl}/challenges/open'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -900,7 +901,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
       }
 
       final response = await http.delete(
-        Uri.parse('http://localhost:5000/api/challenges/$challengeID'),
+        Uri.parse('${AppConstants.baseUrl}/challenges/$challengeID'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -1037,7 +1038,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
       }
 
       final response = await http.post(
-        Uri.parse('http://localhost:5000/api/match/create'),
+        Uri.parse('${AppConstants.baseUrl}/match/create'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

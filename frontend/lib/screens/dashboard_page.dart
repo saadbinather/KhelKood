@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import '../core/constants/app_constants.dart';
 import 'login_page.dart';
 import 'leaderboard_page.dart';
 import 'challenges_page.dart';
@@ -52,7 +53,7 @@ class _DashboardPageState extends State<DashboardPage> {
       }
 
       final response = await http.get(
-        Uri.parse('http://localhost:5000/api/courts/verified'),
+        Uri.parse('${AppConstants.baseUrl}/courts/verified'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -96,7 +97,7 @@ class _DashboardPageState extends State<DashboardPage> {
       }
 
       final response = await http.get(
-        Uri.parse('http://localhost:5000/api/leaderboard'),
+        Uri.parse('${AppConstants.baseUrl}/leaderboard'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -139,7 +140,7 @@ class _DashboardPageState extends State<DashboardPage> {
       }
 
       final response = await http.get(
-        Uri.parse('http://localhost:5000/api/team/profile'),
+        Uri.parse('${AppConstants.baseUrl}/team/profile'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -203,7 +204,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
         if (token != null) {
           await http.post(
-            Uri.parse('http://localhost:5000/api/auth/logout'),
+            Uri.parse('${AppConstants.baseUrl}/auth/logout'),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',
@@ -1305,7 +1306,7 @@ class _DashboardPageState extends State<DashboardPage> {
       }
 
       final response = await http.put(
-        Uri.parse('http://localhost:5000/api/team/edit-profile'),
+        Uri.parse('${AppConstants.baseUrl}/team/edit-profile'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

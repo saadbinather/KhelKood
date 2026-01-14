@@ -35,10 +35,12 @@ class CourtModel {
   factory CourtModel.fromJson(Map<String, dynamic> json) {
     return CourtModel(
       id: json['_id']?.toString() ?? json['id']?.toString(),
-      // Use courtName or court_name, avoid 'name' field as it might contain owner name
-      courtName: json['courtName']?.toString() ?? 
-                 json['court_name']?.toString() ?? 
-                 'Unknown Court',
+      // Prefer explicit court name fields, but fall back to "name" if needed
+      // In our courts API, "name" is the court's display name
+      courtName: json['courtName']?.toString() ??
+          json['court_name']?.toString() ??
+          json['name']?.toString() ??
+          'Unknown Court',
       location: json['location']?.toString(),
       city: json['city']?.toString(),
       coordinates: _parseCoordinates(json['coordinates']),

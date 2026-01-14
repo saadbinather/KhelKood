@@ -31,6 +31,7 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
   int _activeCourtsCount = 0;
   int _upcomingBookingsCount = 0;
   bool _isLoadingStats = true;
+  String? _courtName;
 
   @override
   void initState() {
@@ -104,6 +105,7 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
       await Future.wait([
         _fetchActiveCourts(token),
         _fetchUpcomingBookings(token),
+        _fetchCourtName(token),
       ]);
     } catch (e) {
       // Handle error silently
@@ -113,6 +115,36 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
           _isLoadingStats = false;
         });
       }
+    }
+  }
+
+  Future<void> _fetchCourtName(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConstants.baseUrl}/courtowner/my-court'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        final court = data['data']?['court'] ?? data['court'];
+        final name = court != null
+            ? (court['name'] ?? court['courtTitle'])
+            : null;
+
+        setState(() {
+          _courtName = (name is String && name.trim().isNotEmpty)
+              ? name.trim()
+              : _courtName;
+        });
+      }
+    } catch (e) {
+      // Ignore errors here; title will fall back to default
     }
   }
 
@@ -365,7 +397,7 @@ class _CourtOwnerDashboardState extends State<CourtOwnerDashboard>
                   ),
                 )
               : Text(
-                  "Court Owner",
+                  _courtName ?? "Court Owner",
                   key: const ValueKey('courtowner'),
                   style: TextStyle(
                     color: Colors.white,

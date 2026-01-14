@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import '../core/models/court_model.dart';
-import '../core/repositories/court_repository.dart';
-import '../core/services/api_service.dart';
 import '../core/constants/app_constants.dart';
 import '../utils/map_icons.dart';
+import 'create_booking_or_challenge_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -419,6 +418,41 @@ class _CourtsMapPageState extends State<CourtsMapPage> {
                 ],
               ),
             ],
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  // Close the bottom sheet first
+                  Navigator.pop(context);
+                  // Navigate to court details / booking page
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CreateBookingOrChallengePage(
+                        actionType: 'both',
+                        preSelectedCourt: court.toJson(),
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.arrow_forward, color: Colors.white),
+                label: const Text(
+                  'View Court Details',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
